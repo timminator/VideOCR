@@ -16,6 +16,26 @@ The installer also allows you to add the install location to you path which allo
 
 This repository also provides a version of VideOCR that does not include the standalone version of PaddleOCR out of the box, if you installed PaddleOCR version via Python for example (requires at least version 2.10.0).
 
+## Usage  
+  
+If you installed PaddleOCR via the setup wizard and added it to your Path you can just open a terminal and run the following command:  
+  
+```
+videocr -h
+```
+
+If you downloaded the 7zip file, unzip it to your desired location and open a terminal in there. Afterwards you can run the following command:
+
+```
+.\videocr.exe -h
+```
+
+### Example usage:
+```
+.\videocr.exe --video_path "Path\to\your\video\example.mp4" --output "Path\to\your\desired\subtitle\location\example.srt" --lang en --time_start "18:40" --use_gpu true --use_angle_cls true
+```
+More info about the arguments can be found in the parameters section further down.
+
 ## Performance
 
 The OCR process can be very slow on the CPU. Using this in combination with a GPU is highly recommended.
