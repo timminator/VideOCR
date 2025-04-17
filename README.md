@@ -58,10 +58,14 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
 - `video_path`
 
   Path for the video where subtitles should be extracted from.
-  
+
+- `output`
+
+  Path for the desired location where the .srt file should be stored.
+
 - `lang`
 
-  The language of the subtitles. See [PaddleOCR docs](https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.6/doc/doc_en/multi_languages_en.md#5-support-languages-and-abbreviations) for list of supported languages and their abbreviations
+  The language of the subtitles. See [PaddleOCR docs](https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.10/docs/ppocr/blog/multi_languages.en.md#5-support-languages-and-abbreviations) for list of supported languages and their abbreviations
 
 - `conf_threshold`
 
@@ -95,7 +99,7 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
 - `rec_model_dir`
   
   The text recognition inference model folder. Already configured by default when using the standalone version.
-  
+
 - `cls_model_dir`
   
   The classification inference model folder. Already configured by default when using the standalone version.
@@ -103,7 +107,7 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
 - `use_gpu`
 
   Set to `True` if performing ocr with gpu.
-  
+
 - `use_angle_cls`
 
   Set to `True` if classification should be enabled.
@@ -123,7 +127,7 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
 - `frames_to_skip`
 
   The number of frames to skip before sampling a frame for OCR. Keep in mind the fps of the input video before increasing.
-  
+
 - `paddleocr_path`
 
   Only available when using VideOCR without PaddleOCR included. This specifies the path to the paddleocr executable. IF installed via python it should be available in path, so it should be enough to just specify "paddleocr.exe".
