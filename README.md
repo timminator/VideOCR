@@ -1,81 +1,24 @@
-# videocr
+<p align="center">
+  <h1 align="center">VideOCR</h1>
+  <p align="center">
+    Extract hardcorded subtitles from videos!
+    <br />
+  </p>
+</p>
 
-Extract hardcoded (burned-in) subtitles from videos using the [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) OCR engine with Python. A Colab notebook for installing and running this library is included for convenience:
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/oliverfei/videocr-PaddleOCR/blob/master/videocr_PaddleOCR.ipynb)
+<br>
 
-```python
-# example.py
+## ℹ About
 
-from videocr import save_subtitles_to_file
+Extract hardcoded (burned-in) subtitles from videos using the [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) OCR engine. This tool can easily be run from the command line without having Python or any other packages installed.
+You can decide between installing it via the setup installer or just downloading the folder with all the required files including the executable.
+The installer also allows you to add the install location to you path which allows you to use VideOCR from every location.
 
-if __name__ == '__main__':
-    save_subtitles_to_file('example_cropped.mp4', 'example.srt', lang='ch', time_start='7:10', time_end='7:34',
-     sim_threshold=80, conf_threshold=75, use_fullframe=True,
-     brightness_threshold=210, similar_image_threshold=1000, frames_to_skip=1)
-```
-
-`$ python3 example.py`
-
-example.srt:
-
-``` 
-0
-00:07:10,000 --> 00:07:10,083
-商城......现在没什么东西
-
-1
-00:07:10,416 --> 00:07:12,000
-这边是战斗辅助系统
-
-2
-00:07:13,083 --> 00:07:14,500
-要进去才能了解了
-
-3
-00:07:15,083 --> 00:07:15,916
-没问题了吧
-
-4
-00:07:16,333 --> 00:07:17,166
-我们准备登录
-
-5
-00:07:18,416 --> 00:07:21,083
-啊对了， 登录没有服务器的选择么
-
-6
-00:07:21,333 --> 00:07:25,000
-没有本游戏所有玩家， 都在个服务器内
-
-7
-00:07:25,833 --> 00:07:28,833
-刺激了， 这么多玩家居然都不分流的么
-
-8
-00:07:29,500 --> 00:07:31,083
-那......现在登录吗？
-
-9
-00:07:31,166 --> 00:07:32,416
-好，登录吧！
-```
-
-## Install prerequisites
-Python 3.7 - 3.10
-
-paddlepaddle or paddlepaddle-gpu See https://www.paddlepaddle.org.cn/install/quick?docurl=/documentation/docs/en/install/pip/linux-pip_en.html
-
-## Installation
-
-`pip install git+https://github.com/oliverfei/videocr-PaddleOCR.git`
-
-Alternatively for development:
-1. Clone this repo
-2. From the root directory of this repository run `python -m pip install .`
+This repository also provides a version of VideOCR that does not include the standalone version of PaddleOCR out of the box, if you installed PaddleOCR version via Python for example (requires at least version 2.10.0).
 
 ## Performance
 
-The OCR process can be very slow on CPU. Running with `paddlepaddle-gpu` is recommended if you have a CUDA GPU.
+The OCR process can be very slow on the CPU. Using this in combination with a GPU is highly recommended.
 
 ## Tips
 
@@ -90,30 +33,12 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
 `brightness_threshold`    | Higher threshold            | N/A                 | A brightness threshold can help speed up the OCR process by filtering out dark frames. In certain circumstances such as when subtitles are white and against a bright background, it may also help with accuracy.
 
 
-## API
-
-1. Return subtitle string in SRT format
-    ```python
-    get_subtitles(
-        video_path: str, lang='ch', time_start='0:00', time_end='',
-        conf_threshold=75, sim_threshold=80, use_fullframe=False,
-        det_model_dir=None, rec_model_dir=None, use_gpu=False,
-        brightness_threshold=None, similar_image_threshold=100, similar_pixel_threshold=25, frames_to_skip=1,
-        crop_x=None, crop_y=None, crop_width=None, crop_height=None)
-    ```
-
-2. Write subtitles to `file_path`
-    ```python
-    save_subtitles_to_file(
-        video_path: str, file_path='subtitle.srt', lang='ch', time_start='0:00', time_end='', 
-        conf_threshold=75, sim_threshold=80, use_fullframe=False,
-        det_model_dir=None, rec_model_dir=None, use_gpu=False,
-        brightness_threshold=None, similar_image_threshold=100, similar_pixel_threshold=25, frames_to_skip=1,
-        crop_x=None, crop_y=None, crop_width=None, crop_height=None)
-    ```
-
 ### Parameters
 
+- `video_path`
+
+  Path for the video where subtitles should be extracted from.
+  
 - `lang`
 
   The language of the subtitles. See [PaddleOCR docs](https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.6/doc/doc_en/multi_languages_en.md#5-support-languages-and-abbreviations) for list of supported languages and their abbreviations
@@ -145,19 +70,23 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
 
 - `det_model_dir`
 
-  the text detection inference model folder. There are two ways to transfer parameters, 1. None: Automatically download the built-in model to ~/.paddleocr/det; 2. The path of a specific inference model, the model and params files must be included in the model path.
-  
-  See PaddleOCR repo for list of prebuilt models: https://github.com/PaddlePaddle/PaddleOCR/.
+  The text detection inference model folder. Already configured by default when using the standalone version.
 
 - `rec_model_dir`
   
-  the text recognition inference model folder. There are two ways to transfer parameters, 1. None: Automatically download the built-in model to ~/.paddleocr/rec; 2. The path of a specific inference model, the model and params files must be included in the model path.
+  The text recognition inference model folder. Already configured by default when using the standalone version.
   
-  See PaddleOCR repo for list of prebuilt models: https://github.com/PaddlePaddle/PaddleOCR/.
+- `cls_model_dir`
+  
+  The classification inference model folder. Already configured by default when using the standalone version.
 
 - `use_gpu`
 
-  Set to `True` if performing ocr with gpu (requires the `paddlepaddle-gpu` python package to be installed)
+  Set to `True` if performing ocr with gpu.
+  
+- `use_angle_cls`
+
+  Set to `True` if classification should be enabled.
 
 - `brightness_threshold`
   
@@ -174,9 +103,9 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
 - `frames_to_skip`
 
   The number of frames to skip before sampling a frame for OCR. Keep in mind the fps of the input video before increasing.
+  
+- `paddleocr_path`
 
-## TODO
-- [ ] parallel processing
-- [ ] publish to pypi
-- [ ] commandline interface
-- [ ] user-friendly application for non-devs
+  Only available when using VideOCR without PaddleOCR included. This specifies the path to the paddleocr executable. IF installed via python it should be available in path, so it should be enough to just specify "paddleocr.exe".
+  
+  
