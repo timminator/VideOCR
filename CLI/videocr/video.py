@@ -3,10 +3,10 @@ from typing import List
 import cv2
 import numpy as np
 import os
-import sys
 import subprocess
 import ast
 import re
+import tempfile
 import shutil
 
 from . import utils
@@ -60,19 +60,16 @@ class Video:
             crop_x_end = crop_x + crop_width
             crop_y_end = crop_y + crop_height
 
-        program_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
-        temp_dir = os.path.join(program_dir, "temp")
-
-        # Clear the folder if it exists, else create it
-        if os.path.exists(temp_dir):
-            for filename in os.listdir(temp_dir):
-                file_path = os.path.join(temp_dir, filename)
+        TEMP_PREFIX = "videocr_temp_"
+        base_temp = tempfile.gettempdir()
+        for name in os.listdir(base_temp):
+            if name.startswith(TEMP_PREFIX):
                 try:
-                    os.remove(file_path)
+                    shutil.rmtree(os.path.join(base_temp, name), ignore_errors=True)
                 except Exception as e:
-                    print(f"Failed to delete {file_path}. Reason: {e}")
-        else:
-            os.makedirs(temp_dir)
+                    print(f"Could not remove leftover temp dir '{name}': {e}")
+
+        temp_dir = tempfile.mkdtemp(prefix=TEMP_PREFIX)
 
         # get frames from ocr_start to ocr_end
         frame_paths = []
@@ -202,7 +199,6 @@ class Video:
         # Cleanup
         shutil.rmtree(temp_dir, ignore_errors=True)
 
-        
     def get_subtitles(self, sim_threshold: int) -> str:
         self._generate_subtitles(sim_threshold)
         return ''.join(

@@ -1,11 +1,9 @@
-#define MyAppName "VideOCR-GPU"
-#define MyAppVersion "1.0.0"
+#define MyAppName "VideOCR"
+#define MyAppVersion "1.1.0"
 #define MyAppURL "https://github.com/timminator/VideOCR"
 #define MyAppExeName "videocr.exe"
-#define MyInstallerVersion "1.0.0.0"
+#define MyInstallerVersion "1.1.0.0"
 #define MyAppCopyright "timminator"
-
-#include "environment.iss"
 
 [Setup]
 SignTool=signtool $f
@@ -22,8 +20,8 @@ UsePreviousAppDir=yes
 LicenseFile=...\LICENSE
 DisableProgramGroupPage=yes
 PrivilegesRequired=admin
-OutputBaseFilename={#MyAppName}-v{#MyAppVersion}-setup-x64
-SetupIconFile=...\icon.ico
+OutputBaseFilename={#MyAppName}-GPU-v{#MyAppVersion}-setup-x64
+SetupIconFile=...\VideOCR.ico
 Compression=lzma2/ultra64
 InternalCompressLevel=ultra64
 SolidCompression=yes
@@ -32,7 +30,6 @@ LZMANumBlockThreads=6
 WizardStyle=classic
 UninstallDisplayName={#MyAppName}
 UninstallDisplayIcon={app}\{#MyAppExeName}
-ChangesEnvironment=yes
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -41,46 +38,77 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "{app}"; Permissions: everyone-full
 
 [Files]
-Source: "...\Standalone\VideOCR-GPU-v1.0.0\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\Standalone\VideOCR-GPU-v1.0.0\_bz2.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\Standalone\VideOCR-GPU-v1.0.0\_ctypes.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\Standalone\VideOCR-GPU-v1.0.0\_decimal.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\Standalone\VideOCR-GPU-v1.0.0\_hashlib.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\Standalone\VideOCR-GPU-v1.0.0\_lzma.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\Standalone\VideOCR-GPU-v1.0.0\_socket.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\Standalone\VideOCR-GPU-v1.0.0\_ssl.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\Standalone\VideOCR-GPU-v1.0.0\libcrypto-1_1.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\Standalone\VideOCR-GPU-v1.0.0\libffi-7.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\Standalone\VideOCR-GPU-v1.0.0\libssl-1_1.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\Standalone\VideOCR-GPU-v1.0.0\python3.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\Standalone\VideOCR-GPU-v1.0.0\python310.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\Standalone\VideOCR-GPU-v1.0.0\select.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\Standalone\VideOCR-GPU-v1.0.0\unicodedata.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\Standalone\VideOCR-GPU-v1.0.0\vcruntime140.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\Standalone\VideOCR-GPU-v1.0.0\vcruntime140_1.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\Standalone\VideOCR-GPU-v1.0.0\videocr.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\Standalone\VideOCR-GPU-v1.0.0\cv2\*"; DestDir: "{app}\cv2"; Flags: ignoreversion recursesubdirs
-Source: "...\Standalone\VideOCR-GPU-v1.0.0\numpy\*"; DestDir: "{app}\numpy"; Flags: ignoreversion recursesubdirs
-Source: "...\Standalone\VideOCR-GPU-v1.0.0\numpy.libs\*"; DestDir: "{app}\numpy.libs"; Flags: ignoreversion recursesubdirs
-Source: "...\Standalone\VideOCR-GPU-v1.0.0\PaddleOCR.PP-OCRv4.support.files\*"; DestDir: "{app}\PaddleOCR.PP-OCRv4.support.files"; Flags: ignoreversion recursesubdirs
-Source: "...\Standalone\VideOCR-GPU-v1.0.0\PaddleOCR-GPU-v1.0.0-CUDA-11.8\*"; DestDir: "{app}\PaddleOCR-GPU-v1.0.0-CUDA-11.8"; Flags: ignoreversion recursesubdirs
-Source: "...\Standalone\VideOCR-GPU-v1.0.0\rapidfuzz\*"; DestDir: "{app}\rapidfuzz"; Flags: ignoreversion recursesubdirs
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\_bz2.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\_ctypes.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\_decimal.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\_hashlib.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\_lzma.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\_queue.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\_socket.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\_ssl.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\_tkinter.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\_uuid.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\_wmi.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\libcrypto-3.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\libffi-8.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\libssl-3.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\python3.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\python312.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\select.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\tcl86t.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\tk86t.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\unicodedata.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\vcruntime140.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\vcruntime140_1.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\VideOCR.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\zlib1.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\cv2\*"; DestDir: "{app}\cv2"; Flags: ignoreversion recursesubdirs
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\numpy\*"; DestDir: "{app}\numpy"; Flags: ignoreversion recursesubdirs
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\numpy.libs\*"; DestDir: "{app}\numpy.libs"; Flags: ignoreversion recursesubdirs
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\PIL\*"; DestDir: "{app}\PIL"; Flags: ignoreversion recursesubdirs
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\tcl\*"; DestDir: "{app}\tcl"; Flags: ignoreversion recursesubdirs
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\tcl8\*"; DestDir: "{app}\tcl8"; Flags: ignoreversion recursesubdirs
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\tk\*"; DestDir: "{app}\tk"; Flags: ignoreversion recursesubdirs
+Source: "...\VideOCR GUI\VideOCR-GPU-v1.1.0\videocr-cli-sa-GPU-v1.1.0\*"; DestDir: "{app}\videocr-cli-sa-GPU-v1.1.0"; Flags: ignoreversion recursesubdirs
 
 [Code]
-procedure CurStepChanged(CurStep: TSetupStep);
+procedure DeleteTempFolders;
+var
+  FindRec: TFindRec;
+  TempPath: string;
 begin
-    if (CurStep = ssPostInstall) and WizardIsTaskSelected('envPath')
-    then EnvAddPath(ExpandConstant('{app}'));
+  TempPath := GetTempDir;
+  if FindFirst(TempPath + 'videocr_temp_*', FindRec) then
+  begin
+    try
+      repeat
+        DelTree(TempPath + FindRec.Name, True, True, True);
+      until not FindNext(FindRec);
+    finally
+      FindClose(FindRec);
+    end;
+  end;
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
-    if CurUninstallStep = usPostUninstall
-    then EnvRemovePath(ExpandConstant('{app}'));
+  if CurUninstallStep = usUninstall then
+  begin
+    DeleteTempFolders;
+  end;
 end;
 
 [Tasks]
-Name: envPath; Description: "Add to PATH variable"
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+
+[Run]
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+
+[UninstallDelete]
+Type: files; Name: "{app}\videocr_gui_config.ini"
+Type: filesandordirs; Name: "{localappdata}\VideOCR"
