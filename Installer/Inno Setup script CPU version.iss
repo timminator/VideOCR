@@ -42,6 +42,7 @@ Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\{#MyAppExeName}"; DestDir: "{app}"; 
 Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\_bz2.pyd"; DestDir: "{app}"; Flags: ignoreversion
 Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\_ctypes.pyd"; DestDir: "{app}"; Flags: ignoreversion
 Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\_decimal.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\_elementtree.pyd"; DestDir: "{app}"; Flags: ignoreversion
 Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\_hashlib.pyd"; DestDir: "{app}"; Flags: ignoreversion
 Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\_lzma.pyd"; DestDir: "{app}"; Flags: ignoreversion
 Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\_queue.pyd"; DestDir: "{app}"; Flags: ignoreversion
@@ -53,6 +54,8 @@ Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\_wmi.pyd"; DestDir: "{app}"; Flags: 
 Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\libcrypto-3.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\libffi-8.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\libssl-3.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\MediaInfo.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\pyexpat.pyd"; DestDir: "{app}"; Flags: ignoreversion
 Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\python3.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\python312.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\select.pyd"; DestDir: "{app}"; Flags: ignoreversion
@@ -100,7 +103,7 @@ begin
 end;
 
 [Tasks]
-Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}";
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
