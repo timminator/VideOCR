@@ -83,6 +83,8 @@ class Video:
                 print(f"\rStep 1: Processing image {i+1} of {num_ocr_frames}", end="", flush=True)
                 if i % modulo == 0:
                     frame = v.read()[1]
+                    if frame is None:
+                        continue
                     if not self.use_fullframe:
                         if crop_x_end and crop_y_end:
                             frame = frame[crop_y:crop_y_end, crop_x:crop_x_end]
@@ -139,7 +141,7 @@ class Video:
         if self.cls_model_dir:
             args += ["--cls_model_dir", self.cls_model_dir]
 
-        print("Starting PaddleOCR... This can take a while...")
+        print("Starting PaddleOCR... This can take a while...", flush=True)
 
         if not os.path.isfile(self.paddleocr_path):
             raise IOError(f"PaddleOCR executable not found at: {self.paddleocr_path}")
@@ -210,7 +212,7 @@ class Video:
             for i, sub in enumerate(self.pred_subs))
 
     def _generate_subtitles(self, sim_threshold: int) -> None:
-        print("Generating subtitles...")
+        print("Generating subtitles...", flush=True)
         self.pred_subs = []
 
         if self.pred_frames is None:
