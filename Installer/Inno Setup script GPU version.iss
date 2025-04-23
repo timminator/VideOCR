@@ -1,7 +1,7 @@
 #define MyAppName "VideOCR"
 #define MyAppVersion "1.1.0"
 #define MyAppURL "https://github.com/timminator/VideOCR"
-#define MyAppExeName "videocr.exe"
+#define MyAppExeName "VideOCR.exe"
 #define MyInstallerVersion "1.1.0.0"
 #define MyAppCopyright "timminator"
 
