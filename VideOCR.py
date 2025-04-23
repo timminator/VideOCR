@@ -488,7 +488,7 @@ sg.theme("Darkgrey13")
 
 tab1_content = [
     [sg.Text("Video File:", size=(15,1)), sg.Input(key="-VIDEO_PATH-", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, enable_events=True, size=(40,1)),
-     sg.FileBrowse(file_types=(("Video Files", "*.mp4 *.avi *.mkv *.mov" "*.webm" "*.flv" "*.wmv"), ("All Files", "*.*")))],
+     sg.FileBrowse(file_types=(("Video Files", "*.mp4 *.avi *.mkv *.mov *.webm *.flv *.wmv"), ("All Files", "*.*")))],
     [sg.Text("Output SRT:", size=(15,1)), sg.Input(key="--output", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, disabled=True, size=(40,1)),
      sg.FileSaveAs(file_types=(("SubRip Subtitle", "*.srt"),), key="-SAVE_AS_BTN-", disabled=True)],
     [sg.Text("Subtitle Language:", size=(15,1)),
