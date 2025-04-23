@@ -26,15 +26,15 @@ Further options can be configured in the "Advanced Settings" Tab. You can find m
 
 ## Usage (CLI version)
   
-If you downloaded the 7zip file, unzip it to your desired location and open a terminal in there. Afterwards you can run the following command:
+There are two CLI versions available, the CLI Standalone version is recommended. If you downloaded the 7zip file, unzip it to your desired location and open a terminal in there. Afterwards you can run the following command:
 
 ```
 .\videocr.exe -h
 ```
 
-### Example usage:
+### Example usage (Standalone version):
 ```
-.\videocr.exe --paddleocr_path "Path\to\paddleocr.exe" --video_path "Path\to\your\video\example.mp4" --output "Path\to\your\desired\subtitle\location\example.srt" --lang en --time_start "18:40" --use_gpu true --use_angle_cls true
+.\videocr.exe --video_path "Path\to\your\video\example.mp4" --output "Path\to\your\desired\subtitle\location\example.srt" --lang en --time_start "18:40" --use_gpu true --use_angle_cls true
 ```
 More info about the arguments can be found in the parameters section further down.
 
@@ -56,10 +56,6 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
 
 
 ### Command Line Parameters (CLI version)
-
-- `paddleocr_path`
-
-  This specifies the path to the PaddleOCR executable. IF installed via python it should be available in path, so it should be enough to just specify "paddleocr.exe". You can also download the standalone version used by the GUI version, that does not require Python, from [here](https://github.com/timminator/PaddleOCR-Standalone/releases/tag/v.1.0.0).
 
 - `video_path`
 
@@ -133,5 +129,11 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
 - `frames_to_skip`
 
   The number of frames to skip before sampling a frame for OCR. Keep in mind the fps of the input video before increasing.
+
+- `paddleocr_path`
+
+  Only available when using VideOCR CLI version. This specifies the path to the PaddleOCR executable. If installed via python it should be available in path, so it should be enough to just specify "paddleocr.exe". You can also download the standalone version used by the GUI version, that does not require Python, from [here](https://github.com/timminator/PaddleOCR-Standalone/releases/tag/v.1.0.0).
+  
+The CLI version also requires to specify the correct detection/recognition/classification model directory for each language. The model files can be downloaded from [here](https://github.com/timminator/PaddleOCR-Standalone/releases/download/v.1.0.0/PaddleOCR.PP-OCRv4.support.files.7z).
   
   
