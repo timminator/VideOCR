@@ -1,7 +1,8 @@
 <p align="center">
+<img src="https://github.com/timminator/VideOCR/blob/master/Pictures/VideOCR.png" alt="VideOCR Icon" width="128">
   <h1 align="center">VideOCR</h1>
   <p align="center">
-    Extract hardcorded subtitles from videos!
+    Extract hardcoded subtitles from videos!
     <br />
   </p>
 </p>
@@ -10,20 +11,21 @@
 
 ## ℹ About
 
-Extract hardcoded (burned-in) subtitles from videos using the [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) OCR engine. This tool can easily be run from the command line without having Python or any other packages installed.
-You can decide between installing it via the setup installer or just downloading the folder with all the required files including the executable.
-The installer also allows you to add the install location to you path which allows you to use VideOCR from every location.
+Extract hardcoded (burned-in) subtitles from videos via a simple to use GUI by utilizing the [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) OCR engine. Everything can be easily configured via a few clicks.
+You can either install it with the setup installer or you can just download a folder with all the required files including the executable.
 
-This repository also provides a version of VideOCR that does not include the standalone version of PaddleOCR out of the box, if you installed PaddleOCR version via Python for example (requires at least version 2.10.0).
+This repository also provides a version of VideOCR that can be used from the command line in combination with PaddleOCR.
 
-## Usage  
+
+## Usage
+
+Import a video and seek through the video via the timeline. You can also use the right and left arrow keys. Then you can just draw a crop box over the right part of the video. Use click+drag to select. Afterwards you can start the subtitle extraction process via the "Run" Button.
+
+Further options can be configured in the "Advanced Settings" Tab. You can find more info about them in the parameters section available in the CLI version.
+![image](https://github.com/timminator/VideOCR/blob/master/Pictures/GUI.png)
+
+## Usage (CLI version)
   
-If you installed PaddleOCR via the setup wizard and added it to your Path you can just open a terminal and run the following command:  
-  
-```
-videocr -h
-```
-
 If you downloaded the 7zip file, unzip it to your desired location and open a terminal in there. Afterwards you can run the following command:
 
 ```
@@ -32,7 +34,7 @@ If you downloaded the 7zip file, unzip it to your desired location and open a te
 
 ### Example usage:
 ```
-.\videocr.exe --video_path "Path\to\your\video\example.mp4" --output "Path\to\your\desired\subtitle\location\example.srt" --lang en --time_start "18:40" --use_gpu true --use_angle_cls true
+.\videocr.exe --paddleocr_path "Path\to\paddleocr.exe" --video_path "Path\to\your\video\example.mp4" --output "Path\to\your\desired\subtitle\location\example.srt" --lang en --time_start "18:40" --use_gpu true --use_angle_cls true
 ```
 More info about the arguments can be found in the parameters section further down.
 
@@ -42,7 +44,7 @@ The OCR process can be very slow on the CPU. Using this in combination with a GP
 
 ## Tips
 
-To shorten the amount of time it takes to perform OCR on each frame, you can use the `crop_x`, `crop_y`, `crop_width`, `crop_height` params to crop out only the areas of the videos where the subtitles appear. When cropping, leave a bit of buffer space above and below the text to ensure accurate readings.
+When cropping, leave a bit of buffer space above and below the text to ensure accurate readings.
 
 ### Quick Configuration Cheatsheet
 
@@ -53,7 +55,11 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
 `brightness_threshold`    | Higher threshold            | N/A                 | A brightness threshold can help speed up the OCR process by filtering out dark frames. In certain circumstances such as when subtitles are white and against a bright background, it may also help with accuracy.
 
 
-### Parameters
+### Command Line Parameters (CLI version)
+
+- `paddleocr_path`
+
+  This specifies the path to the PaddleOCR executable. IF installed via python it should be available in path, so it should be enough to just specify "paddleocr.exe". You can also download the standalone version used by the GUI version, that does not require Python, from [here](https://github.com/timminator/PaddleOCR-Standalone/releases/tag/v.1.0.0).
 
 - `video_path`
 
@@ -90,7 +96,7 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
 - `crop_x`, `crop_y`, `crop_width`, `crop_height`
 
   Specifies the bounding area in pixels for the portion of the frame that will be used for OCR. See image below for example:
-  ![image](https://user-images.githubusercontent.com/8058852/226201081-f4ec9a23-4cc8-48d4-b15c-6ea2ac29ae93.png)
+  ![image](https://github.com/timminator/VideOCR/blob/master/Pictures/crop_example.png)
 
 - `det_model_dir`
 
@@ -106,7 +112,7 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
 
 - `use_gpu`
 
-  Set to `True` if performing ocr with gpu.
+  Set to `True` if performing OCR with GPU.
 
 - `use_angle_cls`
 
@@ -127,9 +133,5 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
 - `frames_to_skip`
 
   The number of frames to skip before sampling a frame for OCR. Keep in mind the fps of the input video before increasing.
-
-- `paddleocr_path`
-
-  Only available when using VideOCR without PaddleOCR included. This specifies the path to the paddleocr executable. IF installed via python it should be available in path, so it should be enough to just specify "paddleocr.exe".
   
   
