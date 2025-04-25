@@ -49,7 +49,7 @@ def find_videocr_exe():
         potential_path = os.path.join(script_dir, folder, 'videocr-cli-sa.exe')
         if os.path.exists(potential_path):
             return potential_path
-    # Can never be reached
+    # Should never be reached
     return None
 
 # --- Configuration ---
@@ -192,6 +192,35 @@ def time_string_to_seconds(time_str: str) -> int | None:
 
     h, m, s = parsed_time
     return h * 3600 + m * 60 + s
+
+def center_popup(parent_window, popup_window):
+    """Center a popup relative to the parent window."""
+    x0, y0 = parent_window.current_location(more_accurate=True)
+    w0, h0 = parent_window.current_size_accurate()
+    w1, h1 = popup_window.current_size_accurate()
+    x1 = x0 + (w0 - w1) // 2
+    y1 = y0 + (h0 - h1) // 2
+    popup_window.move(x1, y1)
+
+def custom_popup(parent_window, title, message, icon=None, modal=True):
+    """Create and show a centered popup relative to the parent window."""
+    layout = [
+        [sg.Text(message)],
+        [sg.Push(), sg.Button('OK', bind_return_key=True), sg.Push()]
+    ]
+    popup_window = sg.Window(title, layout, alpha_channel=0, finalize=True, icon=icon, modal=modal)
+
+    popup_window.refresh()
+    center_popup(parent_window, popup_window)
+    popup_window.refresh()
+    popup_window.set_alpha(1)
+    popup_window['OK'].set_focus()
+    
+    while True:
+        popup_event, _ = popup_window.read()
+        if popup_event in (sg.WIN_CLOSED, 'OK'):
+            break
+    popup_window.close()
 
 # --- Settings Save/Load Functions ---
 def get_default_settings():
@@ -469,19 +498,19 @@ def run_videocr(args_dict, window):
         if process:
             exit_code = process.returncode
             if exit_code == 0:
-                window['-OUTPUT-'].update("\nSuccessfully generated subtitle file!\n", append=True)
+                window.write_event_value('-VIDEOCR_OUTPUT-', "\nSuccessfully generated subtitle file!\n")
             elif exit_code is not None:
-                window['-OUTPUT-'].update(f"\nProcess finished with exit code: {exit_code}\n", append=True)
+                window.write_event_value('-VIDEOCR_OUTPUT-', f"\nProcess finished with exit code: {exit_code}\n")
 
     except FileNotFoundError:
-        window['-OUTPUT-'].update(f"Error: '{VIDEOCR_EXE_PATH}' not found. Please check the path.\n", append=True)
+        window.write_event_value('-VIDEOCR_OUTPUT-', f"\nError: '{VIDEOCR_EXE_PATH}' not found. Please check the path.\n")
     except Exception as e:
-        window['-OUTPUT-'].update(f"\nAn error occurred: {e}", append=True)
+        window.write_event_value('-VIDEOCR_OUTPUT-', f"\nAn error occurred: {e}\n")
 
     finally:
         if hasattr(window, '_videocr_process'):
             del window._videocr_process
-            window.write_event_value('-PROCESS_FINISHED-', None)
+        window.write_event_value('-PROCESS_FINISHED-', None)
 
 # --- GUI Layout ---
 sg.theme("Darkgrey13")
@@ -574,6 +603,9 @@ window.crop_box_coords = {}
 window.bind('<Left>', '-GRAPH-<Left>')
 window.bind('<Right>', '-GRAPH-<Right>')
 
+# --- Bind window restore event ---
+window.bind('<Map>', '-WINDOW_RESTORED-')
+
 # --- Load settings when the application starts ---
 load_settings(window)
 
@@ -623,11 +655,17 @@ while True:
 
     # --- Handle events sent from the worker thread ---
     if event == "-HELP-":
-        sg.popup("Cropping Info", (
+        custom_popup(window, "Cropping Info", (
             "Draw a crop box over the subtitle region in the video.\n"
             "Use click+drag to select.\n"
             "If no crop box is selected, the bottom third of the video\n"
-            "will be used for OCR by default."))
+            "will be used for OCR by default."),
+            icon=ICON_PATH
+        )
+
+    elif event == '-WINDOW_RESTORED-':
+        if '-GRAPH-' in window.AllKeysDict:
+            window['-GRAPH-'].set_focus()
 
     elif event == '-PROCESS_STARTED-':
         pid = values[event]
@@ -709,21 +747,27 @@ while True:
                 window['--output'].update(str(output_path))
                 window["Run"].update(disabled=False)
                 window['-SAVE_AS_BTN-'].update(disabled=False)
-                window["-CLEAR_CROP-"].update(disabled=False)
+
+                if '-GRAPH-' in window.AllKeysDict:
+                    window['-GRAPH-'].set_focus()
+
             except Exception as e:
-                sg.popup_error(f"Could not automatically generate default output path.\nPlease specify one manually.\nError: {e}")
+                custom_popup(window, "Unable to Set Output Path",
+                    f"Could not automatically generate default output path.\nPlease specify one manually.\nError: {e}",
+                    icon=ICON_PATH
+                )
                 window['--output'].update("", disabled=False)
                 window['-SAVE_AS_BTN-'].update(disabled=False)
 
         else:
-            sg.popup_error(f"Could not load video, video has no frames, or FPS is zero: {video_path}")
+            custom_popup(window, "Invalid or Empty Video File",
+                f"Could not load video, video has no frames, or FPS is zero:\n{video_path}",
+                icon=ICON_PATH
+            )
             video_path = None
             total_frames = 0
             video_fps = 0
             window["-VIDEO_PATH-"].update("")
-            window["-SLIDER-"].update(disabled=True)
-            window["Run"].update(disabled=True)
-            window["-CLEAR_CROP-"].update(disabled=True)
 
     # --- Slider Moved ---
     elif event == "-SLIDER-" and video_path and total_frames > 0:
@@ -1072,7 +1116,7 @@ while True:
                 window['-SAVE_AS_BTN-'].update(disabled=False)
                 window['Cancel'].update(disabled=True)
         else:
-            window['-OUTPUT-'].update("No process is currently running to cancel.\n", append=True)
+            window['-OUTPUT-'].update("\nNo process is currently running to cancel.\n", append=True)
 
 # --- Cleanup ---
 window.close()
