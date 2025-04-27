@@ -195,7 +195,7 @@ def time_string_to_seconds(time_str: str) -> int | None:
 
 def center_popup(parent_window, popup_window):
     """Center a popup relative to the parent window."""
-    x0, y0 = parent_window.current_location(more_accurate=True)
+    x0, y0 = parent_window.current_location()
     w0, h0 = parent_window.current_size_accurate()
     w1, h1 = popup_window.current_size_accurate()
     x1 = x0 + (w0 - w1) // 2
@@ -240,6 +240,7 @@ def get_default_settings():
     '--use_angle_cls': True,
     '--keyboard_seek_step': str(KEY_SEEK_STEP),
     '--default_output_dir': DEFAULT_DOCUMENTS_DIR,
+    '--save_in_video_dir': True,
     }
 
 def save_settings(values):
@@ -262,6 +263,7 @@ def save_settings(values):
         '--use_angle_cls': values.get('--use_angle_cls', get_default_settings().get('--use_angle_cls')),
         '--keyboard_seek_step': values.get('--keyboard_seek_step', get_default_settings().get('--keyboard_seek_step')),
         '--default_output_dir': values.get('--default_output_dir', get_default_settings().get('--default_output_dir')),
+        '--save_in_video_dir': values.get('--save_in_video_dir', get_default_settings().get('--save_in_video_dir')),
     }
 
     # --- Write settings to the config object ---
@@ -297,6 +299,7 @@ def load_settings(window):
                     ('--use_angle_cls', 'checkbox'),
                     ('--keyboard_seek_step', 'input'),
                     ('--default_output_dir', 'input'),
+                    ('--save_in_video_dir', 'checkbox'),
                 ]
 
                 for key, elem_type in settings_to_load:
@@ -340,6 +343,29 @@ def load_settings(window):
                 config.write(configfile)
         except Exception as e:
             log_error(f"Error creating default config file {CONFIG_FILE}: {e}")
+
+def generate_output_path(video_path, values, default_dir=DEFAULT_DOCUMENTS_DIR):
+    video_file_path = pathlib.Path(video_path)
+    video_filename_stem = video_file_path.stem
+
+    save_in_video_dir = values.get('--save_in_video_dir', True)
+    if save_in_video_dir:
+        output_dir = video_file_path.parent
+    else:
+        output_dir_str = values.get('--default_output_dir', default_dir).strip()
+        if not output_dir_str:
+            output_dir = pathlib.Path(default_dir)
+        else:
+            output_dir = pathlib.Path(output_dir_str)
+
+    base_output_path = output_dir / f"{video_filename_stem}.srt"
+    output_path = base_output_path
+    counter = 1
+    while output_path.exists():
+        output_path = output_dir / f"{video_filename_stem}({counter}).srt"
+        counter += 1
+
+    return output_path
 
 def get_video_frame(video_path, frame_number, display_size):
     """Reads a specific frame from a video file using validated metadata,
@@ -519,7 +545,7 @@ tab1_content = [
     [sg.Text("Video File:", size=(15,1)), sg.Input(key="-VIDEO_PATH-", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, enable_events=True, size=(40,1)),
      sg.FileBrowse(file_types=(("Video Files", "*.mp4 *.avi *.mkv *.mov *.webm *.flv *.wmv"), ("All Files", "*.*")))],
     [sg.Text("Output SRT:", size=(15,1)), sg.Input(key="--output", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, disabled=True, size=(40,1)),
-     sg.FileSaveAs(file_types=(("SubRip Subtitle", "*.srt"),), key="-SAVE_AS_BTN-", disabled=True)],
+     sg.Button('Save As...', key="-SAVE_AS_BTN-", disabled=True)],
     [sg.Text("Subtitle Language:", size=(15,1)),
      sg.Combo(language_display_names, default_value=default_display_language, key="-LANG_COMBO-", size=(38,1), readonly=True, enable_events=True),
      sg.Push(),
@@ -546,33 +572,34 @@ tab1_layout = [[sg.Column(tab1_content,
                            expand_y=True)]]
 
 tab2_content = [
-    [sg.Text("OCR settings:", font=('Arial', 10, 'bold'))],
-    [sg.Text("Start Time (e.g., 0:00 or 1:23:45):", size=(25,1), tooltip="Specify the starting time to begin processing."),
+    [sg.Text("OCR Settings:", font=('Arial', 10, 'bold'))],
+    [sg.Text("Start Time (e.g., 0:00 or 1:23:45):", size=(27,1), tooltip="Specify the starting time to begin processing."),
      sg.Input(DEFAULT_TIME_START, key="--time_start", size=(15,1), enable_events=True, tooltip="Specify the starting time to begin processing.")],
-    [sg.Text("End Time (e.g., 0:10 or 2:34:56):", size=(25,1), tooltip="Specify the ending time to stop processing."),
+    [sg.Text("End Time (e.g., 0:10 or 2:34:56):", size=(27,1), tooltip="Specify the ending time to stop processing."),
      sg.Input("", key="--time_end", size=(15,1), enable_events=True, tooltip="Specify the ending time to stop processing.")],
-    [sg.Text("Confidence Threshold (0-100):", size=(25,1), tooltip="Minimum confidence score for detected text."),
+    [sg.Text("Confidence Threshold (0-100):", size=(27,1), tooltip="Minimum confidence score for detected text."),
      sg.Input(DEFAULT_CONF_THRESHOLD, key="--conf_threshold", size=(10,1), enable_events=True, tooltip="Minimum confidence score for detected text.")],
-    [sg.Text("Similarity Threshold (0-100):", size=(25,1), tooltip="Threshold for merging text lines based on content similarity."),
+    [sg.Text("Similarity Threshold (0-100):", size=(27,1), tooltip="Threshold for merging text lines based on content similarity."),
      sg.Input(DEFAULT_SIM_THRESHOLD, key="--sim_threshold", size=(10,1), enable_events=True, tooltip="Threshold for merging text lines based on content similarity.")],
-    [sg.Text("Brightness Threshold (0-255):", size=(25,1), tooltip="Frames below this average brightness are skipped."),
+    [sg.Text("Brightness Threshold (0-255):", size=(27,1), tooltip="Frames below this average brightness are skipped."),
      sg.Input("", key="--brightness_threshold", size=(10,1), enable_events=True, tooltip="Frames below this average brightness are skipped. Leave empty to disable.")],
-    [sg.Text("Similar Image Threshold:", size=(25,1), tooltip="Maximum number of different pixels between frames to skip OCR"),
+    [sg.Text("Similar Image Threshold:", size=(27,1), tooltip="Maximum number of different pixels between frames to skip OCR"),
      sg.Input(DEFAULT_SIM_IMAGE_THRESHOLD, key="--similar_image_threshold", size=(10,1), enable_events=True, tooltip="Maximum number of different pixels between frames to skip OCR")],
-    [sg.Text("Similar Pixel Threshold:", size=(25,1), tooltip="Tolerance level for considering pixels as similar when comparing images (0-255)."),
+    [sg.Text("Similar Pixel Threshold:", size=(27,1), tooltip="Tolerance level for considering pixels as similar when comparing images (0-255)."),
      sg.Input(DEFAULT_SIM_PIXEL_THRESHOLD, key="--similar_pixel_threshold", size=(10,1), enable_events=True, tooltip="Tolerance level for considering pixels as similar when comparing images (0-255).")],
-    [sg.Text("Frames to Skip:", size=(25,1), tooltip="Process only every Nth frame."),
+    [sg.Text("Frames to Skip:", size=(27,1), tooltip="Process only every Nth frame (e.g., 1 = process every 2nd frame)."),
      sg.Input(DEFAULT_FRAMES_TO_SKIP, key="--frames_to_skip", size=(10,1), enable_events=True, tooltip="Process only every Nth frame (e.g., 1 = process every 2nd frame).")],
     [sg.Checkbox("Enable GPU Usage (Only affects GPU version)", default=True, key="--use_gpu", enable_events=True, tooltip="Attempt to use the GPU for OCR processing if available and supported.")],
     [sg.Checkbox("Use Full Frame OCR", default=False, key="--use_fullframe", enable_events=True, tooltip="Process the entire video frame instead of using a crop box.")],
     [sg.Checkbox("Enable Angle Classification", default=True, key="--use_angle_cls", enable_events=True, tooltip="Detect and correct rotated text angles.")],
     [sg.HorizontalSeparator()],
-    [sg.Text("VideOCR settings:", font=('Arial', 10, 'bold'))],
-    [sg.Text("Keyboard Seek Step (frames):", size=(25,1), tooltip="Number of frames to jump when using Left/Right arrows."),
+    [sg.Text("VideOCR Settings:", font=('Arial', 10, 'bold'))],
+    [sg.Checkbox("Save SRT in Video Directory", size=(27,1), default=True, key="--save_in_video_dir", enable_events=True, tooltip="Save the output SRT file in the same directory as the video file.\nIf enabled, \"Output directory\" is disabled.")],
+    [sg.Text("Output Directory:", size=(27,1), tooltip="Folder where generated SRT files will be placed.\nDisabled when \"Save SRT in Video Directory\" is enabled."),
+     sg.Input(DEFAULT_DOCUMENTS_DIR, key="--default_output_dir", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, size=(40,1), enable_events=True, tooltip="Folder where generated SRT files will be placed.\nDisabled when \"Save SRT in Video Directory\" is enabled."),
+     sg.FolderBrowse(key="-FOLDER_BROWSE_BTN-", disabled=True)],
+    [sg.Text("Keyboard Seek Step (frames):", size=(27,1), tooltip="Number of frames to jump when using Left/Right arrows."),
      sg.Input(KEY_SEEK_STEP, key="--keyboard_seek_step", size=(10,1), enable_events=True, tooltip="Number of frames to jump when using Left/Right arrows.")],
-    [sg.Text("Default Output Directory:", size=(25,1), tooltip="Folder where generated SRT paths will be placed by default."),
-     sg.Input(DEFAULT_DOCUMENTS_DIR, key="--default_output_dir", size=(40,1), enable_events=True, tooltip="Folder where generated SRT paths will be placed by default."),
-     sg.FolderBrowse()],
 ]
 tab2_layout = [[sg.Column(tab2_content,
                            size_subsample_height=1,
@@ -609,6 +636,10 @@ window.bind('<Map>', '-WINDOW_RESTORED-')
 # --- Load settings when the application starts ---
 load_settings(window)
 
+save_in_video_dir_checked_at_start = window.find_element('--save_in_video_dir').get()
+if not save_in_video_dir_checked_at_start:
+    window['-FOLDER_BROWSE_BTN-'].update(disabled=False)
+
 # --- Define the list of keys that, when changed, should trigger a settings save ---
 KEYS_TO_AUTOSAVE = [
     '-LANG_COMBO-',
@@ -625,6 +656,7 @@ KEYS_TO_AUTOSAVE = [
     '--use_angle_cls',
     '--keyboard_seek_step',
     '--default_output_dir',
+    '--save_in_video_dir',
 ]
 
 # --- Event Loop ---
@@ -648,10 +680,38 @@ while True:
     if event in KEYS_TO_AUTOSAVE:
         if values is not None:
             save_settings(values)
+        # --- Handle possible output path change --- 
+        if event == '--save_in_video_dir':
+            if (values.get('--save_in_video_dir', True)):
+                window['-FOLDER_BROWSE_BTN-'].update(disabled=True)
+            else:
+                window['-FOLDER_BROWSE_BTN-'].update(disabled=False)
+
+            if video_path:
+                output_path = generate_output_path(video_path, values)
+                window['--output'].update(str(output_path))
 
     elif event == '-TABGROUP-' and values.get('-TABGROUP-') == '-TAB-VIDEO-':
         if '-GRAPH-' in window.AllKeysDict:
             window['-GRAPH-'].set_focus()
+
+    # --- Save As Button Click ---
+    if event == '-SAVE_AS_BTN-':
+        output_path = values["--output"]
+        output_file_path = pathlib.Path(output_path)
+
+        # Usage of tkinter.tkFileDialog instead of sg.popup_get_file because of the window placement on screen
+        filename_chosen = sg.tk.filedialog.asksaveasfilename(
+            defaultextension='srt',
+            filetypes=(("SubRip Subtitle", "*.srt"), ("All Files", "*.*")),
+            initialdir=output_file_path.parent,
+            initialfile=output_file_path.stem,
+            parent=window.TKroot,
+            title="Save As"
+        )
+
+        if filename_chosen != "":
+            window["--output"].update(filename_chosen)
 
     # --- Handle events sent from the worker thread ---
     if event == "-HELP-":
@@ -728,21 +788,7 @@ while True:
             update_frame_and_time_display(window, current_frame_num, total_frames, video_fps)
 
             try:
-                video_file_path = pathlib.Path(video_path)
-                video_filename_stem = video_file_path.stem
-
-                output_dir_str = values.get('--default_output_dir', DEFAULT_DOCUMENTS_DIR).strip() if values else DEFAULT_DOCUMENTS_DIR
-                if not output_dir_str:
-                    output_dir = pathlib.Path(DEFAULT_DOCUMENTS_DIR)
-                else:
-                    output_dir = pathlib.Path(output_dir_str)
-
-                base_output_path = output_dir / f"{video_filename_stem}.srt"
-                output_path = base_output_path
-                counter = 1
-                while output_path.exists():
-                    output_path = output_dir / f"{video_filename_stem}({counter}).srt"
-                    counter += 1
+                output_path = generate_output_path(video_path, values)
 
                 window['--output'].update(str(output_path))
                 window["Run"].update(disabled=False)
@@ -1065,7 +1111,7 @@ while True:
             args['lang'] = lang_abbr
 
         for key in values:
-            if key.startswith('--') and key not in ['--keyboard_seek_step', '--default_output_dir']:
+            if key.startswith('--') and key not in ['--keyboard_seek_step', '--default_output_dir', '--save_in_video_dir']:
                 value = values.get(key)
                 if isinstance(value, bool):
                     args[key.lstrip('-')] = str(value).lower()
