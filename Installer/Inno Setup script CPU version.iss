@@ -1,5 +1,5 @@
 #define MyAppName "VideOCR"
-#define MyAppVersion "1.1.0"
+#define MyAppVersion "1.1.1"
 #define MyAppURL "https://github.com/timminator/VideOCR"
 #define MyAppExeName "VideOCR.exe"
 #define MyInstallerVersion "1.1.0.0"
@@ -38,42 +38,42 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "{app}"; Permissions: everyone-full
 
 [Files]
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\_bz2.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\_ctypes.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\_decimal.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\_elementtree.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\_hashlib.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\_lzma.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\_queue.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\_socket.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\_ssl.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\_tkinter.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\_uuid.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\_wmi.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\libcrypto-3.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\libffi-8.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\libssl-3.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\MediaInfo.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\pyexpat.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\python3.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\python312.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\select.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\tcl86t.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\tk86t.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\unicodedata.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\vcruntime140.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\vcruntime140_1.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\VideOCR.ico"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\zlib1.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\cv2\*"; DestDir: "{app}\cv2"; Flags: ignoreversion recursesubdirs
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\numpy\*"; DestDir: "{app}\numpy"; Flags: ignoreversion recursesubdirs
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\numpy.libs\*"; DestDir: "{app}\numpy.libs"; Flags: ignoreversion recursesubdirs
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\PIL\*"; DestDir: "{app}\PIL"; Flags: ignoreversion recursesubdirs
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\tcl\*"; DestDir: "{app}\tcl"; Flags: ignoreversion recursesubdirs
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\tcl8\*"; DestDir: "{app}\tcl8"; Flags: ignoreversion recursesubdirs
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\tk\*"; DestDir: "{app}\tk"; Flags: ignoreversion recursesubdirs
-Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.0\videocr-cli-sa-CPU-v1.1.0\*"; DestDir: "{app}\videocr-cli-sa-CPU-v1.1.0"; Flags: ignoreversion recursesubdirs
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\_bz2.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\_ctypes.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\_decimal.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\_elementtree.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\_hashlib.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\_lzma.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\_queue.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\_socket.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\_ssl.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\_tkinter.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\_uuid.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\_wmi.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\libcrypto-3.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\libffi-8.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\libssl-3.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\MediaInfo.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\pyexpat.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\python3.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\python312.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\select.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\tcl86t.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\tk86t.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\unicodedata.pyd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\vcruntime140.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\vcruntime140_1.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\VideOCR.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\zlib1.dll"; DestDir: "{app}"; Flags: ignoreversion
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\cv2\*"; DestDir: "{app}\cv2"; Flags: ignoreversion recursesubdirs
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\numpy\*"; DestDir: "{app}\numpy"; Flags: ignoreversion recursesubdirs
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\numpy.libs\*"; DestDir: "{app}\numpy.libs"; Flags: ignoreversion recursesubdirs
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\PIL\*"; DestDir: "{app}\PIL"; Flags: ignoreversion recursesubdirs
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\tcl\*"; DestDir: "{app}\tcl"; Flags: ignoreversion recursesubdirs
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\tcl8\*"; DestDir: "{app}\tcl8"; Flags: ignoreversion recursesubdirs
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\tk\*"; DestDir: "{app}\tk"; Flags: ignoreversion recursesubdirs
+Source: "...\VideOCR GUI\VideOCR-CPU-v1.1.1\videocr-cli-sa-CPU-v1.1.0\*"; DestDir: "{app}\videocr-cli-sa-CPU-v1.1.0"; Flags: ignoreversion recursesubdirs
 
 [Code]
 procedure DeleteTempFolders;
