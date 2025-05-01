@@ -12,10 +12,27 @@
 ## ℹ About
 
 Extract hardcoded (burned-in) subtitles from videos via a simple to use GUI by utilizing the [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) OCR engine. Everything can be easily configured via a few clicks.
-You can either install it with the setup installer or you can just download a folder with all the required files including the executable.
 
 This repository also provides a version of VideOCR that can be used from the command line in combination with PaddleOCR.
 
+## Setup
+
+### Windows:
+You can either install it with the setup installer or you can just download a folder with all the required files including the executable and unzip it to your desired location.
+
+### Linux:
+Download the tarball archive from the releases page and unzip it to your desired location.
+Optionally you can add VideOCR to your App menus if you want to.
+For this step open a terminal where you unpacked the archive and run
+
+```
+./install_videocr.sh
+```
+This will create a shortcut for VideOCR. You can remove it via:  
+
+```
+./uninstall_videocr.sh
+```
 
 ## Usage
 
@@ -26,15 +43,22 @@ Further options can be configured in the "Advanced Settings" Tab. You can find m
 
 ## Usage (CLI version)
   
-There are two CLI versions available, the CLI Standalone version is recommended. If you downloaded the 7zip file, unzip it to your desired location and open a terminal in there. Afterwards you can run the following command:
+There are two CLI versions available, the CLI Standalone version is recommended. Unzip the archive to your desired location and open a terminal in there. Afterwards you can run the following command:
+
+### Windows:
+```
+.\videocr-cli-sa.exe -h
+```
+
+### Linux:
 
 ```
-.\videocr.exe -h
+./videocr-cli-sa.bin -h
 ```
 
-### Example usage (Standalone version):
+### Example usage (Standalone version, Windows):
 ```
-.\videocr.exe --video_path "Path\to\your\video\example.mp4" --output "Path\to\your\desired\subtitle\location\example.srt" --lang en --time_start "18:40" --use_gpu true --use_angle_cls true
+.\videocr-cli-sa.exe --video_path "Path\to\your\video\example.mp4" --output "Path\to\your\desired\subtitle\location\example.srt" --lang en --time_start "18:40" --use_gpu true --use_angle_cls true
 ```
 More info about the arguments can be found in the parameters section further down.
 
