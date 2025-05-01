@@ -1,5 +1,6 @@
 import os
 import sys
+import platform
 from .video import Video
 
 
@@ -41,11 +42,20 @@ def find_paddleocr() -> str:
         "PaddleOCR-CPU-v1.0.0",
         "PaddleOCR-GPU-v1.0.0-CUDA-11.8"
     ]
+    program_name = "paddleocr"
+
+    if platform.system() == "Windows":
+        ext = ".exe"
+    else:
+        ext = ".bin"
+
+    executable_name = f"{program_name}{ext}"
+
     for folder in possible_folders:
-        path = os.path.join(program_dir, folder, "paddleocr.exe")
+        path = os.path.join(program_dir, folder, executable_name)
         if os.path.isfile(path):
             return path
-    raise FileNotFoundError("Could not find paddleocr.exe in expected folders.")
+    raise FileNotFoundError(f"Could not find {executable_name} in expected folders: {possible_folders}")
 
 LATIN_LANGS = {
     "af",

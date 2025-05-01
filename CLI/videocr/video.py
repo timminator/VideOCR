@@ -130,7 +130,8 @@ class Video:
             "--use_gpu", "true" if use_gpu else "false",
             "--use_angle_cls", "true" if use_angle_cls else "false",
             "--lang", self.lang,
-            "--show_log", "false"
+            "--show_log", "false",
+            "--enable_mkldnn", "true"
         ]
 
         # Conditionally add model dirs

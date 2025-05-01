@@ -15,7 +15,12 @@ from pymediainfo import MediaInfo
 
 # -- Save errors to log file ---
 def log_error(message: str, log_name="error_log.txt"):
-    log_dir = os.path.join(os.getenv('LOCALAPPDATA'), "VideOCR")
+    """Logs error messages to a platform-appropriate log file location."""
+    if platform.system() == "Windows":
+        log_dir = os.path.join(os.getenv('LOCALAPPDATA'), "VideOCR")
+    else:
+        log_dir = os.path.join(os.path.expanduser('~'), ".config", "VideOCR")
+
     os.makedirs(log_dir, exist_ok=True)
 
     log_path = os.path.join(log_dir, log_name)
@@ -25,6 +30,7 @@ def log_error(message: str, log_name="error_log.txt"):
 
 # --- Make application DPI aware ---
 def make_dpi_aware():
+    """Makes the application DPI aware on Windows to prevent scaling issues."""
     if platform.system() == "Windows":
         try:
             ctypes.windll.shcore.SetProcessDpiAwareness(True)
@@ -34,26 +40,38 @@ make_dpi_aware()
 
 # --- Determine DPI scaling factor ---
 def get_dpi_scaling():
-    try:
-        dpi = ctypes.windll.shcore.GetScaleFactorForDevice(0)  # 0 = primary monitor
-        return dpi / 100.0
-    except:
+    """Determines DPI scaling factor on Windows, returns 1.0 otherwise."""
+    if platform.system() == "Windows":
+        try:
+            dpi = ctypes.windll.shcore.GetScaleFactorForDevice(0)  # 0 = primary monitor
+            return dpi / 100.0
+        except:
+            return 1.0
+    else:
         return 1.0
 dpi_scale = get_dpi_scaling()
 
 # --- Determine VideOCR location ---
-def find_videocr_exe():
+def find_videocr_program():
+    """Determines the path to the videocr-cli-sa executable (.exe or .bin)."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    possible_folders = ['videocr-cli-sa-CPU-v1.1.0', 'videocr-cli-sa-GPU-v1.1.0']
+    possible_folders = ['videocr-cli-sa-CPU-v1.2.0', 'videocr-cli-sa-GPU-v1.2.0']
+    program_name = 'videocr-cli-sa'
+
+    if platform.system() == "Windows":
+        extensions = '.exe'
+    else:
+        extensions = '.bin'
+    
     for folder in possible_folders:
-        potential_path = os.path.join(script_dir, folder, 'videocr-cli-sa.exe')
+        potential_path = os.path.join(script_dir, folder, f'{program_name}{extensions}')
         if os.path.exists(potential_path):
             return potential_path
     # Should never be reached
     return None
 
 # --- Configuration ---
-VIDEOCR_EXE_PATH = find_videocr_exe()
+VIDEOCR_PATH = find_videocr_program()
 DEFAULT_OUTPUT_SRT = ""
 DEFAULT_LANG = "en"
 DEFAULT_CONF_THRESHOLD = 75
@@ -116,14 +134,22 @@ current_image_bytes = None
 # --- Helper Functions ---
 def kill_process_tree(pid):
     """Kills the process with the given PID and its descendants."""
-    try:
-        subprocess.run(['taskkill', '/F', '/T', '/PID', str(pid)], check=True, capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
-    except subprocess.CalledProcessError as e:
-        log_error(f"Error terminating process tree {pid}: {e.stderr}")
-    except FileNotFoundError:
-        log_error("taskkill command not found. Cannot terminate process tree.")
-    except Exception as e:
-        log_error(f"An unexpected error occurred during taskkill: {e}")
+    if platform.system() == "Windows":
+        try:
+            subprocess.run(['taskkill', '/F', '/T', '/PID', str(pid)], check=True, capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
+        except subprocess.CalledProcessError as e:
+            log_error(f"Error terminating process tree {pid}: {e.stderr}")
+        except FileNotFoundError:
+            log_error("taskkill command not found. Cannot terminate process tree.")
+        except Exception as e:
+            log_error(f"An unexpected error occurred during taskkill: {e}")
+    else:
+        try:
+            os.killpg(pid, 15)
+        except OSError as e:
+            log_error(f"Error terminating process group {pid}: {e}")
+        except Exception as e:
+            log_error(f"An unexpected error occurred during process kill: {e}")
 
 def format_time(seconds):
     """Formats total seconds into HH:MM:SS or MM:SS string."""
@@ -345,6 +371,7 @@ def load_settings(window):
             log_error(f"Error creating default config file {CONFIG_FILE}: {e}")
 
 def generate_output_path(video_path, values, default_dir=DEFAULT_DOCUMENTS_DIR):
+    """Generates a unique output file path for the SRT file based on video path and settings."""
     video_file_path = pathlib.Path(video_path)
     video_filename_stem = video_file_path.stem
 
@@ -437,7 +464,7 @@ def get_video_frame(video_path, frame_number, display_size):
 
 def run_videocr(args_dict, window):
     """Runs the videocr.exe tool in a separate thread and streams output."""
-    command = [VIDEOCR_EXE_PATH]
+    command = [VIDEOCR_PATH]
 
     for key, value in args_dict.items():
         if value is not None and value != '':
@@ -529,7 +556,7 @@ def run_videocr(args_dict, window):
                 window.write_event_value('-VIDEOCR_OUTPUT-', f"\nProcess finished with exit code: {exit_code}\n")
 
     except FileNotFoundError:
-        window.write_event_value('-VIDEOCR_OUTPUT-', f"\nError: '{VIDEOCR_EXE_PATH}' not found. Please check the path.\n")
+        window.write_event_value('-VIDEOCR_OUTPUT-', f"\nError: '{VIDEOCR_PATH}' not found. Please check the path.\n")
     except Exception as e:
         window.write_event_value('-VIDEOCR_OUTPUT-', f"\nAn error occurred: {e}\n")
 
@@ -573,32 +600,32 @@ tab1_layout = [[sg.Column(tab1_content,
 
 tab2_content = [
     [sg.Text("OCR Settings:", font=('Arial', 10, 'bold'))],
-    [sg.Text("Start Time (e.g., 0:00 or 1:23:45):", size=(27,1), tooltip="Specify the starting time to begin processing."),
+    [sg.Text("Start Time (e.g., 0:00 or 1:23:45):", size=(28,1), tooltip="Specify the starting time to begin processing."),
      sg.Input(DEFAULT_TIME_START, key="--time_start", size=(15,1), enable_events=True, tooltip="Specify the starting time to begin processing.")],
-    [sg.Text("End Time (e.g., 0:10 or 2:34:56):", size=(27,1), tooltip="Specify the ending time to stop processing."),
+    [sg.Text("End Time (e.g., 0:10 or 2:34:56):", size=(28,1), tooltip="Specify the ending time to stop processing."),
      sg.Input("", key="--time_end", size=(15,1), enable_events=True, tooltip="Specify the ending time to stop processing.")],
-    [sg.Text("Confidence Threshold (0-100):", size=(27,1), tooltip="Minimum confidence score for detected text."),
+    [sg.Text("Confidence Threshold (0-100):", size=(28,1), tooltip="Minimum confidence score for detected text."),
      sg.Input(DEFAULT_CONF_THRESHOLD, key="--conf_threshold", size=(10,1), enable_events=True, tooltip="Minimum confidence score for detected text.")],
-    [sg.Text("Similarity Threshold (0-100):", size=(27,1), tooltip="Threshold for merging text lines based on content similarity."),
+    [sg.Text("Similarity Threshold (0-100):", size=(28,1), tooltip="Threshold for merging text lines based on content similarity."),
      sg.Input(DEFAULT_SIM_THRESHOLD, key="--sim_threshold", size=(10,1), enable_events=True, tooltip="Threshold for merging text lines based on content similarity.")],
-    [sg.Text("Brightness Threshold (0-255):", size=(27,1), tooltip="Frames below this average brightness are skipped."),
+    [sg.Text("Brightness Threshold (0-255):", size=(28,1), tooltip="Frames below this average brightness are skipped."),
      sg.Input("", key="--brightness_threshold", size=(10,1), enable_events=True, tooltip="Frames below this average brightness are skipped. Leave empty to disable.")],
-    [sg.Text("Similar Image Threshold:", size=(27,1), tooltip="Maximum number of different pixels between frames to skip OCR"),
+    [sg.Text("Similar Image Threshold:", size=(28,1), tooltip="Maximum number of different pixels between frames to skip OCR"),
      sg.Input(DEFAULT_SIM_IMAGE_THRESHOLD, key="--similar_image_threshold", size=(10,1), enable_events=True, tooltip="Maximum number of different pixels between frames to skip OCR")],
-    [sg.Text("Similar Pixel Threshold:", size=(27,1), tooltip="Tolerance level for considering pixels as similar when comparing images (0-255)."),
+    [sg.Text("Similar Pixel Threshold:", size=(28,1), tooltip="Tolerance level for considering pixels as similar when comparing images (0-255)."),
      sg.Input(DEFAULT_SIM_PIXEL_THRESHOLD, key="--similar_pixel_threshold", size=(10,1), enable_events=True, tooltip="Tolerance level for considering pixels as similar when comparing images (0-255).")],
-    [sg.Text("Frames to Skip:", size=(27,1), tooltip="Process only every Nth frame (e.g., 1 = process every 2nd frame)."),
+    [sg.Text("Frames to Skip:", size=(28,1), tooltip="Process only every Nth frame (e.g., 1 = process every 2nd frame)."),
      sg.Input(DEFAULT_FRAMES_TO_SKIP, key="--frames_to_skip", size=(10,1), enable_events=True, tooltip="Process only every Nth frame (e.g., 1 = process every 2nd frame).")],
     [sg.Checkbox("Enable GPU Usage (Only affects GPU version)", default=True, key="--use_gpu", enable_events=True, tooltip="Attempt to use the GPU for OCR processing if available and supported.")],
     [sg.Checkbox("Use Full Frame OCR", default=False, key="--use_fullframe", enable_events=True, tooltip="Process the entire video frame instead of using a crop box.")],
     [sg.Checkbox("Enable Angle Classification", default=True, key="--use_angle_cls", enable_events=True, tooltip="Detect and correct rotated text angles.")],
     [sg.HorizontalSeparator()],
     [sg.Text("VideOCR Settings:", font=('Arial', 10, 'bold'))],
-    [sg.Checkbox("Save SRT in Video Directory", size=(27,1), default=True, key="--save_in_video_dir", enable_events=True, tooltip="Save the output SRT file in the same directory as the video file.\nIf enabled, \"Output directory\" is disabled.")],
-    [sg.Text("Output Directory:", size=(27,1), tooltip="Folder where generated SRT files will be placed.\nDisabled when \"Save SRT in Video Directory\" is enabled."),
+    [sg.Checkbox("Save SRT in Video Directory", size=(28,1), default=True, key="--save_in_video_dir", enable_events=True, tooltip="Save the output SRT file in the same directory as the video file.\nIf enabled, \"Output directory\" is disabled.")],
+    [sg.Text("Output Directory:", size=(28,1), tooltip="Folder where generated SRT files will be placed.\nDisabled when \"Save SRT in Video Directory\" is enabled."),
      sg.Input(DEFAULT_DOCUMENTS_DIR, key="--default_output_dir", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, size=(40,1), enable_events=True, tooltip="Folder where generated SRT files will be placed.\nDisabled when \"Save SRT in Video Directory\" is enabled."),
      sg.FolderBrowse(key="-FOLDER_BROWSE_BTN-", disabled=True)],
-    [sg.Text("Keyboard Seek Step (frames):", size=(27,1), tooltip="Number of frames to jump when using Left/Right arrows."),
+    [sg.Text("Keyboard Seek Step (frames):", size=(28,1), tooltip="Number of frames to jump when using Left/Right arrows."),
      sg.Input(KEY_SEEK_STEP, key="--keyboard_seek_step", size=(10,1), enable_events=True, tooltip="Number of frames to jump when using Left/Right arrows.")],
 ]
 tab2_layout = [[sg.Column(tab2_content,
@@ -613,7 +640,11 @@ layout = [
                     sg.Tab('Advanced Settings', tab2_layout, key='-TAB-ADVANCED-')]], key='-TABGROUP-', enable_events=True, expand_x=True, expand_y=True)]
 ]
 
-ICON_PATH = 'VideOCR.ico'
+if platform.system() == "Windows":
+    ICON_PATH = 'VideOCR.ico'
+else:
+    ICON_PATH = 'VideOCR.png'
+
 window = sg.Window("VideOCR", layout, icon=ICON_PATH, finalize=True, resizable=True)
 
 graph = window["-GRAPH-"]
