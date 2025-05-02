@@ -54,7 +54,6 @@ dpi_scale = get_dpi_scaling()
 # --- Determine VideOCR location ---
 def find_videocr_program():
     """Determines the path to the videocr-cli-sa executable (.exe or .bin)."""
-    script_dir = os.path.dirname(os.path.abspath(__file__))
     possible_folders = ['videocr-cli-sa-CPU-v1.2.0', 'videocr-cli-sa-GPU-v1.2.0']
     program_name = 'videocr-cli-sa'
 
@@ -64,13 +63,14 @@ def find_videocr_program():
         extensions = '.bin'
     
     for folder in possible_folders:
-        potential_path = os.path.join(script_dir, folder, f'{program_name}{extensions}')
+        potential_path = os.path.join(APP_DIR, folder, f'{program_name}{extensions}')
         if os.path.exists(potential_path):
             return potential_path
     # Should never be reached
     return None
 
 # --- Configuration ---
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
 VIDEOCR_PATH = find_videocr_program()
 DEFAULT_OUTPUT_SRT = ""
 DEFAULT_LANG = "en"
@@ -641,9 +641,9 @@ layout = [
 ]
 
 if platform.system() == "Windows":
-    ICON_PATH = 'VideOCR.ico'
+    ICON_PATH = os.path.join(APP_DIR, 'VideOCR.ico')
 else:
-    ICON_PATH = 'VideOCR.png'
+    ICON_PATH = os.path.join(APP_DIR, 'VideOCR.png')
 
 window = sg.Window("VideOCR", layout, icon=ICON_PATH, finalize=True, resizable=True)
 
