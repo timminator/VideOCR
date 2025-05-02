@@ -4,7 +4,11 @@
 APPDIR="$(cd "$(dirname "$0")" && pwd)"
 EXEC="$APPDIR/VideOCR.bin"
 ICON="$APPDIR/VideOCR.png"
-DESKTOP_FILE="$HOME/.local/share/applications/VideOCR.desktop"
+DESKTOP_DIR="$HOME/.local/share/applications"
+DESKTOP_FILE="$DESKTOP_DIR/VideOCR.desktop"
+
+# Make sure the applications directory exists
+mkdir -p "$DESKTOP_DIR"
 
 # Create the .desktop file
 cat > "$DESKTOP_FILE" <<EOL
@@ -24,4 +28,3 @@ update-desktop-database "$HOME/.local/share/applications" 2>/dev/null
 
 echo "Installed VideOCR desktop shortcut to:"
 echo "$DESKTOP_FILE"
-
