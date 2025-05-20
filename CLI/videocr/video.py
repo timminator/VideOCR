@@ -114,6 +114,10 @@ class Video:
                     frame_index = i + ocr_start
                     frame_filename = f"frame_{frame_index}.jpg"
                     frame_path = os.path.join(temp_dir, frame_filename)
+
+                    # Try to improve detection
+                    frame = cv2.copyMakeBorder(frame, 10, 10, 10, 10, cv2.BORDER_CONSTANT, value=(0, 0, 0))
+
                     cv2.imwrite(frame_path, frame)
 
                     frame_paths.append(frame_path)
