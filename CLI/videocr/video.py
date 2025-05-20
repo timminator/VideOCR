@@ -198,16 +198,19 @@ class Video:
             # Handle skipped frames (due to similarity threshold)
             if previous_index is not None and frame_index > previous_index + 1:
                 # We assume the skipped frames belong to the previous prediction
-                previous_pred.end_index = frame_index - 2
+                previous_pred.end_index = frame_index - (frames_to_skip + 1)
 
             previous_index = frame_index
             previous_pred = predicted_frames
 
+        if previous_pred.end_index < ocr_end:
+            previous_pred.end_index = ocr_end - 1
+
         # Cleanup
         shutil.rmtree(temp_dir, ignore_errors=True)
 
-    def get_subtitles(self, sim_threshold: int) -> str:
-        self._generate_subtitles(sim_threshold)
+    def get_subtitles(self, sim_threshold: int, max_merge_gap_sec: float) -> str:
+        self._generate_subtitles(sim_threshold, max_merge_gap_sec)
         return ''.join(
             '{}\n{} --> {}\n{}\n\n'.format(
                 i,
@@ -216,7 +219,7 @@ class Video:
                 sub.text)
             for i, sub in enumerate(self.pred_subs, start=1))
 
-    def _generate_subtitles(self, sim_threshold: int) -> None:
+    def _generate_subtitles(self, sim_threshold: int, max_merge_gap_sec: float) -> None:
         print("Generating subtitles...", flush=True)
         self.pred_subs = []
 
@@ -224,19 +227,17 @@ class Video:
             raise AttributeError(
                 'Please call self.run_ocr() first to perform ocr on frames')
 
-        max_frame_merge_diff = int(0.09 * self.fps)
+        max_frame_merge_diff = int(max_merge_gap_sec * self.fps) + 1
         for frame in self.pred_frames:
             self._append_sub(PredictedSubtitle([frame], sim_threshold), max_frame_merge_diff)
-        self.pred_subs = [sub for sub in self.pred_subs if len(sub.frames[0].lines) > 0]
 
     def _append_sub(self, sub: PredictedSubtitle, max_frame_merge_diff: int) -> None:
-        if len(sub.frames) == 0:
+        if len(sub.frames) == 0 or len(sub.frames[0].lines) == 0:
             return
 
-        # merge new sub to the last subs if they are not empty, similar and within 0.09 seconds apart
         if self.pred_subs:
             last_sub = self.pred_subs[-1]
-            if len(last_sub.frames[0].lines) > 0 and sub.index_start - last_sub.index_end <= max_frame_merge_diff and last_sub.is_similar_to(sub):
+            if sub.index_start - last_sub.index_end <= max_frame_merge_diff and last_sub.is_similar_to(sub):
                 del self.pred_subs[-1]
                 sub = PredictedSubtitle(last_sub.frames + sub.frames, sub.sim_threshold)
 

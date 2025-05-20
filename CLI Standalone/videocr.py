@@ -11,6 +11,7 @@ def main():
     parser.add_argument('--time_end', type=str, default='', help='End time')
     parser.add_argument('--conf_threshold', type=int, default=75, help='Confidence threshold (default: 75)')
     parser.add_argument('--sim_threshold', type=int, default=80, help='Similarity threshold (default: 80)')
+    parser.add_argument('--max_merge_gap', type=float, default=0.09, help='Maximum time gap in seconds to merge similar subtitles (default: 0.09)')
     parser.add_argument('--use_fullframe', type=lambda x: x.lower() == 'true', default=False, help='Use full frame for OCR (true/false)')
     parser.add_argument('--use_gpu', type=lambda x: x.lower() == 'true', default=False, help='Enable GPU usage (true/false)')
     parser.add_argument('--use_angle_cls', type=lambda x: x.lower() == 'true', default=False, help='Enable Classification (true/false)')
@@ -36,6 +37,7 @@ def main():
         time_end=args.time_end,
         conf_threshold=args.conf_threshold,
         sim_threshold=args.sim_threshold,
+        max_merge_gap_sec=args.max_merge_gap,
         use_fullframe=args.use_fullframe,
         det_model_dir=args.det_model_dir,
         rec_model_dir=args.rec_model_dir,
