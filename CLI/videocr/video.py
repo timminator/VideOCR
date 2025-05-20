@@ -56,7 +56,7 @@ class Video:
 
         crop_x_end = None
         crop_y_end = None
-        if crop_x and crop_y and crop_width and crop_height:
+        if crop_x is not None and crop_y is not None and crop_width and crop_height:
             crop_x_end = crop_x + crop_width
             crop_y_end = crop_y + crop_height
 
