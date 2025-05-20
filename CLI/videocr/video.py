@@ -208,7 +208,7 @@ class Video:
             '{}\n{} --> {}\n{}\n\n'.format(
                 i,
                 utils.get_srt_timestamp(sub.index_start, self.fps),
-                utils.get_srt_timestamp(sub.index_end, self.fps),
+                utils.get_srt_timestamp(sub.index_end + 1, self.fps),
                 sub.text)
             for i, sub in enumerate(self.pred_subs, start=1))
 
