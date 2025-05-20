@@ -54,7 +54,7 @@ dpi_scale = get_dpi_scaling()
 # --- Determine VideOCR location ---
 def find_videocr_program():
     """Determines the path to the videocr-cli-sa executable (.exe or .bin)."""
-    possible_folders = ['videocr-cli-sa-CPU-v1.2.0', 'videocr-cli-sa-GPU-v1.2.0']
+    possible_folders = ['videocr-cli-sa-CPU-v1.2.1', 'videocr-cli-sa-GPU-v1.2.1']
     program_name = 'videocr-cli-sa'
 
     if platform.system() == "Windows":
@@ -76,6 +76,7 @@ DEFAULT_OUTPUT_SRT = ""
 DEFAULT_LANG = "en"
 DEFAULT_CONF_THRESHOLD = 75
 DEFAULT_SIM_THRESHOLD = 80
+DEFAULT_MAX_MERGE_GAP = 0.09
 DEFAULT_SIM_IMAGE_THRESHOLD = 100
 DEFAULT_SIM_PIXEL_THRESHOLD = 25
 DEFAULT_FRAMES_TO_SKIP = 1
@@ -257,6 +258,7 @@ def get_default_settings():
     '--time_end': '',
     '--conf_threshold': str(DEFAULT_CONF_THRESHOLD),
     '--sim_threshold': str(DEFAULT_SIM_THRESHOLD),
+    '--max_merge_gap': str(DEFAULT_MAX_MERGE_GAP),
     '--brightness_threshold': '',
     '--similar_image_threshold': str(DEFAULT_SIM_IMAGE_THRESHOLD),
     '--similar_pixel_threshold': str(DEFAULT_SIM_PIXEL_THRESHOLD),
@@ -280,6 +282,7 @@ def save_settings(values):
         '--time_end': values.get('--time_end', get_default_settings().get('--time_end')),
         '--conf_threshold': values.get('--conf_threshold', get_default_settings().get('--conf_threshold')),
         '--sim_threshold': values.get('--sim_threshold', get_default_settings().get('--sim_threshold')),
+        '--max_merge_gap': values.get('--max_merge_gap', get_default_settings().get('--max_merge_gap')),
         '--brightness_threshold': values.get('--brightness_threshold', get_default_settings().get('--brightness_threshold')),
         '--similar_image_threshold': values.get('--similar_image_threshold', get_default_settings().get('--similar_image_threshold')),
         '--similar_pixel_threshold': values.get('--similar_pixel_threshold', get_default_settings().get('--similar_pixel_threshold')),
@@ -316,6 +319,7 @@ def load_settings(window):
                     ('--time_end', 'input'),
                     ('--conf_threshold', 'input'),
                     ('--sim_threshold', 'input'),
+                    ('--max_merge_gap', 'input'),
                     ('--brightness_threshold', 'input'),
                     ('--similar_image_threshold', 'input'),
                     ('--similar_pixel_threshold', 'input'),
@@ -608,11 +612,13 @@ tab2_content = [
      sg.Input(DEFAULT_CONF_THRESHOLD, key="--conf_threshold", size=(10,1), enable_events=True, tooltip="Minimum confidence score for detected text.")],
     [sg.Text("Similarity Threshold (0-100):", size=(28,1), tooltip="Threshold for merging text lines based on content similarity."),
      sg.Input(DEFAULT_SIM_THRESHOLD, key="--sim_threshold", size=(10,1), enable_events=True, tooltip="Threshold for merging text lines based on content similarity.")],
-    [sg.Text("Brightness Threshold (0-255):", size=(28,1), tooltip="Frames below this average brightness are skipped."),
-     sg.Input("", key="--brightness_threshold", size=(10,1), enable_events=True, tooltip="Frames below this average brightness are skipped. Leave empty to disable.")],
+    [sg.Text("Max Merge Gap (seconds):", size=(28,1), tooltip="Maximum allowed time gap to merge similar subtitles."),
+     sg.Input(DEFAULT_MAX_MERGE_GAP, key="--max_merge_gap", size=(10,1), enable_events=True, tooltip="Maximum allowed time gap to merge similar subtitles.")],
+    [sg.Text("Brightness Threshold (0-255):", size=(28,1), tooltip="Applies a brightness filter before OCR.\nPixels below the threshold are blacked out."),
+     sg.Input("", key="--brightness_threshold", size=(10,1), enable_events=True, tooltip="Applies a brightness filter before OCR.\nPixels below the threshold are blacked out. Leave empty to disable.")],
     [sg.Text("Similar Image Threshold:", size=(28,1), tooltip="Maximum number of different pixels between frames to skip OCR"),
      sg.Input(DEFAULT_SIM_IMAGE_THRESHOLD, key="--similar_image_threshold", size=(10,1), enable_events=True, tooltip="Maximum number of different pixels between frames to skip OCR")],
-    [sg.Text("Similar Pixel Threshold:", size=(28,1), tooltip="Tolerance level for considering pixels as similar when comparing images (0-255)."),
+    [sg.Text("Similar Pixel Threshold (0-255):", size=(28,1), tooltip="Tolerance level for considering pixels as similar when comparing images (0-255)."),
      sg.Input(DEFAULT_SIM_PIXEL_THRESHOLD, key="--similar_pixel_threshold", size=(10,1), enable_events=True, tooltip="Tolerance level for considering pixels as similar when comparing images (0-255).")],
     [sg.Text("Frames to Skip:", size=(28,1), tooltip="Process only every Nth frame (e.g., 1 = process every 2nd frame)."),
      sg.Input(DEFAULT_FRAMES_TO_SKIP, key="--frames_to_skip", size=(10,1), enable_events=True, tooltip="Process only every Nth frame (e.g., 1 = process every 2nd frame).")],
@@ -678,6 +684,7 @@ KEYS_TO_AUTOSAVE = [
     '--time_end',
     '--conf_threshold',
     '--sim_threshold',
+    '--max_merge_gap',
     '--brightness_threshold',
     '--similar_image_threshold',
     '--similar_pixel_threshold',
@@ -976,10 +983,6 @@ while True:
                 graph.delete_figure(window.drawing_rectangle_id)
                 window.drawing_rectangle_id = None
 
-
-            scale_x = original_frame_width / resized_frame_width
-            scale_y = original_frame_height / resized_frame_height
-
             rect_x1_img_raw = window.start_point_img[0]
             rect_y1_img_raw = window.start_point_img[1]
             rect_x2_img_raw = window.end_point_img[0]
@@ -994,6 +997,11 @@ while True:
             rect_y1_img_clamped = max(0, min(rect_y1_img, resized_frame_height))
             rect_x2_img_clamped = max(0, min(rect_x2_img, resized_frame_width))
             rect_y2_img_clamped = max(0, min(rect_y2_img, resized_frame_height))
+
+            rect_x1_img_draw = max(0, min(rect_x1_img, resized_frame_width - 1))
+            rect_y1_img_draw = max(0, min(rect_y1_img, resized_frame_height - 1))
+            rect_x2_img_draw = max(0, min(rect_x2_img, resized_frame_width - 1))
+            rect_y2_img_draw = max(0, min(rect_y2_img, resized_frame_height - 1))
 
             min_size_img = 5
             if abs(rect_x2_img_clamped - rect_x1_img_clamped) < min_size_img or abs(rect_y2_img_clamped - rect_y1_img_clamped) < min_size_img:
@@ -1026,8 +1034,8 @@ while True:
             window['-CROP_COORDS-'].update(f"({crop_x}, {crop_y}, {crop_w}, {crop_h})")
             window["-CLEAR_CROP-"].update(disabled=False)
 
-            window.final_start_point_img = (rect_x1_img_clamped, rect_y1_img_clamped)
-            window.final_end_point_img = (rect_x2_img_clamped, rect_y2_img_clamped)
+            window.final_start_point_img = (rect_x1_img_draw, rect_y1_img_draw)
+            window.final_end_point_img = (rect_x2_img_draw, rect_y2_img_draw)
 
             graph_start_x = window.final_start_point_img[0] + image_offset_x
             graph_start_y = window.final_start_point_img[1] + image_offset_y
@@ -1094,16 +1102,17 @@ while True:
             if time_start_seconds > time_end_seconds:
                 errors.append("Start Time cannot be after End Time.")
 
-        int_params = {
-        '--conf_threshold': (0, 100, "Confidence Threshold"),
-        '--sim_threshold': (0, 100, "Similarity Threshold"),
-        '--brightness_threshold': (0, 255, "Brightness Threshold"),
-        '--similar_image_threshold': (0, None, "Similar Image Threshold"),
-        '--similar_pixel_threshold': (0, 255, "Similar Pixel Threshold"),
-        '--frames_to_skip': (0, None, "Frames to Skip"),
+        numeric_params = {
+            '--conf_threshold': (int, 0, 100, "Confidence Threshold"),
+            '--sim_threshold': (int, 0, 100, "Similarity Threshold"),
+            '--brightness_threshold': (int, 0, 255, "Brightness Threshold"),
+            '--similar_image_threshold': (int, 0, None, "Similar Image Threshold"),
+            '--similar_pixel_threshold': (int, 0, 255, "Similar Pixel Threshold"),
+            '--frames_to_skip': (int, 0, None, "Frames to Skip"),
+            '--max_merge_gap': (float, 0.0, None, "Max Merge Gap"),
         }
 
-        for key, (min_val, max_val, name) in int_params.items():
+        for key, (cast_type, min_val, max_val, name) in numeric_params.items():
             value_str = values.get(key, '').strip()
 
             if not value_str:
@@ -1116,12 +1125,15 @@ while True:
                 range_str_parts.append(f"<={max_val}")
             range_str = " and ".join(range_str_parts)
 
+            type_name = cast_type.__name__
+            article = "an" if type_name.startswith(("i", "I")) else "a"
+
             try:
-                value = int(value_str)
+                value = cast_type(value_str)
                 if (min_val is not None and value < min_val) or (max_val is not None and value > max_val):
                     raise ValueError
             except ValueError:
-                errors.append(f"Invalid value for {name}. Must be an integer {range_str}.")
+                errors.append(f"Invalid value for {name}. Must be {article} {type_name} {range_str}.")
 
         if errors:
             window['-OUTPUT-'].update("Validation Errors:\n", append=True)
