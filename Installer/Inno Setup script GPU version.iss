@@ -113,6 +113,10 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
+[InstallDelete]
+Type: filesandordirs; Name: "{app}\videocr-cli-sa-GPU-v1.2.0"
+Type: filesandordirs; Name: "{app}\videocr-cli-sa-GPU-v1.1.0"
+
 [UninstallDelete]
 Type: files; Name: "{app}\videocr_gui_config.ini"
 Type: filesandordirs; Name: "{localappdata}\VideOCR"
