@@ -105,6 +105,12 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
 
   Make it closer to 0 if you get too many duplicated subtitle lines, or make it closer to 100 if you get too few subtitle lines.
 
+- `max_merge_gap`
+
+  Maximum allowed time gap (in seconds) between two subtitles to be considered for merging if they are similar. The default value 0.09 (i.e., 90 milliseconds) works well in most scenarios.
+
+  Increase this value if you notice that the output SRT file contains several subtitles with the same text that should be merged into a single one and are wrongly split into multiple ones. This can happen if the PaddleOCR OCR engine is not able to detect any text for a short amount of time while the subtitle is displayed in the selected video.
+
 - `time_start` and `time_end`
 
   Extract subtitles from only a clip of the video. The subtitle timestamps are still calculated according to the full video length.
