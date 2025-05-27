@@ -1,4 +1,5 @@
 import PySimpleGUI as sg
+import tkinter.font as tkFont
 import subprocess
 import os
 import cv2
@@ -40,7 +41,11 @@ make_dpi_aware()
 
 # --- Determine DPI scaling factor ---
 def get_dpi_scaling():
-    """Determines DPI scaling factor on Windows, returns 1.0 otherwise."""
+    """Determines DPI scaling factor for the current OS."""
+    def round_to_quarter_step(scale):
+        dpi_scaling_factors = [1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0]
+        return min(dpi_scaling_factors, key=lambda x: abs(x - scale))
+
     if platform.system() == "Windows":
         try:
             dpi = ctypes.windll.shcore.GetScaleFactorForDevice(0)  # 0 = primary monitor
@@ -48,7 +53,20 @@ def get_dpi_scaling():
         except:
             return 1.0
     else:
-        return 1.0
+        # Linux has no proper way of reporting scaling factor. Linespace is instead used as DPI proxy. Base linespace ~16px at 100% scaling is assumed.
+        try:
+            root = sg.tk.Tk()
+            root.withdraw()
+            default_font = tkFont.nametofont("TkDefaultFont")
+            metrics = default_font.metrics()
+            root.destroy()
+
+            baseline_linespace = 16.0
+            actual_linespace = metrics.get("linespace", baseline_linespace)
+            scale = actual_linespace / baseline_linespace
+            return round_to_quarter_step(scale)
+        except:
+            return 1.0
 dpi_scale = get_dpi_scaling()
 
 # --- Determine VideOCR location ---
