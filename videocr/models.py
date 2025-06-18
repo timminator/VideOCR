@@ -3,6 +3,8 @@ from typing import List
 from dataclasses import dataclass
 from thefuzz import fuzz
 
+from . import utils
+
 @dataclass
 class PredictedText:
     __slots__ = 'bounding_box', 'confidence', 'text'
@@ -22,6 +24,10 @@ class PredictedFrames:
         # Fix for PaddleOCR versions greater than 2.7.0.2
         if not pred_data or pred_data[0] is None:
             pred_data = [[]]
+
+        # Fix for PaddleOCR versions greater or equal than 3.0.2
+        if utils.needs_conversion():
+            pred_data = utils.convert_pred_data_to_old_format(pred_data)
 
         self.start_index = index
         self.end_index = index

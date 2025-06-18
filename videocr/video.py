@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import List
 import cv2
 import numpy as np
+import os
 
 from . import utils
 from .models import PredictedFrames, PredictedSubtitle
@@ -38,7 +39,27 @@ class Video:
         self.lang = lang
         self.use_fullframe = use_fullframe
         self.pred_frames = []
-        ocr = PaddleOCR(lang=self.lang, rec_model_dir=self.rec_model_dir, det_model_dir=self.det_model_dir, use_gpu=use_gpu)
+
+        # Fix for PaddleOCR versions greater or equal than 3.0.2
+        if utils.needs_conversion():
+            ocr = PaddleOCR(
+                lang=self.lang,
+                text_recognition_model_dir=self.rec_model_dir,
+                text_detection_model_dir=self.det_model_dir,
+                text_detection_model_name=utils.get_model_name_from_dir(self.det_model_dir),
+                text_recognition_model_name=utils.get_model_name_from_dir(self.rec_model_dir),
+                use_doc_orientation_classify=False,
+                use_doc_unwarping=False,
+                use_textline_orientation=False,
+                device="gpu" if use_gpu else "cpu"
+            )
+        else:
+            ocr = PaddleOCR(
+                lang=self.lang,
+                rec_model_dir=self.rec_model_dir,
+                det_model_dir=self.det_model_dir,
+                use_gpu=use_gpu
+            )
 
         ocr_start = utils.get_frame_index(time_start, self.fps) if time_start else 0
         ocr_end = utils.get_frame_index(time_end, self.fps) if time_end else self.num_frames

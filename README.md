@@ -67,7 +67,7 @@ example.srt:
 ```
 
 ## Install prerequisites
-Python 3.7 - 3.12
+Python 3.8 - 3.12
 
 paddlepaddle or paddlepaddle-gpu See https://www.paddlepaddle.org.cn/install/quick?docurl=/documentation/docs/en/install/pip/linux-pip_en.html
 

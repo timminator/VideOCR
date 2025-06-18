@@ -10,7 +10,7 @@ authors = [
   { name = "Yi Ge", email = "me@yige.ch" }
 ]
 readme = "README.md"
-requires-python = ">=3.7, <3.13"
+requires-python = ">=3.8, <3.13"
 keywords = [
     "ocr",
     "textdetection",
@@ -23,12 +23,19 @@ classifiers = [
   "Intended Audience :: Developers",
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
+  "setuptools>=61.0",  # Explicitly required by Paddle; avoids issues in Python 3.12+ where setuptools isn't preinstalled
   "thefuzz>=0.19",
   "python-Levenshtein>=0.12",
-  "paddleocr>=2.6,<3.0.0",
+  "paddleocr>=2.6, !=3.0.0, !=3.0.1",
+  "pyyaml>=5.4",
+  "packaging>=20.0",
 ]
 
 [project.urls]
