@@ -12,7 +12,15 @@ import ctypes
 import platform
 import pathlib
 import datetime
+import webbrowser
 from pymediainfo import MediaInfo
+
+if platform.system() == "Windows":
+    import PyTaskbar
+    from winotify import Notification, audio
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('VideOCR')
+else:
+    from plyer import notification
 
 # -- Save errors to log file ---
 def log_error(message: str, log_name="error_log.txt"):
@@ -69,10 +77,39 @@ def get_dpi_scaling():
             return 1.0
 dpi_scale = get_dpi_scaling()
 
+# --- Check for Taskbar progress support --
+def supports_taskbar_progress():
+    """Checks if the current OS supports progress indication via the Taskbar."""
+    if platform.system() == "Windows":
+        return True
+    else:
+        return False
+taskbar_progress_supported = supports_taskbar_progress()
+
+# --- Send notification --
+def send_notification(title, message):
+    """Sends a notification via winotify on Windows and via Plyer on Linux."""
+    if platform.system() == "Windows":
+        toast = Notification(
+            app_id = "VideOCR",
+            title = title,
+            msg = message,
+            icon = os.path.join(APP_DIR, 'VideOCR.ico')
+        )
+        toast.set_audio(audio.Default, loop=False)
+        toast.show()
+    else:
+        notification.notify(
+            title = title,
+            message = message,
+            app_name = 'VideOCR',
+            app_icon = os.path.join(APP_DIR, 'VideOCR.png')
+        )
+
 # --- Determine VideOCR location ---
 def find_videocr_program():
     """Determines the path to the videocr-cli-sa executable (.exe or .bin)."""
-    possible_folders = ['videocr-cli-sa-CPU-v1.2.1', 'videocr-cli-sa-GPU-v1.2.1']
+    possible_folders = [f'videocr-cli-sa-CPU-v{PROGRAM_VERSION}', f'videocr-cli-sa-GPU-v{PROGRAM_VERSION}']
     program_name = 'videocr-cli-sa'
 
     if platform.system() == "Windows":
@@ -88,6 +125,7 @@ def find_videocr_program():
     return None
 
 # --- Configuration ---
+PROGRAM_VERSION = "1.3.0"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 VIDEOCR_PATH = find_videocr_program()
 DEFAULT_OUTPUT_SRT = ""
@@ -149,6 +187,7 @@ image_offset_x = 0
 image_offset_y = 0
 graph_size = (int(640 * dpi_scale), int(360 * dpi_scale))
 current_image_bytes = None
+previous_taskbar_state = None
 
 # --- Helper Functions ---
 def kill_process_tree(pid):
@@ -283,10 +322,11 @@ def get_default_settings():
     '--frames_to_skip': str(DEFAULT_FRAMES_TO_SKIP),
     '--use_fullframe': False,
     '--use_gpu': True,
-    '--use_angle_cls': True,
+    '--use_angle_cls': False,
     '--keyboard_seek_step': str(KEY_SEEK_STEP),
     '--default_output_dir': DEFAULT_DOCUMENTS_DIR,
     '--save_in_video_dir': True,
+    '--send_notification': True,
     }
 
 def save_settings(values):
@@ -311,6 +351,7 @@ def save_settings(values):
         '--keyboard_seek_step': values.get('--keyboard_seek_step', get_default_settings().get('--keyboard_seek_step')),
         '--default_output_dir': values.get('--default_output_dir', get_default_settings().get('--default_output_dir')),
         '--save_in_video_dir': values.get('--save_in_video_dir', get_default_settings().get('--save_in_video_dir')),
+        '--send_notification': values.get('--send_notification', get_default_settings().get('--send_notification')),
     }
 
     # --- Write settings to the config object ---
@@ -348,6 +389,7 @@ def load_settings(window):
                     ('--keyboard_seek_step', 'input'),
                     ('--default_output_dir', 'input'),
                     ('--save_in_video_dir', 'checkbox'),
+                    ('--send_notification', 'checkbox'),
                 ]
 
                 for key, elem_type in settings_to_load:
@@ -485,17 +527,18 @@ def get_video_frame(video_path, frame_number, display_size):
     return io.BytesIO(buffer), original_width, original_height, total_frames, cv_fps, new_w, new_h, offset_x, offset_y
 
 def run_videocr(args_dict, window):
-    """Runs the videocr.exe tool in a separate thread and streams output."""
+    """Runs the videocr-cli-sa.exe tool in a separate thread and streams output."""
     command = [VIDEOCR_PATH]
 
     for key, value in args_dict.items():
         if value is not None and value != '':
             arg_name = f"--{key}"
-            command.append(arg_name)
-            if isinstance(value, bool):
-                command.append(str(value).lower())
-            else:
-                command.append(str(value))
+            if key != 'send_notification':
+                command.append(arg_name)
+                if isinstance(value, bool):
+                    command.append(str(value).lower())
+                else:
+                    command.append(str(value))
 
     STEP1_PROGRESS_PATTERN = re.compile(r"Step 1: Processing image (\d+) of (\d+)")
     STEP2_PROGRESS_PATTERN = re.compile(r"Step 2: Performing OCR on image (\d+) of (\d+)")
@@ -543,6 +586,8 @@ def run_videocr(args_dict, window):
 
                     if current_item == 1 or percentage >= last_reported_percentage_step1 + 5 or percentage == 100:
                         window.write_event_value('-VIDEOCR_OUTPUT-', f"Step 1: Processed image {current_item} of {total_items} ({percentage}%)\n")
+                        if taskbar_progress_supported:
+                            window.write_event_value('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': int(percentage/2)})
                         last_reported_percentage_step1 = percentage
                     continue
 
@@ -556,6 +601,8 @@ def run_videocr(args_dict, window):
 
                     if current_item == 1 or percentage >= last_reported_percentage_step2 + 5 or percentage == 100:
                         window.write_event_value('-VIDEOCR_OUTPUT-', f"Step 2: Performed OCR on image {current_item} of {total_items} ({percentage}%)\n")
+                        if taskbar_progress_supported:
+                            window.write_event_value('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': 50 + int(percentage/2)})
                         last_reported_percentage_step2 = percentage
                     continue
 
@@ -574,13 +621,23 @@ def run_videocr(args_dict, window):
             exit_code = process.returncode
             if exit_code == 0:
                 window.write_event_value('-VIDEOCR_OUTPUT-', "\nSuccessfully generated subtitle file!\n")
+                if taskbar_progress_supported:
+                    window.write_event_value('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': 0})
+                if args_dict.get('send_notification', True):
+                    window.write_event_value('-NOTIFICATION_EVENT-', {'title': "Your Subtitle generation is done!", 'message': f"{os.path.basename(args_dict.get('output'))}"})
             elif exit_code is not None:
                 window.write_event_value('-VIDEOCR_OUTPUT-', f"\nProcess finished with exit code: {exit_code}\n")
+                if taskbar_progress_supported:
+                    window.write_event_value('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': 0})
 
     except FileNotFoundError:
         window.write_event_value('-VIDEOCR_OUTPUT-', f"\nError: '{VIDEOCR_PATH}' not found. Please check the path.\n")
+        if taskbar_progress_supported:
+            window.write_event_value('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': 0})
     except Exception as e:
         window.write_event_value('-VIDEOCR_OUTPUT-', f"\nAn error occurred: {e}\n")
+        if taskbar_progress_supported:
+            window.write_event_value('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': 0})
 
     finally:
         if hasattr(window, '_videocr_process'):
@@ -642,7 +699,7 @@ tab2_content = [
      sg.Input(DEFAULT_FRAMES_TO_SKIP, key="--frames_to_skip", size=(10,1), enable_events=True, tooltip="Process only every Nth frame (e.g., 1 = process every 2nd frame).")],
     [sg.Checkbox("Enable GPU Usage (Only affects GPU version)", default=True, key="--use_gpu", enable_events=True, tooltip="Attempt to use the GPU for OCR processing if available and supported.")],
     [sg.Checkbox("Use Full Frame OCR", default=False, key="--use_fullframe", enable_events=True, tooltip="Process the entire video frame instead of using a crop box.")],
-    [sg.Checkbox("Enable Angle Classification", default=True, key="--use_angle_cls", enable_events=True, tooltip="Detect and correct rotated text angles.")],
+    [sg.Checkbox("Enable Angle Classification", default=False, key="--use_angle_cls", enable_events=True, tooltip="Detect and correct rotated text angles.")],
     [sg.HorizontalSeparator()],
     [sg.Text("VideOCR Settings:", font=('Arial', 10, 'bold'))],
     [sg.Checkbox("Save SRT in Video Directory", size=(28,1), default=True, key="--save_in_video_dir", enable_events=True, tooltip="Save the output SRT file in the same directory as the video file.\nIf enabled, \"Output directory\" is disabled.")],
@@ -651,6 +708,7 @@ tab2_content = [
      sg.FolderBrowse(key="-FOLDER_BROWSE_BTN-", disabled=True)],
     [sg.Text("Keyboard Seek Step (frames):", size=(28,1), tooltip="Number of frames to jump when using Left/Right arrows."),
      sg.Input(KEY_SEEK_STEP, key="--keyboard_seek_step", size=(10,1), enable_events=True, tooltip="Number of frames to jump when using Left/Right arrows.")],
+    [sg.Checkbox("Send Notification", default=True, key="--send_notification", enable_events=True, tooltip="Send notification when the process is complete.")],
 ]
 tab2_layout = [[sg.Column(tab2_content,
                            size_subsample_height=1,
@@ -659,9 +717,28 @@ tab2_layout = [[sg.Column(tab2_content,
                            expand_x=True,
                            expand_y=True)]]
 
+tab3_layout = [
+    [sg.Column([
+        [sg.Text("")],
+        [sg.Text("VideOCR", font=('Arial', 16, 'bold'))],
+        [sg.Text(f"Version: {PROGRAM_VERSION}", font=('Arial', 11))],
+        [sg.Text("")],
+        [sg.Text("Get the newest version here:", font=('Arial', 11))],
+        [sg.Text("https://github.com/timminator/VideOCR/releases", font=('Arial', 11, 'underline'), enable_events=True, key="-GITHUB_RELEASES_LINK-")],
+        [sg.Text("")],
+        [sg.Text("Found a bug or have a suggestion? Feel free to open an issue at:", font=('Arial', 11))],
+        [sg.Text("https://github.com/timminator/VideOCR/issues", font=('Arial', 11, 'underline'), enable_events=True, key="-GITHUB_ISSUES_LINK-")],
+        [sg.Text("")],
+        [sg.HorizontalSeparator()],
+    ], element_justification='c', expand_x=True, expand_y=True)]
+]
+
 layout = [
-    [sg.TabGroup([[sg.Tab('Process Video', tab1_layout, key='-TAB-VIDEO-'),
-                    sg.Tab('Advanced Settings', tab2_layout, key='-TAB-ADVANCED-')]], key='-TABGROUP-', enable_events=True, expand_x=True, expand_y=True)]
+    [sg.TabGroup([
+        [sg.Tab('Process Video', tab1_layout, key='-TAB-VIDEO-'),
+         sg.Tab('Advanced Settings', tab2_layout, key='-TAB-ADVANCED-'),
+         sg.Tab('About', tab3_layout, key='-TAB-ABOUT-')]
+    ], key='-TABGROUP-', enable_events=True, expand_x=True, expand_y=True)]
 ]
 
 if platform.system() == "Windows":
@@ -670,6 +747,11 @@ else:
     ICON_PATH = os.path.join(APP_DIR, 'VideOCR.png')
 
 window = sg.Window("VideOCR", layout, icon=ICON_PATH, finalize=True, resizable=True)
+
+if taskbar_progress_supported:
+    prog = PyTaskbar.Progress(int(window.TKroot.wm_frame(), 16))
+    prog.init()
+    prog.setState('normal')
 
 graph = window["-GRAPH-"]
 
@@ -687,6 +769,34 @@ window.bind('<Right>', '-GRAPH-<Right>')
 
 # --- Bind window restore event ---
 window.bind('<Map>', '-WINDOW_RESTORED-')
+
+# --- Cursor Change Logic for -GITHUB_ISSUES_LINK- ---
+issues_link_element = window['-GITHUB_ISSUES_LINK-']
+
+def on_issues_enter(event):
+    """Callback when mouse enters the Issues link text."""
+    issues_link_element.Widget.config(cursor="hand2")
+
+def on_issues_leave(event):
+    """Callback when mouse leaves the Issues link text."""
+    issues_link_element.Widget.config(cursor="")
+
+issues_link_element.Widget.bind("<Enter>", on_issues_enter)
+issues_link_element.Widget.bind("<Leave>", on_issues_leave)
+
+# --- Cursor Change Logic for -GITHUB_RELEASES_LINK- ---
+releases_link_element = window['-GITHUB_RELEASES_LINK-']
+
+def on_releases_enter(event):
+    """Callback when mouse enters the Releases link text."""
+    releases_link_element.Widget.config(cursor="hand2")
+
+def on_releases_leave(event):
+    """Callback when mouse leaves the Releases link text."""
+    releases_link_element.Widget.config(cursor="")
+
+releases_link_element.Widget.bind("<Enter>", on_releases_enter)
+releases_link_element.Widget.bind("<Leave>", on_releases_leave)
 
 # --- Load settings when the application starts ---
 load_settings(window)
@@ -713,6 +823,7 @@ KEYS_TO_AUTOSAVE = [
     '--keyboard_seek_step',
     '--default_output_dir',
     '--save_in_video_dir',
+    '--send_notification',
 ]
 
 # --- Event Loop ---
@@ -732,7 +843,7 @@ while True:
                 pass
         break
 
-    # --- Auto-save settings when a relevant element changes and switch focus back ---
+    # --- Handle events sent from the worker thread ---
     if event in KEYS_TO_AUTOSAVE:
         if values is not None:
             save_settings(values)
@@ -751,8 +862,22 @@ while True:
         if '-GRAPH-' in window.AllKeysDict:
             window['-GRAPH-'].set_focus()
 
-    # --- Save As Button Click ---
-    if event == '-SAVE_AS_BTN-':
+    elif event == "-HELP-":
+        custom_popup(window, "Cropping Info", (
+            "Draw a crop box over the subtitle region in the video.\n"
+            "Use click+drag to select.\n"
+            "If no crop box is selected, the bottom third of the video\n"
+            "will be used for OCR by default."),
+            icon=ICON_PATH
+        )
+
+    elif event == "-GITHUB_ISSUES_LINK-":
+        webbrowser.open("https://github.com/timminator/VideOCR/issues")
+
+    elif event == "-GITHUB_RELEASES_LINK-":
+        webbrowser.open("https://github.com/timminator/VideOCR/releases")
+
+    elif event == '-SAVE_AS_BTN-':
         output_path = values["--output"]
         output_file_path = pathlib.Path(output_path)
 
@@ -769,16 +894,6 @@ while True:
         if filename_chosen != "":
             window["--output"].update(filename_chosen)
 
-    # --- Handle events sent from the worker thread ---
-    if event == "-HELP-":
-        custom_popup(window, "Cropping Info", (
-            "Draw a crop box over the subtitle region in the video.\n"
-            "Use click+drag to select.\n"
-            "If no crop box is selected, the bottom third of the video\n"
-            "will be used for OCR by default."),
-            icon=ICON_PATH
-        )
-
     elif event == '-WINDOW_RESTORED-':
         if '-GRAPH-' in window.AllKeysDict:
             window['-GRAPH-'].set_focus()
@@ -793,11 +908,29 @@ while True:
         window['-OUTPUT-'].update(output_line, append=True)
         window.refresh()
 
+    elif event == '-TASKBAR_STATE_UPDATE-':
+        state_info = values[event]
+        state = state_info.get('state')
+        progress = state_info.get('progress')
+
+        if state and state is not previous_taskbar_state:
+            previous_taskbar_state = state
+            prog.setState(state)
+        if progress is not None:
+            prog.setProgress(progress)
+
     elif event == '-PROCESS_FINISHED-':
         window['Run'].update(disabled=False)
         window['--output'].update(disabled=False if video_path else True)
         window['-SAVE_AS_BTN-'].update(disabled=False if video_path else True)
         window['Cancel'].update(disabled=True)
+
+    if event == '-NOTIFICATION_EVENT-':
+        notification_info = values[event]
+        send_notification(
+            notification_info['title'],
+            notification_info['message'],
+        )
 
     # --- Video File Selected ---
     elif event == "-VIDEO_PATH-" and values["-VIDEO_PATH-"]:
@@ -1172,12 +1305,15 @@ while True:
             args['lang'] = lang_abbr
 
         for key in values:
-            if key.startswith('--') and key not in ['--keyboard_seek_step', '--default_output_dir', '--save_in_video_dir']:
+            if key.startswith('--') and key not in ['--keyboard_seek_step', '--default_output_dir', '--save_in_video_dir', '--send_notification']:
                 value = values.get(key)
                 if isinstance(value, bool):
                     args[key.lstrip('-')] = str(value).lower()
                 elif value is not None and str(value).strip() != '':
                     args[key.lstrip('-')] = str(value).strip()
+
+        # Handle send_notification specifically to store it as a boolean and not a string
+        args['send_notification'] = values.get('--send_notification', True)
 
         if not values.get('--use_fullframe', False) and window.crop_box_coords:
             args.update({k.lstrip('-'): v for k, v in window.crop_box_coords.items()})
@@ -1222,6 +1358,9 @@ while True:
                 window['--output'].update(disabled=False)
                 window['-SAVE_AS_BTN-'].update(disabled=False)
                 window['Cancel'].update(disabled=True)
+                if taskbar_progress_supported:
+                    prog.setState('normal')
+                    prog.setProgress(0)
         else:
             window['-OUTPUT-'].update("\nNo process is currently running to cancel.\n", append=True)
 
