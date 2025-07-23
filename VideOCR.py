@@ -1,18 +1,35 @@
-import PySimpleGUI as sg
-import tkinter.font as tkFont
-import subprocess
-import os
-import cv2
-import io
-import re
-import threading
-import math
+# Compilation instructions
+# nuitka-project: --standalone
+# nuitka-project: --enable-plugin=tk-inter
+# nuitka-project: --windows-console-mode=disable
+# nuitka-project: --include-data-files=*.ico=VideOCR.ico
+# nuitka-project: --include-data-files=*.png=VideOCR.png
+
+# Windows-specific metadata for the executable
+# nuitka-project-if: {OS} == "Windows":
+#     nuitka-project: --file-description="VideOCR"
+#     nuitka-project: --file-version="1.3.0"
+#     nuitka-project: --product-name="VideOCR-GUI"
+#     nuitka-project: --product-version="1.3.0"
+#     nuitka-project: --copyright="timminator"
+#     nuitka-project: --windows-icon-from-ico=VideOCR.ico
+
 import configparser
 import ctypes
-import platform
-import pathlib
 import datetime
+import io
+import math
+import os
+import pathlib
+import platform
+import re
+import subprocess
+import threading
+import tkinter.font as tkFont
 import webbrowser
+
+import cv2
+import PySimpleGUI as sg
 from pymediainfo import MediaInfo
 
 if platform.system() == "Windows":
@@ -21,6 +38,7 @@ if platform.system() == "Windows":
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('VideOCR')
 else:
     from plyer import notification
+
 
 # -- Save errors to log file ---
 def log_error(message: str, log_name="error_log.txt"):
@@ -37,6 +55,7 @@ def log_error(message: str, log_name="error_log.txt"):
     with open(log_path, "a", encoding="utf-8") as f:
         f.write(f"{timestamp} {message}\n")
 
+
 # --- Make application DPI aware ---
 def make_dpi_aware():
     """Makes the application DPI aware on Windows to prevent scaling issues."""
@@ -45,7 +64,10 @@ def make_dpi_aware():
             ctypes.windll.shcore.SetProcessDpiAwareness(True)
         except AttributeError:
             log_error("Could not set DPI awareness.")
+
+
 make_dpi_aware()
+
 
 # --- Determine DPI scaling factor ---
 def get_dpi_scaling():
@@ -58,7 +80,7 @@ def get_dpi_scaling():
         try:
             dpi = ctypes.windll.shcore.GetScaleFactorForDevice(0)  # 0 = primary monitor
             return dpi / 100.0
-        except:
+        except Exception:
             return 1.0
     else:
         # Linux has no proper way of reporting scaling factor. Linespace is instead used as DPI proxy. Base linespace ~16px at 100% scaling is assumed.
@@ -73,50 +95,54 @@ def get_dpi_scaling():
             actual_linespace = metrics.get("linespace", baseline_linespace)
             scale = actual_linespace / baseline_linespace
             return round_to_quarter_step(scale)
-        except:
+        except Exception:
             return 1.0
+
+
 dpi_scale = get_dpi_scaling()
+
 
 # --- Check for Taskbar progress support --
 def supports_taskbar_progress():
     """Checks if the current OS supports progress indication via the Taskbar."""
-    if platform.system() == "Windows":
-        return True
-    else:
-        return False
+    return platform.system() == "Windows"
+
+
 taskbar_progress_supported = supports_taskbar_progress()
+
 
 # --- Send notification --
 def send_notification(title, message):
     """Sends a notification via winotify on Windows and via Plyer on Linux."""
     if platform.system() == "Windows":
         toast = Notification(
-            app_id = "VideOCR",
-            title = title,
-            msg = message,
-            icon = os.path.join(APP_DIR, 'VideOCR.ico')
+            app_id="VideOCR",
+            title=title,
+            msg=message,
+            icon=os.path.join(APP_DIR, 'VideOCR.ico')
         )
         toast.set_audio(audio.Default, loop=False)
         toast.show()
     else:
         notification.notify(
-            title = title,
-            message = message,
-            app_name = 'VideOCR',
-            app_icon = os.path.join(APP_DIR, 'VideOCR.png')
+            title=title,
+            message=message,
+            app_name='VideOCR',
+            app_icon=os.path.join(APP_DIR, 'VideOCR.png')
         )
+
 
 # --- Determine VideOCR location ---
 def find_videocr_program():
     """Determines the path to the videocr-cli-sa executable (.exe or .bin)."""
-    possible_folders = [f'videocr-cli-sa-CPU-v{PROGRAM_VERSION}', f'videocr-cli-sa-GPU-v{PROGRAM_VERSION}']
-    program_name = 'videocr-cli-sa'
+    possible_folders = [f'videocr-cli-CPU-v{PROGRAM_VERSION}', f'videocr-cli-GPU-v{PROGRAM_VERSION}']
+    program_name = 'videocr-cli'
 
     if platform.system() == "Windows":
         extensions = '.exe'
     else:
         extensions = '.bin'
-    
+
     for folder in possible_folders:
         potential_path = os.path.join(APP_DIR, folder, f'{program_name}{extensions}')
         if os.path.exists(potential_path):
@@ -124,17 +150,19 @@ def find_videocr_program():
     # Should never be reached
     return None
 
+
 # --- Configuration ---
 PROGRAM_VERSION = "1.3.0"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 VIDEOCR_PATH = find_videocr_program()
 DEFAULT_OUTPUT_SRT = ""
 DEFAULT_LANG = "en"
+DEFAULT_SUBTITLE_POSITION = "center"
 DEFAULT_CONF_THRESHOLD = 75
 DEFAULT_SIM_THRESHOLD = 80
-DEFAULT_MAX_MERGE_GAP = 0.09
-DEFAULT_SIM_IMAGE_THRESHOLD = 100
-DEFAULT_SIM_PIXEL_THRESHOLD = 25
+DEFAULT_MAX_MERGE_GAP = 0.1
+DEFAULT_MIN_SUBTITLE_DURATION = 0.2
+DEFAULT_SSIM_THRESHOLD = 92
 DEFAULT_FRAMES_TO_SKIP = 1
 DEFAULT_TIME_START = "0:00"
 KEY_SEEK_STEP = 1
@@ -174,6 +202,17 @@ language_display_names = [lang[0] for lang in languages_list]
 language_abbr_lookup = {name: abbr for name, abbr in languages_list}
 default_display_language = 'English'
 
+# --- Subtitle Position Data ---
+subtitle_positions_list = [
+    ('Center', 'center'),
+    ('Left', 'left'),
+    ('Right', 'right'),
+    ('Any', 'any')
+]
+subtitle_position_display_names = [pos[0] for pos in subtitle_positions_list]
+subtitle_pos_lookup = {name: value for name, value in subtitle_positions_list}
+default_display_subtitle_position = 'Center'
+
 # --- Global Variables ---
 video_path = None
 original_frame_width = 0
@@ -189,6 +228,7 @@ graph_size = (int(640 * dpi_scale), int(360 * dpi_scale))
 current_image_bytes = None
 previous_taskbar_state = None
 
+
 # --- Helper Functions ---
 def kill_process_tree(pid):
     """Kills the process with the given PID and its descendants."""
@@ -203,11 +243,12 @@ def kill_process_tree(pid):
             log_error(f"An unexpected error occurred during taskkill: {e}")
     else:
         try:
-            os.killpg(pid, 15)
+            os.killpg(os.getpgid(pid), 15)
         except OSError as e:
             log_error(f"Error terminating process group {pid}: {e}")
         except Exception as e:
             log_error(f"An unexpected error occurred during process kill: {e}")
+
 
 def format_time(seconds):
     """Formats total seconds into HH:MM:SS or MM:SS string."""
@@ -220,6 +261,7 @@ def format_time(seconds):
     else:
         return f"{m:02d}:{s:02d}"
 
+
 def update_frame_and_time_display(window, current_frame, total_frames, fps):
     """Updates the frame count and time text elements."""
     window["-FRAME_TEXT-"].update(f"Frame: {current_frame + 1} / {total_frames}")
@@ -231,6 +273,7 @@ def update_frame_and_time_display(window, current_frame, total_frames, fps):
         window["-TIME_TEXT-"].update(f"Time: {time_text}")
     else:
         window["-TIME_TEXT-"].update("Time: -/-")
+
 
 def _parse_and_validate_time_parts(time_str: str) -> tuple[int, int, int] | None:
     """Internal helper to parse MM:SS or HH:MM:SS and validate parts."""
@@ -256,13 +299,15 @@ def _parse_and_validate_time_parts(time_str: str) -> tuple[int, int, int] | None
             return None
     except ValueError:
         return None
-    
+
+
 def is_valid_time_format(time_str: str) -> bool:
     """Checks if a string is in MM:SS or HH:MM:SS format with valid ranges."""
     if not time_str:
         return True
 
     return _parse_and_validate_time_parts(time_str) is not None
+
 
 def time_string_to_seconds(time_str: str) -> int | None:
     """Converts MM:SS or HH:MM:SS string to total seconds. Returns None if invalid."""
@@ -277,6 +322,7 @@ def time_string_to_seconds(time_str: str) -> int | None:
     h, m, s = parsed_time
     return h * 3600 + m * 60 + s
 
+
 def center_popup(parent_window, popup_window):
     """Center a popup relative to the parent window."""
     x0, y0 = parent_window.current_location()
@@ -285,6 +331,7 @@ def center_popup(parent_window, popup_window):
     x1 = x0 + (w0 - w1) // 2
     y1 = y0 + (h0 - h1) // 2
     popup_window.move(x1, y1)
+
 
 def custom_popup(parent_window, title, message, icon=None, modal=True):
     """Create and show a centered popup relative to the parent window."""
@@ -299,35 +346,41 @@ def custom_popup(parent_window, title, message, icon=None, modal=True):
     popup_window.refresh()
     popup_window.set_alpha(1)
     popup_window['OK'].set_focus()
-    
+
     while True:
         popup_event, _ = popup_window.read()
         if popup_event in (sg.WIN_CLOSED, 'OK'):
             break
     popup_window.close()
 
+
 # --- Settings Save/Load Functions ---
 def get_default_settings():
     """Returns a dictionary of default settings."""
     return {
     '-LANG_COMBO-': default_display_language,
+    '-SUBTITLE_POS_COMBO-': default_display_subtitle_position,
     '--time_start': DEFAULT_TIME_START,
     '--time_end': '',
     '--conf_threshold': str(DEFAULT_CONF_THRESHOLD),
     '--sim_threshold': str(DEFAULT_SIM_THRESHOLD),
     '--max_merge_gap': str(DEFAULT_MAX_MERGE_GAP),
     '--brightness_threshold': '',
-    '--similar_image_threshold': str(DEFAULT_SIM_IMAGE_THRESHOLD),
-    '--similar_pixel_threshold': str(DEFAULT_SIM_PIXEL_THRESHOLD),
+    '--ssim_threshold': str(DEFAULT_SSIM_THRESHOLD),
     '--frames_to_skip': str(DEFAULT_FRAMES_TO_SKIP),
     '--use_fullframe': False,
     '--use_gpu': True,
     '--use_angle_cls': False,
+    '--post_processing': True,
+    '--min_subtitle_duration': str(DEFAULT_MIN_SUBTITLE_DURATION),
+    '--use_server_model': False,
+    '--use_dual_zone': False,
     '--keyboard_seek_step': str(KEY_SEEK_STEP),
     '--default_output_dir': DEFAULT_DOCUMENTS_DIR,
     '--save_in_video_dir': True,
     '--send_notification': True,
     }
+
 
 def save_settings(values):
     """Saves current settings from GUI elements to the config file."""
@@ -336,18 +389,22 @@ def save_settings(values):
 
     settings_to_save = {
         '-LANG_COMBO-': values.get('-LANG_COMBO-', get_default_settings().get('-LANG_COMBO-')),
+        '-SUBTITLE_POS_COMBO-': values.get('-SUBTITLE_POS_COMBO-', get_default_settings().get('-SUBTITLE_POS_COMBO-')),
         '--time_start': values.get('--time_start', get_default_settings().get('--time_start')),
         '--time_end': values.get('--time_end', get_default_settings().get('--time_end')),
         '--conf_threshold': values.get('--conf_threshold', get_default_settings().get('--conf_threshold')),
         '--sim_threshold': values.get('--sim_threshold', get_default_settings().get('--sim_threshold')),
         '--max_merge_gap': values.get('--max_merge_gap', get_default_settings().get('--max_merge_gap')),
         '--brightness_threshold': values.get('--brightness_threshold', get_default_settings().get('--brightness_threshold')),
-        '--similar_image_threshold': values.get('--similar_image_threshold', get_default_settings().get('--similar_image_threshold')),
-        '--similar_pixel_threshold': values.get('--similar_pixel_threshold', get_default_settings().get('--similar_pixel_threshold')),
+        '--ssim_threshold': values.get('--ssim_threshold', get_default_settings().get('--ssim_threshold')),
         '--frames_to_skip': values.get('--frames_to_skip', get_default_settings().get('--frames_to_skip')),
         '--use_fullframe': values.get('--use_fullframe', get_default_settings().get('--use_fullframe')),
         '--use_gpu': values.get('--use_gpu', get_default_settings().get('--use_gpu')),
         '--use_angle_cls': values.get('--use_angle_cls', get_default_settings().get('--use_angle_cls')),
+        '--post_processing': values.get('--post_processing', get_default_settings().get('--post_processing')),
+        '--min_subtitle_duration': values.get('--min_subtitle_duration', get_default_settings().get('--min_subtitle_duration')),
+        '--use_server_model': values.get('--use_server_model', get_default_settings().get('--use_server_model')),
+        '--use_dual_zone': values.get('--use_dual_zone', get_default_settings().get('--use_dual_zone')),
         '--keyboard_seek_step': values.get('--keyboard_seek_step', get_default_settings().get('--keyboard_seek_step')),
         '--default_output_dir': values.get('--default_output_dir', get_default_settings().get('--default_output_dir')),
         '--save_in_video_dir': values.get('--save_in_video_dir', get_default_settings().get('--save_in_video_dir')),
@@ -363,6 +420,7 @@ def save_settings(values):
     except Exception as e:
         log_error(f"Error saving settings to {CONFIG_FILE}: {e}")
 
+
 def load_settings(window):
     """Loads settings from the config file and updates GUI elements.
        Creates a default config if the file doesn't exist."""
@@ -373,19 +431,23 @@ def load_settings(window):
             config.read(CONFIG_FILE)
             if config.has_section(CONFIG_SECTION):
                 settings_to_load = [
-                    ('-LANG_COMBO-', 'combo'),
+                    ('-LANG_COMBO-', 'combo_lang'),
+                    ('-SUBTITLE_POS_COMBO-', 'combo_pos'),
                     ('--time_start', 'input'),
                     ('--time_end', 'input'),
                     ('--conf_threshold', 'input'),
                     ('--sim_threshold', 'input'),
                     ('--max_merge_gap', 'input'),
                     ('--brightness_threshold', 'input'),
-                    ('--similar_image_threshold', 'input'),
-                    ('--similar_pixel_threshold', 'input'),
+                    ('--ssim_threshold', 'input'),
                     ('--frames_to_skip', 'input'),
                     ('--use_fullframe', 'checkbox'),
                     ('--use_gpu', 'checkbox'),
                     ('--use_angle_cls', 'checkbox'),
+                    ('--post_processing', 'checkbox'),
+                    ('--min_subtitle_duration', 'input'),
+                    ('--use_server_model', 'checkbox'),
+                    ('--use_dual_zone', 'checkbox'),
                     ('--keyboard_seek_step', 'input'),
                     ('--default_output_dir', 'input'),
                     ('--save_in_video_dir', 'checkbox'),
@@ -397,12 +459,18 @@ def load_settings(window):
                         try:
                             if elem_type == 'checkbox':
                                 value = config.getboolean(CONFIG_SECTION, key)
-                            elif elem_type == 'combo':
+                            elif elem_type == 'combo_lang':
                                 value_str = config.get(CONFIG_SECTION, key)
                                 if value_str in language_display_names:
                                     value = value_str
                                 else:
                                     value = default_display_language
+                            elif elem_type == 'combo_pos':
+                                value_str = config.get(CONFIG_SECTION, key)
+                                if value_str in subtitle_position_display_names:
+                                    value = value_str
+                                else:
+                                    value = default_display_subtitle_position
                             elif elem_type == 'input':
                                 value = config.get(CONFIG_SECTION, key)
                             else:
@@ -434,6 +502,7 @@ def load_settings(window):
         except Exception as e:
             log_error(f"Error creating default config file {CONFIG_FILE}: {e}")
 
+
 def generate_output_path(video_path, values, default_dir=DEFAULT_DOCUMENTS_DIR):
     """Generates a unique output file path for the SRT file based on video path and settings."""
     video_file_path = pathlib.Path(video_path)
@@ -458,11 +527,12 @@ def generate_output_path(video_path, values, default_dir=DEFAULT_DOCUMENTS_DIR):
 
     return output_path
 
+
 def get_video_frame(video_path, frame_number, display_size):
     """Reads a specific frame from a video file using validated metadata,
     resizes it maintaining aspect ratio, and returns it in PNG bytes format
     with additional metadata."""
-    
+
     # Using pymediainfo in addition to VideoCapture because there can be stream vs container discrepancies
     media_info = MediaInfo.parse(video_path)
     video_track = None
@@ -526,8 +596,27 @@ def get_video_frame(video_path, frame_number, display_size):
 
     return io.BytesIO(buffer), original_width, original_height, total_frames, cv_fps, new_w, new_h, offset_x, offset_y
 
+
+def handle_progress(match, label_format, last_percentage, threshold, taskbar_base=0, show_taskbar_progress=True):
+    """Handles progress parsing and updating GUI."""
+    current_item = int(match.group(1))
+    total_items = int(match.group(2))
+    percentage = int((current_item / total_items) * 100) if total_items > 0 else 0
+
+    if current_item == 1 or percentage >= last_percentage + threshold or percentage == 100:
+        message = f"{label_format.format(current=current_item, total=total_items, percent=percentage)}\n"
+        window.write_event_value('-VIDEOCR_OUTPUT-', message)
+
+        if taskbar_progress_supported and show_taskbar_progress and taskbar_base is not None:
+            progress_value = taskbar_base + int(percentage * 0.5)
+            window.write_event_value('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': progress_value})
+
+        return percentage
+    return last_percentage
+
+
 def run_videocr(args_dict, window):
-    """Runs the videocr-cli-sa.exe tool in a separate thread and streams output."""
+    """Runs the videocr-cli tool in a separate process and streams output."""
     command = [VIDEOCR_PATH]
 
     for key, value in args_dict.items():
@@ -544,9 +633,17 @@ def run_videocr(args_dict, window):
     STEP2_PROGRESS_PATTERN = re.compile(r"Step 2: Performing OCR on image (\d+) of (\d+)")
     STARTING_OCR_PATTERN = re.compile(r"Starting PaddleOCR")
     GENERATING_SUBTITLES_PATTERN = re.compile(r"Generating subtitles")
+    VFR_PATTERN = re.compile(r"Variable frame rate detected. Building timestamp map...")
+    VFR_PROGRESS_PATTERN = re.compile(r"Mapping frame (\d+) of (\d+)")
+    SEEK_PROGRESS_PATTERN = re.compile(r"Advancing to frame (\d+)/(\d+)")
+    MAP_GENERATION_STOP_PATTERN = re.compile(r"Reached target time. Stopped map generation after frame \d+.")
 
     last_reported_percentage_step1 = -1
     last_reported_percentage_step2 = -1
+    last_reported_percentage_vfr = -1
+    last_reported_percentage_seek = -1
+
+    taskbar_progress_started = False
 
     window.write_event_value('-VIDEOCR_OUTPUT-', "Starting subtitle extraction...\n")
 
@@ -561,99 +658,95 @@ def run_videocr(args_dict, window):
                                    errors='replace',
                                    bufsize=1,
                                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
-                                   start_new_session=True if os.name != 'nt' else False
+                                   start_new_session=(os.name != 'nt')
                                    )
 
-        window._videocr_process = process
         window.write_event_value('-PROCESS_STARTED-', process.pid)
 
         if process.stdout:
             for line in iter(process.stdout.readline, ''):
-                if process.poll() is not None:
-                    if process.returncode is not None and process.returncode != 0:
-                        break
+                if process.poll() is not None and line == '':
                     break
-
                 line = line.rstrip('\r\n')
 
                 match1 = STEP1_PROGRESS_PATTERN.search(line)
                 if match1:
-                    current_item = int(match1.group(1))
-                    total_items = int(match1.group(2))
-                    percentage = 0
-                    if total_items > 0:
-                        percentage = int((current_item / total_items) * 100)
-
-                    if current_item == 1 or percentage >= last_reported_percentage_step1 + 5 or percentage == 100:
-                        window.write_event_value('-VIDEOCR_OUTPUT-', f"Step 1: Processed image {current_item} of {total_items} ({percentage}%)\n")
-                        if taskbar_progress_supported:
-                            window.write_event_value('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': int(percentage/2)})
-                        last_reported_percentage_step1 = percentage
+                    last_reported_percentage_step1 = handle_progress(
+                        match1, "Step 1: Processed image {current} of {total} ({percent}%)",
+                        last_reported_percentage_step1, 5, taskbar_base=0)
                     continue
 
                 match2 = STEP2_PROGRESS_PATTERN.search(line)
                 if match2:
-                    current_item = int(match2.group(1))
-                    total_items = int(match2.group(2))
-                    percentage = 0
-                    if total_items > 0:
-                        percentage = int((current_item / total_items) * 100)
-
-                    if current_item == 1 or percentage >= last_reported_percentage_step2 + 5 or percentage == 100:
-                        window.write_event_value('-VIDEOCR_OUTPUT-', f"Step 2: Performed OCR on image {current_item} of {total_items} ({percentage}%)\n")
-                        if taskbar_progress_supported:
-                            window.write_event_value('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': 50 + int(percentage/2)})
-                        last_reported_percentage_step2 = percentage
+                    last_reported_percentage_step2 = handle_progress(
+                        match2, "Step 2: Performed OCR on image {current} of {total} ({percent}%)",
+                        last_reported_percentage_step2, 5, taskbar_base=50)
                     continue
 
-                if STARTING_OCR_PATTERN.search(line):
+                match3 = VFR_PROGRESS_PATTERN.search(line)
+                if match3:
+                    if taskbar_progress_supported and not taskbar_progress_started:
+                        window.write_event_value('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': 1})
+                        taskbar_progress_started = True
+
+                    last_reported_percentage_vfr = handle_progress(
+                        match3, "Mapped frame {current} of {total} ({percent}%)",
+                        last_reported_percentage_vfr, 20, show_taskbar_progress=False)
+                    continue
+
+                match4 = SEEK_PROGRESS_PATTERN.search(line)
+                if match4:
+                    if taskbar_progress_supported and not taskbar_progress_started:
+                        window.write_event_value('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': 1})
+                        taskbar_progress_started = True
+
+                    last_reported_percentage_seek = handle_progress(
+                        match4, "Advanced to frame {current}/{total} ({percent}%)",
+                        last_reported_percentage_seek, 20, show_taskbar_progress=False)
+                    continue
+
+                if STARTING_OCR_PATTERN.search(line) or GENERATING_SUBTITLES_PATTERN.search(line) or VFR_PATTERN.search(line) or MAP_GENERATION_STOP_PATTERN.search(line):
                     window.write_event_value('-VIDEOCR_OUTPUT-', f"{line}\n")
                     continue
 
-                if GENERATING_SUBTITLES_PATTERN.search(line):
-                    window.write_event_value('-VIDEOCR_OUTPUT-', f"{line}\n")
-                    continue
+        exit_code = process.wait()
 
-        if process and process.poll() is None:
-            process.wait()
+        process_was_cancelled = getattr(window, 'cancelled_by_user', False)
+        if exit_code != 0 and not process_was_cancelled:
+            window.write_event_value('-VIDEOCR_OUTPUT-', f"\nProcess finished with non-zero exit code: {exit_code}\n")
 
-        if process:
-            exit_code = process.returncode
-            if exit_code == 0:
-                window.write_event_value('-VIDEOCR_OUTPUT-', "\nSuccessfully generated subtitle file!\n")
-                if taskbar_progress_supported:
-                    window.write_event_value('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': 0})
-                if args_dict.get('send_notification', True):
-                    window.write_event_value('-NOTIFICATION_EVENT-', {'title': "Your Subtitle generation is done!", 'message': f"{os.path.basename(args_dict.get('output'))}"})
-            elif exit_code is not None:
-                window.write_event_value('-VIDEOCR_OUTPUT-', f"\nProcess finished with exit code: {exit_code}\n")
-                if taskbar_progress_supported:
-                    window.write_event_value('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': 0})
+        return exit_code == 0
 
     except FileNotFoundError:
         window.write_event_value('-VIDEOCR_OUTPUT-', f"\nError: '{VIDEOCR_PATH}' not found. Please check the path.\n")
-        if taskbar_progress_supported:
-            window.write_event_value('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': 0})
+        return False
     except Exception as e:
         window.write_event_value('-VIDEOCR_OUTPUT-', f"\nAn error occurred: {e}\n")
-        if taskbar_progress_supported:
-            window.write_event_value('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': 0})
+        return False
 
-    finally:
-        if hasattr(window, '_videocr_process'):
-            del window._videocr_process
-        window.write_event_value('-PROCESS_FINISHED-', None)
+
+def run_ocr_thread(args, window):
+    """Thread target for running the OCR process."""
+    success = run_videocr(args, window)
+    if success:
+        window.write_event_value('-VIDEOCR_OUTPUT-', "\nSuccessfully generated subtitle file!\n")
+        if args.get('send_notification', True):
+            window.write_event_value('-NOTIFICATION_EVENT-', {'title': "Your Subtitle generation is done!", 'message': f"{os.path.basename(args['output'])}"})
+    window.write_event_value('-PROCESS_FINISHED-', None)
+
 
 # --- GUI Layout ---
 sg.theme("Darkgrey13")
 
 tab1_content = [
-    [sg.Text("Video File:", size=(15,1)), sg.Input(key="-VIDEO_PATH-", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, enable_events=True, size=(40,1)),
+    [sg.Text("Video File:", size=(15, 1)), sg.Input(key="-VIDEO_PATH-", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, enable_events=True, size=(40, 1)),
      sg.FileBrowse(file_types=(("Video Files", "*.mp4 *.avi *.mkv *.mov *.webm *.flv *.wmv"), ("All Files", "*.*")))],
-    [sg.Text("Output SRT:", size=(15,1)), sg.Input(key="--output", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, disabled=True, size=(40,1)),
+    [sg.Text("Output SRT:", size=(15, 1)), sg.Input(key="--output", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, disabled=True, size=(40, 1)),
      sg.Button('Save As...', key="-SAVE_AS_BTN-", disabled=True)],
-    [sg.Text("Subtitle Language:", size=(15,1)),
-     sg.Combo(language_display_names, default_value=default_display_language, key="-LANG_COMBO-", size=(38,1), readonly=True, enable_events=True),
+    [sg.Text("Subtitle Language:", size=(15, 1)),
+     sg.Combo(language_display_names, default_value=default_display_language, key="-LANG_COMBO-", size=(38, 1), readonly=True, enable_events=True)],
+    [sg.Text("Subtitle Position:", size=(15, 1), tooltip="Select the alignment of subtitles in the video"),
+     sg.Combo(subtitle_position_display_names, default_value=default_display_subtitle_position, key="-SUBTITLE_POS_COMBO-", size=(38, 1), readonly=True, enable_events=True, tooltip="Select the alignment of subtitles in the video"),
      sg.Push(),
      sg.Button("How to Use", key="-HELP-")],
     [sg.Graph(canvas_size=graph_size, graph_bottom_left=(0, graph_size[1]), graph_top_right=(graph_size[0], 0),
@@ -663,7 +756,7 @@ tab1_content = [
         sg.Push(),
         sg.Text("Frame: -/-", key="-FRAME_TEXT-"), sg.Text("|"), sg.Text("Time: -/-", key="-TIME_TEXT-")
     ],
-    [sg.Text("Crop Box (X, Y, W, H):"), sg.Text("Not Set", key="-CROP_COORDS-", size=(30,1))],
+    [sg.Text("Crop Box (X, Y, W, H):"), sg.Text("Not Set", key="-CROP_COORDS-", size=(45, 1), expand_x=True)],
     [sg.Button("Run", key="Run", disabled=True),
      sg.Button("Cancel", key="Cancel", disabled=True),
      sg.Button("Clear Crop", key="-CLEAR_CROP-", disabled=True)],
@@ -679,35 +772,38 @@ tab1_layout = [[sg.Column(tab1_content,
 
 tab2_content = [
     [sg.Text("OCR Settings:", font=('Arial', 10, 'bold'))],
-    [sg.Text("Start Time (e.g., 0:00 or 1:23:45):", size=(28,1), tooltip="Specify the starting time to begin processing."),
-     sg.Input(DEFAULT_TIME_START, key="--time_start", size=(15,1), enable_events=True, tooltip="Specify the starting time to begin processing.")],
-    [sg.Text("End Time (e.g., 0:10 or 2:34:56):", size=(28,1), tooltip="Specify the ending time to stop processing."),
-     sg.Input("", key="--time_end", size=(15,1), enable_events=True, tooltip="Specify the ending time to stop processing.")],
-    [sg.Text("Confidence Threshold (0-100):", size=(28,1), tooltip="Minimum confidence score for detected text."),
-     sg.Input(DEFAULT_CONF_THRESHOLD, key="--conf_threshold", size=(10,1), enable_events=True, tooltip="Minimum confidence score for detected text.")],
-    [sg.Text("Similarity Threshold (0-100):", size=(28,1), tooltip="Threshold for merging text lines based on content similarity."),
-     sg.Input(DEFAULT_SIM_THRESHOLD, key="--sim_threshold", size=(10,1), enable_events=True, tooltip="Threshold for merging text lines based on content similarity.")],
-    [sg.Text("Max Merge Gap (seconds):", size=(28,1), tooltip="Maximum allowed time gap to merge similar subtitles."),
-     sg.Input(DEFAULT_MAX_MERGE_GAP, key="--max_merge_gap", size=(10,1), enable_events=True, tooltip="Maximum allowed time gap to merge similar subtitles.")],
-    [sg.Text("Brightness Threshold (0-255):", size=(28,1), tooltip="Applies a brightness filter before OCR.\nPixels below the threshold are blacked out."),
-     sg.Input("", key="--brightness_threshold", size=(10,1), enable_events=True, tooltip="Applies a brightness filter before OCR.\nPixels below the threshold are blacked out. Leave empty to disable.")],
-    [sg.Text("Similar Image Threshold:", size=(28,1), tooltip="Maximum number of different pixels between frames to skip OCR"),
-     sg.Input(DEFAULT_SIM_IMAGE_THRESHOLD, key="--similar_image_threshold", size=(10,1), enable_events=True, tooltip="Maximum number of different pixels between frames to skip OCR")],
-    [sg.Text("Similar Pixel Threshold (0-255):", size=(28,1), tooltip="Tolerance level for considering pixels as similar when comparing images (0-255)."),
-     sg.Input(DEFAULT_SIM_PIXEL_THRESHOLD, key="--similar_pixel_threshold", size=(10,1), enable_events=True, tooltip="Tolerance level for considering pixels as similar when comparing images (0-255).")],
-    [sg.Text("Frames to Skip:", size=(28,1), tooltip="Process only every Nth frame (e.g., 1 = process every 2nd frame)."),
-     sg.Input(DEFAULT_FRAMES_TO_SKIP, key="--frames_to_skip", size=(10,1), enable_events=True, tooltip="Process only every Nth frame (e.g., 1 = process every 2nd frame).")],
+    [sg.Text("Start Time (e.g., 0:00 or 1:23:45):", size=(30, 1), tooltip="Specify the starting time to begin processing."),
+     sg.Input(DEFAULT_TIME_START, key="--time_start", size=(15, 1), enable_events=True, tooltip="Specify the starting time to begin processing.")],
+    [sg.Text("End Time (e.g., 0:10 or 2:34:56):", size=(30, 1), tooltip="Specify the ending time to stop processing."),
+     sg.Input("", key="--time_end", size=(15, 1), enable_events=True, tooltip="Specify the ending time to stop processing.")],
+    [sg.Text("Confidence Threshold (0-100):", size=(30, 1), tooltip="Minimum confidence score for detected text."),
+     sg.Input(DEFAULT_CONF_THRESHOLD, key="--conf_threshold", size=(10, 1), enable_events=True, tooltip="Minimum confidence score for detected text.")],
+    [sg.Text("Similarity Threshold (0-100):", size=(30, 1), tooltip="Threshold for merging text lines based on content similarity."),
+     sg.Input(DEFAULT_SIM_THRESHOLD, key="--sim_threshold", size=(10, 1), enable_events=True, tooltip="Threshold for merging text lines based on content similarity.")],
+    [sg.Text("Max Merge Gap (seconds):", size=(30, 1), tooltip="Maximum allowed time gap to merge similar subtitles."),
+     sg.Input(DEFAULT_MAX_MERGE_GAP, key="--max_merge_gap", size=(10, 1), enable_events=True, tooltip="Maximum allowed time gap to merge similar subtitles.")],
+    [sg.Text("Brightness Threshold (0-255):", size=(30, 1), tooltip="Applies a brightness filter before OCR.\nPixels below the threshold are blacked out."),
+     sg.Input("", key="--brightness_threshold", size=(10, 1), enable_events=True, tooltip="Applies a brightness filter before OCR.\nPixels below the threshold are blacked out. Leave empty to disable.")],
+    [sg.Text("SSIM Threshold (0-100):", size=(30, 1), tooltip="If the SSIM between frames exceeds this threshold,\nthe frame is considered similar and skipped for OCR."),
+     sg.Input(DEFAULT_SSIM_THRESHOLD, key="--ssim_threshold", size=(10, 1), enable_events=True, tooltip="If the SSIM between frames exceeds this threshold,\nthe frame is considered similar and skipped for OCR.")],
+    [sg.Text("Frames to Skip:", size=(30, 1), tooltip="Process every Nth frame (e.g., 1 = every 2nd).\nHigher = faster but less accurate, lower = slower but more accurate."),
+     sg.Input(DEFAULT_FRAMES_TO_SKIP, key="--frames_to_skip", size=(10, 1), enable_events=True, tooltip="Process every Nth frame (e.g., 1 = every 2nd).\nHigher = faster but less accurate, lower = slower but more accurate.")],
+    [sg.Text("Minimum Subtitle Duration (seconds):", size=(30, 1), tooltip="Detected subtitles below this duration are omitted from the SRT file."),
+     sg.Input(DEFAULT_MIN_SUBTITLE_DURATION, key="--min_subtitle_duration", size=(10, 1), enable_events=True, tooltip="Detected subtitles below this duration are omitted from the SRT file.")],
     [sg.Checkbox("Enable GPU Usage (Only affects GPU version)", default=True, key="--use_gpu", enable_events=True, tooltip="Attempt to use the GPU for OCR processing if available and supported.")],
     [sg.Checkbox("Use Full Frame OCR", default=False, key="--use_fullframe", enable_events=True, tooltip="Process the entire video frame instead of using a crop box.")],
+    [sg.Checkbox("Enable Dual Zone OCR", default=False, key="--use_dual_zone", enable_events=True, tooltip="Allows selecting two separate crop boxes for OCR.")],
     [sg.Checkbox("Enable Angle Classification", default=False, key="--use_angle_cls", enable_events=True, tooltip="Detect and correct rotated text angles.")],
+    [sg.Checkbox("Enable Post Processing", default=True, key="--post_processing", enable_events=True, tooltip="Checks the OCR result for missing spaces and tries to insert them automatically.\nDoes not support all languages, more info can be found online.")],
+    [sg.Checkbox("Use Server Model", default=False, key="--use_server_model", enable_events=True, tooltip="Enables the server model with higher OCR capabilities.\nThis mode can deliver better results but requires also more computing power.\nA GPU is highly recommended when using this mode.")],
     [sg.HorizontalSeparator()],
     [sg.Text("VideOCR Settings:", font=('Arial', 10, 'bold'))],
-    [sg.Checkbox("Save SRT in Video Directory", size=(28,1), default=True, key="--save_in_video_dir", enable_events=True, tooltip="Save the output SRT file in the same directory as the video file.\nIf enabled, \"Output directory\" is disabled.")],
-    [sg.Text("Output Directory:", size=(28,1), tooltip="Folder where generated SRT files will be placed.\nDisabled when \"Save SRT in Video Directory\" is enabled."),
-     sg.Input(DEFAULT_DOCUMENTS_DIR, key="--default_output_dir", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, size=(40,1), enable_events=True, tooltip="Folder where generated SRT files will be placed.\nDisabled when \"Save SRT in Video Directory\" is enabled."),
+    [sg.Checkbox("Save SRT in Video Directory", size=(30, 1), default=True, key="--save_in_video_dir", enable_events=True, tooltip="Save the output SRT file in the same directory as the video file.\nIf enabled, \"Output directory\" is disabled.")],
+    [sg.Text("Output Directory:", size=(30, 1), tooltip="Folder where generated SRT files will be placed.\nDisabled when \"Save SRT in Video Directory\" is enabled."),
+     sg.Input(DEFAULT_DOCUMENTS_DIR, key="--default_output_dir", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, size=(40, 1), enable_events=True, tooltip="Folder where generated SRT files will be placed.\nDisabled when \"Save SRT in Video Directory\" is enabled."),
      sg.FolderBrowse(key="-FOLDER_BROWSE_BTN-", disabled=True)],
-    [sg.Text("Keyboard Seek Step (frames):", size=(28,1), tooltip="Number of frames to jump when using Left/Right arrows."),
-     sg.Input(KEY_SEEK_STEP, key="--keyboard_seek_step", size=(10,1), enable_events=True, tooltip="Number of frames to jump when using Left/Right arrows.")],
+    [sg.Text("Keyboard Seek Step (frames):", size=(30, 1), tooltip="Number of frames to jump when using Left/Right arrows."),
+     sg.Input(KEY_SEEK_STEP, key="--keyboard_seek_step", size=(10, 1), enable_events=True, tooltip="Number of frames to jump when using Left/Right arrows.")],
     [sg.Checkbox("Send Notification", default=True, key="--send_notification", enable_events=True, tooltip="Send notification when the process is complete.")],
 ]
 tab2_layout = [[sg.Column(tab2_content,
@@ -755,13 +851,52 @@ if taskbar_progress_supported:
 
 graph = window["-GRAPH-"]
 
+
 # --- Initialize crop box state in the window object ---
-window.drawing_rectangle_id = None
-window.start_point_img = None
-window.end_point_img = None
-window.final_start_point_img = None
-window.final_end_point_img = None
-window.crop_box_coords = {}
+def reset_crop_state():
+    """Resets all variables related to crop boxes."""
+    global graph
+    for fig_id in getattr(window, 'drawn_rect_ids', []):
+        graph.delete_figure(fig_id)
+    window.drawn_rect_ids = []
+    window.start_point_img = None
+    window.end_point_img = None
+    window.crop_boxes = []
+    window['-CROP_COORDS-'].update("Not Set")
+    window["-CLEAR_CROP-"].update(disabled=True)
+
+
+reset_crop_state()
+
+
+def redraw_canvas_and_boxes():
+    """Erases the graph, redraws the current frame and all finalized crop boxes."""
+    global graph, current_image_bytes, image_offset_x, image_offset_y, resized_frame_width, resized_frame_height
+
+    graph.erase()
+    if current_image_bytes:
+        graph.draw_image(data=current_image_bytes, location=(image_offset_x, image_offset_y))
+
+    window.drawn_rect_ids.clear()
+    for crop_box in window.crop_boxes:
+        start_img, end_img = crop_box['img_points']
+
+        rect_x1_img = min(start_img[0], end_img[0])
+        rect_y1_img = min(start_img[1], end_img[1])
+        rect_x2_img = max(start_img[0], end_img[0])
+        rect_y2_img = max(start_img[1], end_img[1])
+
+        draw_x1 = max(0, rect_x1_img)
+        draw_y1 = max(0, rect_y1_img)
+        draw_x2 = min(resized_frame_width - 1, rect_x2_img)
+        draw_y2 = min(resized_frame_height - 1, rect_y2_img)
+
+        start_graph = (draw_x1 + image_offset_x, draw_y1 + image_offset_y)
+        end_graph = (draw_x2 + image_offset_x, draw_y2 + image_offset_y)
+
+        rect_id = graph.draw_rectangle(start_graph, end_graph, line_color='red')
+        window.drawn_rect_ids.append(rect_id)
+
 
 # --- Bind keyboard events to the graph element ---
 window.bind('<Left>', '-GRAPH-<Left>')
@@ -773,13 +908,16 @@ window.bind('<Map>', '-WINDOW_RESTORED-')
 # --- Cursor Change Logic for -GITHUB_ISSUES_LINK- ---
 issues_link_element = window['-GITHUB_ISSUES_LINK-']
 
+
 def on_issues_enter(event):
     """Callback when mouse enters the Issues link text."""
     issues_link_element.Widget.config(cursor="hand2")
 
+
 def on_issues_leave(event):
     """Callback when mouse leaves the Issues link text."""
     issues_link_element.Widget.config(cursor="")
+
 
 issues_link_element.Widget.bind("<Enter>", on_issues_enter)
 issues_link_element.Widget.bind("<Leave>", on_issues_leave)
@@ -787,13 +925,16 @@ issues_link_element.Widget.bind("<Leave>", on_issues_leave)
 # --- Cursor Change Logic for -GITHUB_RELEASES_LINK- ---
 releases_link_element = window['-GITHUB_RELEASES_LINK-']
 
+
 def on_releases_enter(event):
     """Callback when mouse enters the Releases link text."""
     releases_link_element.Widget.config(cursor="hand2")
 
+
 def on_releases_leave(event):
     """Callback when mouse leaves the Releases link text."""
     releases_link_element.Widget.config(cursor="")
+
 
 releases_link_element.Widget.bind("<Enter>", on_releases_enter)
 releases_link_element.Widget.bind("<Leave>", on_releases_leave)
@@ -808,18 +949,22 @@ if not save_in_video_dir_checked_at_start:
 # --- Define the list of keys that, when changed, should trigger a settings save ---
 KEYS_TO_AUTOSAVE = [
     '-LANG_COMBO-',
+    '-SUBTITLE_POS_COMBO-',
     '--time_start',
     '--time_end',
     '--conf_threshold',
     '--sim_threshold',
     '--max_merge_gap',
     '--brightness_threshold',
-    '--similar_image_threshold',
-    '--similar_pixel_threshold',
+    '--ssim_threshold',
     '--frames_to_skip',
     '--use_fullframe',
     '--use_gpu',
+    '--use_dual_zone',
     '--use_angle_cls',
+    '--post_processing',
+    '--min_subtitle_duration',
+    '--use_server_model',
     '--keyboard_seek_step',
     '--default_output_dir',
     '--save_in_video_dir',
@@ -831,23 +976,26 @@ while True:
     event, values = window.read(timeout=100)
 
     if event == sg.WIN_CLOSED:
-        if values is not None:
-            pass
-
-        process_to_kill = getattr(window, '_videocr_process', None)
-        if process_to_kill is not None and process_to_kill.poll() is None:
+        process_to_kill = getattr(window, '_videocr_process_pid', None)
+        if process_to_kill:
             try:
-                kill_process_tree(process_to_kill.pid)
-                process_to_kill.wait(timeout=2)
-            except:
-                pass
+                kill_process_tree(process_to_kill)
+            except Exception as e:
+                log_error(f"Exception during final process kill: {e}")
         break
 
     # --- Handle events sent from the worker thread ---
     if event in KEYS_TO_AUTOSAVE:
         if values is not None:
             save_settings(values)
-        # --- Handle possible output path change --- 
+
+        if event == '--use_dual_zone' or event == '--use_fullframe':
+            reset_crop_state()
+            if video_path and current_image_bytes:
+                graph.erase()
+                graph.draw_image(data=current_image_bytes, location=(image_offset_x, image_offset_y))
+
+        # --- Handle possible output path change ---
         if event == '--save_in_video_dir':
             if (values.get('--save_in_video_dir', True)):
                 window['-FOLDER_BROWSE_BTN-'].update(disabled=True)
@@ -866,6 +1014,7 @@ while True:
         custom_popup(window, "Cropping Info", (
             "Draw a crop box over the subtitle region in the video.\n"
             "Use click+drag to select.\n"
+            "In 'Dual Zone' mode, you can draw two crop boxes.\n"
             "If no crop box is selected, the bottom third of the video\n"
             "will be used for OCR by default."),
             icon=ICON_PATH
@@ -900,6 +1049,7 @@ while True:
 
     elif event == '-PROCESS_STARTED-':
         pid = values[event]
+        window._videocr_process_pid = pid
         window['Run'].update(disabled=True)
         window['Cancel'].update(disabled=False)
 
@@ -920,10 +1070,17 @@ while True:
             prog.setProgress(progress)
 
     elif event == '-PROCESS_FINISHED-':
-        window['Run'].update(disabled=False)
-        window['--output'].update(disabled=False if video_path else True)
-        window['-SAVE_AS_BTN-'].update(disabled=False if video_path else True)
+        if hasattr(window, '_videocr_process_pid'):
+            del window._videocr_process_pid
+        if hasattr(window, 'cancelled_by_user'):
+            del window.cancelled_by_user
+        window['Run'].update(disabled=not video_path)
+        window['--output'].update(disabled=not video_path)
+        window['-SAVE_AS_BTN-'].update(disabled=not video_path)
         window['Cancel'].update(disabled=True)
+        if taskbar_progress_supported:
+            prog.setState('normal')
+            prog.setProgress(0)
 
     if event == '-NOTIFICATION_EVENT-':
         notification_info = values[event]
@@ -936,24 +1093,13 @@ while True:
     elif event == "-VIDEO_PATH-" and values["-VIDEO_PATH-"]:
         video_path = values["-VIDEO_PATH-"]
         window["Run"].update(disabled=True)
-        window["-CLEAR_CROP-"].update(disabled=True)
         window["-SLIDER-"].update(disabled=True)
         window["-FRAME_TEXT-"].update("Frame -/-")
         window["-TIME_TEXT-"].update("Time: -/-")
         window['--output'].update("", disabled=True)
         window['-SAVE_AS_BTN-'].update(disabled=True)
 
-        # --- Reset crop box state in the window object ---
-        if window.drawing_rectangle_id is not None:
-            graph.delete_figure(window.drawing_rectangle_id)
-        window.drawing_rectangle_id = None
-        window.start_point_img = None
-        window.end_point_img = None
-        window.final_start_point_img = None
-        window.final_end_point_img = None
-        window.crop_box_coords.clear()
-        window['-CROP_COORDS-'].update("Not Set")
-
+        reset_crop_state()
         graph.erase()
 
         img_bytes, orig_w, orig_h, total_f, fps, res_w, res_h, off_x, off_y = get_video_frame(video_path, 0, graph_size)
@@ -1012,215 +1158,119 @@ while True:
             img_bytes, _, _, _, _, res_w, res_h, off_x, off_y = get_video_frame(video_path, current_frame_num, graph_size)
 
             if img_bytes:
-                resized_frame_width = res_w
-                resized_frame_height = res_h
-                image_offset_x = off_x
-                image_offset_y = off_y
+                resized_frame_width, resized_frame_height = res_w, res_h
+                image_offset_x, image_offset_y = off_x, off_y
                 current_image_bytes = img_bytes.getvalue()
 
-                graph.erase()
-                graph.draw_image(data=current_image_bytes, location=(image_offset_x, image_offset_y))
-
-                # --- Redraw the rectangle IF finalized points are stored ---
-                if window.final_start_point_img is not None and window.final_end_point_img is not None:
-                    graph_start_x = min(window.final_start_point_img[0], window.final_end_point_img[0]) + image_offset_x
-                    graph_start_y = min(window.final_start_point_img[1], window.final_end_point_img[1]) + image_offset_y
-                    graph_end_x = max(window.final_start_point_img[0], window.final_end_point_img[0]) + image_offset_x
-                    graph_end_y = max(window.final_end_point_img[1], window.final_end_point_img[1]) + image_offset_y
-
-                    window.drawing_rectangle_id = graph.draw_rectangle((graph_start_x, graph_start_y), (graph_end_x, graph_end_y), line_color='red')
-
+                redraw_canvas_and_boxes()
                 update_frame_and_time_display(window, current_frame_num, total_frames, video_fps)
 
     # --- Handle Keyboard Arrow Keys (Bound to Graph) ---
     elif event in ('-GRAPH-<Left>', '-GRAPH-<Right>'):
         if video_path and total_frames > 0:
-            if values is not None and "-SLIDER-" in values:
-                current_frame_num = int(values["-SLIDER-"])
-            else:
-                continue
-
+            current_frame_num = int(values["-SLIDER-"])
             try:
-                if values is not None and "--keyboard_seek_step" in values:
-                    seek_step = int(values["--keyboard_seek_step"])
-                    if seek_step <= 0:
-                        seek_step = KEY_SEEK_STEP
-                else:
-                    seek_step = KEY_SEEK_STEP
+                seek_step = int(values["--keyboard_seek_step"])
             except (ValueError, TypeError):
                 seek_step = KEY_SEEK_STEP
 
             if event == '-GRAPH-<Left>':
                 new_frame_num = max(0, current_frame_num - seek_step)
-            elif event == '-GRAPH-<Right>':
+            else:  # '-GRAPH-<Right>'
                 new_frame_num = min(total_frames - 1, current_frame_num + seek_step)
 
             if new_frame_num != current_frame_num:
-                current_frame_num = new_frame_num
-                window["-SLIDER-"].update(value=current_frame_num)
+                window["-SLIDER-"].update(value=new_frame_num)
+                window.write_event_value("-SLIDER-", new_frame_num)
 
-                img_bytes, _, _, _, _, res_w, res_h, off_x, off_y = get_video_frame(video_path, current_frame_num, graph_size)
-
-                if img_bytes:
-                    resized_frame_width = res_w
-                    resized_frame_height = res_h
-                    image_offset_x = off_x
-                    image_offset_y = off_y
-                    current_image_bytes = img_bytes.getvalue()
-
-                    graph.erase()
-                    graph.draw_image(data=current_image_bytes, location=(image_offset_x, image_offset_y))
-
-                    if window.final_start_point_img is not None and window.final_end_point_img is not None:
-                        graph_start_x = min(window.final_start_point_img[0], window.final_end_point_img[0]) + image_offset_x
-                        graph_start_y = min(window.final_start_point_img[1], window.final_end_point_img[1]) + image_offset_y
-                        graph_end_x = max(window.final_start_point_img[0], window.final_end_point_img[0]) + image_offset_x
-                        graph_end_y = max(window.final_end_point_img[1], window.final_end_point_img[1]) + image_offset_y
-                        window.drawing_rectangle_id = graph.draw_rectangle((graph_start_x, graph_start_y), (graph_end_x, graph_end_y), line_color='red')
-
-                    update_frame_and_time_display(window, current_frame_num, total_frames, video_fps)
-
-    # --- Graph Interaction (Cropping) ---
+    # --- Graph Interaction ---
     elif event == "-GRAPH-":
-        if not video_path or resized_frame_width == 0: continue
+        if not video_path or resized_frame_width == 0:
+            continue
 
         graph_x, graph_y = values["-GRAPH-"]
 
         if not (image_offset_x <= graph_x < image_offset_x + resized_frame_width and
                 image_offset_y <= graph_y < image_offset_y + resized_frame_height):
-            if window.start_point_img is None: continue
+            if window.start_point_img is None:
+                continue
 
         img_x = graph_x - image_offset_x
         img_y = graph_y - image_offset_y
 
         if window.start_point_img is None:
-            if window.drawing_rectangle_id is not None:
-                graph.delete_figure(window.drawing_rectangle_id)
-                window.drawing_rectangle_id = None
-            window.final_start_point_img = None
-            window.final_end_point_img = None
-            window.crop_box_coords.clear()
-            window['-CROP_COORDS-'].update("Not Set")
-            window["-CLEAR_CROP-"].update(disabled=True)
+            max_boxes = 2 if values.get('--use_dual_zone') else 1
+            if len(window.crop_boxes) >= max_boxes:
+                reset_crop_state()
+                redraw_canvas_and_boxes()
 
             window.start_point_img = (img_x, img_y)
+
+        else:
+            window.end_point_img = (img_x, img_y)
+
+            redraw_canvas_and_boxes()
+
+            start_graph_temp = (window.start_point_img[0] + image_offset_x, window.start_point_img[1] + image_offset_y)
+            end_graph_temp = (img_x + image_offset_x, img_y + image_offset_y)
+            graph.draw_rectangle(start_graph_temp, end_graph_temp, line_color='red')
+
+    # --- Graph Interaction ---
+    elif event == "-GRAPH-+UP":
+        if window.start_point_img and window.end_point_img:
+
+            rect_x1_img = max(0, min(window.start_point_img[0], window.end_point_img[0]))
+            rect_y1_img = max(0, min(window.start_point_img[1], window.end_point_img[1]))
+            rect_x2_img = min(resized_frame_width, max(window.start_point_img[0], window.end_point_img[0]))
+            rect_y2_img = min(resized_frame_height, max(window.start_point_img[1], window.end_point_img[1]))
+
+            window.start_point_img = None
             window.end_point_img = None
 
-        elif window.start_point_img:
-            current_drag_img_x = img_x
-            current_drag_img_y = img_y
-            window.end_point_img = (current_drag_img_x, current_drag_img_y)
-
-            graph.erase()
-            graph.draw_image(data=current_image_bytes, location=(image_offset_x, image_offset_y))
-
-            graph_start_x = window.start_point_img[0] + image_offset_x
-            graph_start_y = window.start_point_img[1] + image_offset_y
-            current_graph_x = img_x + image_offset_x
-            current_graph_y = img_y + image_offset_y
-
-            draw_start_graph = (min(graph_start_x, current_graph_x), min(graph_start_y, current_graph_y))
-            draw_end_graph = (max(graph_start_x, current_graph_x), max(graph_start_y, current_graph_y))
-
-            graph.draw_rectangle(draw_start_graph, draw_end_graph, line_color='red')
-
-    elif event == "-GRAPH-+UP":
-        if window.start_point_img is not None and window.end_point_img is not None and resized_frame_width > 0 and resized_frame_height > 0:
-
-            graph.erase()
-            graph.draw_image(data=current_image_bytes, location=(image_offset_x, image_offset_y))
-
-            if window.drawing_rectangle_id is not None:
-                graph.delete_figure(window.drawing_rectangle_id)
-                window.drawing_rectangle_id = None
-
-            rect_x1_img_raw = window.start_point_img[0]
-            rect_y1_img_raw = window.start_point_img[1]
-            rect_x2_img_raw = window.end_point_img[0]
-            rect_y2_img_raw = window.end_point_img[1]
-
-            rect_x1_img = min(rect_x1_img_raw, rect_x2_img_raw)
-            rect_y1_img = min(rect_y1_img_raw, rect_y2_img_raw)
-            rect_x2_img = max(rect_x1_img_raw, rect_x2_img_raw)
-            rect_y2_img = max(rect_y1_img_raw, rect_y2_img_raw)
-
-            rect_x1_img_clamped = max(0, min(rect_x1_img, resized_frame_width))
-            rect_y1_img_clamped = max(0, min(rect_y1_img, resized_frame_height))
-            rect_x2_img_clamped = max(0, min(rect_x2_img, resized_frame_width))
-            rect_y2_img_clamped = max(0, min(rect_y2_img, resized_frame_height))
-
-            rect_x1_img_draw = max(0, min(rect_x1_img, resized_frame_width - 1))
-            rect_y1_img_draw = max(0, min(rect_y1_img, resized_frame_height - 1))
-            rect_x2_img_draw = max(0, min(rect_x2_img, resized_frame_width - 1))
-            rect_y2_img_draw = max(0, min(rect_y2_img, resized_frame_height - 1))
-
-            min_size_img = 5
-            if abs(rect_x2_img_clamped - rect_x1_img_clamped) < min_size_img or abs(rect_y2_img_clamped - rect_y1_img_clamped) < min_size_img:
-                window.final_start_point_img = None
-                window.final_end_point_img = None
-                window.crop_box_coords.clear()
-                window['-CROP_COORDS-'].update("Not Set")
-                window["-CLEAR_CROP-"].update(disabled=True)
-                window.start_point_img = None
-                window.end_point_img = None
+            min_draw_size = 7
+            if (rect_x2_img - rect_x1_img) < min_draw_size or (rect_y2_img - rect_y1_img) < min_draw_size:
+                redraw_canvas_and_boxes()
                 continue
 
-            crop_x = int(math.floor(rect_x1_img_clamped * original_frame_width / resized_frame_width))
-            crop_y = int(math.floor(rect_y1_img_clamped * original_frame_height / resized_frame_height))
-            crop_w = int(math.ceil((rect_x2_img_clamped - rect_x1_img_clamped) * original_frame_width / resized_frame_width))
-            crop_h = int(math.ceil((rect_y2_img_clamped - rect_y1_img_clamped) * original_frame_height / resized_frame_height))
+            crop_x = math.floor(rect_x1_img * original_frame_width / resized_frame_width)
+            crop_y = math.floor(rect_y1_img * original_frame_height / resized_frame_height)
+            crop_w = math.ceil((rect_x2_img - rect_x1_img) * original_frame_width / resized_frame_width)
+            crop_h = math.ceil((rect_y2_img - rect_y1_img) * original_frame_height / resized_frame_height)
 
-            crop_w = max(1, crop_w)
-            crop_h = max(1, crop_h)
-
-            crop_x = max(0, min(crop_x, original_frame_width - crop_w if original_frame_width > 0 else 0))
-            crop_y = max(0, min(crop_y, original_frame_height - crop_h if original_frame_height > 0 else 0))
-
-            window.crop_box_coords = {
-                '--crop_x': crop_x,
-                '--crop_y': crop_y,
-                '--crop_width': crop_w,
-                '--crop_height': crop_h
+            new_box = {
+                'coords': {'crop_x': crop_x, 'crop_y': crop_y, 'crop_width': crop_w, 'crop_height': crop_h},
+                'img_points': ((rect_x1_img, rect_y1_img), (rect_x2_img, rect_y2_img))
             }
-            window['-CROP_COORDS-'].update(f"({crop_x}, {crop_y}, {crop_w}, {crop_h})")
+            window.crop_boxes.append(new_box)
+
+            redraw_canvas_and_boxes()
+
+            if not values.get('--use_dual_zone', False):
+                b = window.crop_boxes[0]
+                coord_text = f"({b['coords']['crop_x']}, {b['coords']['crop_y']}, {b['coords']['crop_width']}, {b['coords']['crop_height']})"
+            else:
+                coords_str_parts = []
+                for i, b in enumerate(window.crop_boxes):
+                    coords_str_parts.append(f"Zone {i + 1}: ({b['coords']['crop_x']}, {b['coords']['crop_y']}, {b['coords']['crop_width']}, {b['coords']['crop_height']})")
+                coord_text = "  |  ".join(coords_str_parts)
+
+            window['-CROP_COORDS-'].update(coord_text)
             window["-CLEAR_CROP-"].update(disabled=False)
-
-            window.final_start_point_img = (rect_x1_img_draw, rect_y1_img_draw)
-            window.final_end_point_img = (rect_x2_img_draw, rect_y2_img_draw)
-
-            graph_start_x = window.final_start_point_img[0] + image_offset_x
-            graph_start_y = window.final_start_point_img[1] + image_offset_y
-            graph_end_x = window.final_end_point_img[0] + image_offset_x
-            graph_end_y = window.final_end_point_img[1] + image_offset_y
-
-            window.drawing_rectangle_id = graph.draw_rectangle((graph_start_x, graph_start_y), (graph_end_x, graph_end_y), line_color='red')
-
-        window.start_point_img = None
-        window.end_point_img = None
 
     # --- Clear Crop Button ---
     elif event == "-CLEAR_CROP-":
-        if window.drawing_rectangle_id is not None:
-            graph.delete_figure(window.drawing_rectangle_id)
-            window.drawing_rectangle_id = None
-        window.start_point_img = None
-        window.end_point_img = None
-        window.final_start_point_img = None
-        window.final_end_point_img = None
-        window.crop_box_coords.clear()
-        window['-CROP_COORDS-'].update("Not Set")
-        window["-CLEAR_CROP-"].update(disabled=True)
-
+        reset_crop_state()
         if video_path and current_image_bytes:
             graph.erase()
             graph.draw_image(data=current_image_bytes, location=(image_offset_x, image_offset_y))
 
     # --- Run Button Clicked ---
     elif event == "Run" and video_path:
-        if hasattr(window, '_videocr_process') and window._videocr_process.poll() is None:
+        if hasattr(window, '_videocr_process_pid') and window._videocr_process_pid:
             window['-OUTPUT-'].update("Process is already running.\n", append=True)
             continue
 
+        window.cancelled_by_user = False
         window['-OUTPUT-'].update("")
 
         # --- Input Validation ---
@@ -1243,11 +1293,11 @@ while True:
 
         if time_start_seconds is not None:
             if time_start_seconds > video_duration_seconds:
-                errors.append(f"Start Time ({format_time(time_start_seconds)}) exceeds video duration ({format_time(video_duration_seconds)}). Video duration is {format_time(video_duration_seconds)}.")
+                errors.append(f"Start Time ({format_time(time_start_seconds)}) exceeds video duration ({format_time(video_duration_seconds)}).")
 
         if time_end and time_end_seconds is not None:
             if time_end_seconds > video_duration_seconds:
-                errors.append(f"End Time ({format_time(time_end_seconds)}) exceeds video duration ({format_time(video_duration_seconds)}). Video duration is {format_time(video_duration_seconds)}.")
+                errors.append(f"End Time ({format_time(time_end_seconds)}) exceeds video duration ({format_time(video_duration_seconds)}).")
 
         if time_start_seconds is not None and time_end_seconds is not None:
             if time_start_seconds > time_end_seconds:
@@ -1257,10 +1307,10 @@ while True:
             '--conf_threshold': (int, 0, 100, "Confidence Threshold"),
             '--sim_threshold': (int, 0, 100, "Similarity Threshold"),
             '--brightness_threshold': (int, 0, 255, "Brightness Threshold"),
-            '--similar_image_threshold': (int, 0, None, "Similar Image Threshold"),
-            '--similar_pixel_threshold': (int, 0, 255, "Similar Pixel Threshold"),
+            '--ssim_threshold': (int, 0, 100, "SSIM Threshold"),
             '--frames_to_skip': (int, 0, None, "Frames to Skip"),
             '--max_merge_gap': (float, 0.0, None, "Max Merge Gap"),
+            '--min_subtitle_duration': (float, 0.0, None, "Minimum Subtitle Duration"),
         }
 
         for key, (cast_type, min_val, max_val, name) in numeric_params.items():
@@ -1293,8 +1343,11 @@ while True:
             window.refresh()
             continue
 
-        window['Run'].update(disabled=True)
-        window['Cancel'].update(disabled=False)
+        use_dual_zone = values.get('--use_dual_zone', False)
+
+        if use_dual_zone and len(window.crop_boxes) != 2:
+            window['-OUTPUT-'].update("Dual Zone OCR is enabled, but 2 crop boxes have not been selected.\n")
+            continue
 
         args = {}
         args['video_path'] = video_path
@@ -1304,65 +1357,62 @@ while True:
         if lang_abbr:
             args['lang'] = lang_abbr
 
+        selected_pos_name = values.get('-SUBTITLE_POS_COMBO-', default_display_subtitle_position)
+        pos_value = subtitle_pos_lookup.get(selected_pos_name)
+        if pos_value:
+            args['subtitle_position'] = pos_value
+
         for key in values:
             if key.startswith('--') and key not in ['--keyboard_seek_step', '--default_output_dir', '--save_in_video_dir', '--send_notification']:
+                stripped_key = key.lstrip('-')
                 value = values.get(key)
                 if isinstance(value, bool):
-                    args[key.lstrip('-')] = str(value).lower()
+                    args[stripped_key] = value
                 elif value is not None and str(value).strip() != '':
-                    args[key.lstrip('-')] = str(value).strip()
+                    args[stripped_key] = str(value).strip()
 
         # Handle send_notification specifically to store it as a boolean and not a string
         args['send_notification'] = values.get('--send_notification', True)
 
-        if not values.get('--use_fullframe', False) and window.crop_box_coords:
-            args.update({k.lstrip('-'): v for k, v in window.crop_box_coords.items()})
-            args['use_fullframe'] = 'false'
-        elif values.get('--use_fullframe', False):
-            for crop_key in ['crop_x', 'crop_y', 'crop_width', 'crop_height']:
-                args.pop(crop_key, None)
-            args['use_fullframe'] = 'true'
-        else:
-            if 'use_fullframe' not in args:
-                args['use_fullframe'] = 'false'
+        # Add crop coordinates based on mode
+        use_fullframe = values.get('--use_fullframe', False)
 
-        thread = threading.Thread(target=run_videocr, args=(args, window), daemon=True)
-        thread.start()
+        if use_dual_zone:
+            box1_coords = window.crop_boxes[0]['coords']
+            args.update(box1_coords)
+
+            box2_coords = window.crop_boxes[1]['coords']
+            args.update({f"{k}2": v for k, v in box2_coords.items()})
+
+        elif not use_fullframe:
+            if window.crop_boxes:
+                args.update(window.crop_boxes[0]['coords'])
+
+        window['Run'].update(disabled=True)
+        window['Cancel'].update(disabled=False)
+
+        ocr_thread = threading.Thread(target=run_ocr_thread, args=(args, window), daemon=True)
+        ocr_thread.start()
 
     # --- Cancel Button Clicked ---
     elif event == "Cancel":
-        process_to_kill = getattr(window, '_videocr_process', None)
-
-        if process_to_kill is not None and process_to_kill.poll() is None:
-            pid_to_kill = process_to_kill.pid
-
+        pid_to_kill = getattr(window, '_videocr_process_pid', None)
+        if pid_to_kill:
+            window.cancelled_by_user = True
             window['-OUTPUT-'].update("\nCancelling process...\n", append=True)
             window.refresh()
             try:
                 kill_process_tree(pid_to_kill)
-                if process_to_kill and process_to_kill.poll() is None:
-                    try:
-                        process_to_kill.wait(timeout=5)
-                    except subprocess.TimeoutExpired:
-                        window['-OUTPUT-'].update("\nProcess did not terminate promptly after kill signal.\n", append=True)
-
                 window['-OUTPUT-'].update("\nProcess cancelled by user.\n", append=True)
-
             except Exception as e:
                 window['-OUTPUT-'].update(f"\nError attempting to cancel process: {e}\n", append=True)
-
             finally:
-                if hasattr(window, '_videocr_process'):
-                    del window._videocr_process
-                window['Run'].update(disabled=False)
-                window['--output'].update(disabled=False)
-                window['-SAVE_AS_BTN-'].update(disabled=False)
-                window['Cancel'].update(disabled=True)
-                if taskbar_progress_supported:
-                    prog.setState('normal')
-                    prog.setProgress(0)
+                if hasattr(window, '_videocr_process_pid'):
+                    del window._videocr_process_pid
         else:
             window['-OUTPUT-'].update("\nNo process is currently running to cancel.\n", append=True)
+            window['Cancel'].update(disabled=True)
+            window['Run'].update(disabled=not video_path)
 
 # --- Cleanup ---
 window.close()
