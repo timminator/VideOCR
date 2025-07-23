@@ -166,7 +166,7 @@ DEFAULT_SSIM_THRESHOLD = 92
 DEFAULT_FRAMES_TO_SKIP = 1
 DEFAULT_TIME_START = "0:00"
 KEY_SEEK_STEP = 1
-CONFIG_FILE = 'videocr_gui_config.ini'
+CONFIG_FILE = os.path.join(APP_DIR, 'videocr_gui_config.ini')
 CONFIG_SECTION = 'Settings'
 try:
     DEFAULT_DOCUMENTS_DIR = str(pathlib.Path.home() / "Documents")
