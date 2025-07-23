@@ -15,6 +15,8 @@ Extract hardcoded (burned-in) subtitles from videos via a simple to use GUI by u
 
 This repository also provides a version of VideOCR that can be used from the command line in combination with PaddleOCR.
 
+The latest release incorporates the newest version of PaddleOCR with greatly improved OCR capabilities.
+
 ## Setup
 
 ### Windows:
@@ -43,40 +45,40 @@ Further options can be configured in the "Advanced Settings" Tab. You can find m
 
 ## Usage (CLI version)
   
-There are two CLI versions available, the CLI Standalone version is recommended. Unzip the archive to your desired location and open a terminal in there. Afterwards you can run the following command:
+There is also a CLI version available. Unzip the archive to your desired location and open a terminal in there. Afterwards you can run the following command:
 
 ### Windows:
 ```
-.\videocr-cli-sa.exe -h
+.\videocr-cli.exe -h
 ```
 
 ### Linux:
 
 ```
-./videocr-cli-sa.bin -h
+./videocr-cli.exe -h
 ```
 
-### Example usage (Standalone version, Windows):
+### Example usage (Windows):
 ```
-.\videocr-cli-sa.exe --video_path "Path\to\your\video\example.mp4" --output "Path\to\your\desired\subtitle\location\example.srt" --lang en --time_start "18:40" --use_gpu true --use_angle_cls true
+.\videocr-cli.exe --video_path "Path\to\your\video\example.mp4" --output "Path\to\your\desired\subtitle\location\example.srt" --lang en --time_start "18:40" --use_gpu true
 ```
 More info about the arguments can be found in the parameters section further down.
 
 ## Performance
 
-The OCR process can be very slow on the CPU. Using this in combination with a GPU is highly recommended.
+The OCR process can be slow on the CPU. Using this in combination with a GPU is highly recommended.
 
 ## Tips
 
-When cropping, leave a bit of buffer space above and below the text to ensure accurate readings.
+When cropping, leave a bit of buffer space above and below the text to ensure accurate readings, but also don't make the box to large.
 
 ### Quick Configuration Cheatsheet
 
 || More Speed | More Accuracy | Notes
 -|------------|---------------|--------
 Input Video Quality       | Use lower quality           | Use higher quality  | Performance impact of using higher resolution video can be reduced with cropping
-`frames_to_skip`          | Higher number               | Lower number        |
-`brightness_threshold`    | Higher threshold            | N/A                 | A brightness threshold can help speed up the OCR process by filtering out dark frames. In certain circumstances such as when subtitles are white and against a bright background, it may also help with accuracy.
+`frames_to_skip`          | Higher number               | Lower number        | For perfectly accurate timestamps this parameter needs to be set to 0.
+`SSIM threshold`          | Lower threshold             | Higher Threshold    | If the SSIM between consecutive frames exceeds this threshold, the frame is considered similar and skipped for OCR. A lower value can greatly reduce the number of images OCR needs to be performed on.
 
 
 ### Command Line Parameters (CLI version)
@@ -104,6 +106,14 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
   Similarity threshold for subtitle lines. Subtitle lines with larger [Levenshtein](https://en.wikipedia.org/wiki/Levenshtein_distance) ratios than this threshold will be merged together. The default value `80` is fine for most cases.
 
   Make it closer to 0 if you get too many duplicated subtitle lines, or make it closer to 100 if you get too few subtitle lines.
+  
+- `ssim_threshold`
+
+  If the SSIM between consecutive frames exceeds this threshold, the frame is considered similar and skipped for OCR. A lower value can greatly reduce the number of images OCR needs to be performed on. On relatively tight crop boxes around the subtitle area good results could be seen with this value all the way lowered to 85.
+  
+- `post_processing`
+
+  This parameter adds a post processing step to the subtitle detection. The detected text will be analyzed for missing spaces (as this is a common issue with PaddleOCR) and tries to insert them automatically. Currently only available for English, Spanish, Portuguese, German, Italian and French. For more info check out my [wordninja-enhanced](https://github.com/timminator/wordninja-enhanced) repository.
 
 - `max_merge_gap`
 
@@ -118,23 +128,15 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
 - `use_fullframe`
 
   By default, the specified cropped area is used for OCR or if a crop is not specified, then the bottom third of the frame will be used. By setting this value to `True` the entire frame will be used.
+  
+- `use_dual_zone`
 
-- `crop_x`, `crop_y`, `crop_width`, `crop_height`
+  This parameter allows two specify two areas that will be used for OCR.
 
-  Specifies the bounding area in pixels for the portion of the frame that will be used for OCR. See image below for example:
+- `crop_x(2)`, `crop_y(2)`, `crop_width(2)`, `crop_height(2)`
+
+  Specifies the bounding area(s) in pixels for the portion of the frame that will be used for OCR. See image below for example:
   ![image](https://github.com/timminator/VideOCR/blob/master/Pictures/crop_example.png)
-
-- `det_model_dir`
-
-  The text detection inference model folder. Already configured by default when using the standalone version.
-
-- `rec_model_dir`
-  
-  The text recognition inference model folder. Already configured by default when using the standalone version.
-
-- `cls_model_dir`
-  
-  The classification inference model folder. Already configured by default when using the standalone version.
 
 - `use_gpu`
 
@@ -143,27 +145,23 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
 - `use_angle_cls`
 
   Set to `True` if classification should be enabled.
-
+  
 - `brightness_threshold`
   
   If set, pixels whose brightness are less than the threshold will be blackened out. Valid brightness values range from 0 (black) to 255 (white). This can help improve accuracy when performing OCR on videos with white subtitles.
 
-- `similar_image_threshold`
-
-  The number of non-similar pixels there can be before the program considers 2 consecutive frames to be different. If a frame is not different from the previous frame, then the OCR result from the previous frame will be used (which can save a lot of time depending on how fast each OCR inference takes).
-
-- `similar_pixel_threshold`
-
-  Brightness threshold from 0-255 used with the `similar_image_threshold` to determine if 2 consecutive frames are different. If the difference between 2 pixels exceeds the threshold, then they will be considered non-similar.
-
 - `frames_to_skip`
 
   The number of frames to skip before sampling a frame for OCR. Keep in mind the fps of the input video before increasing.
-
-- `paddleocr_path`
-
-  Only available when using VideOCR CLI version. This specifies the path to the PaddleOCR executable. If installed via python it should be available in path, so it should be enough to just specify "paddleocr.exe". You can also download the standalone version used by the GUI version, that does not require Python, from [here](https://github.com/timminator/PaddleOCR-Standalone/releases/tag/v.1.0.0).
   
-The CLI version also requires to specify the correct detection/recognition/classification model directory for each language. The model files can be downloaded from [here](https://github.com/timminator/PaddleOCR-Standalone/releases/download/v.1.0.0/PaddleOCR.PP-OCRv4.support.files.7z).
+- `min_subtitle_duration`
+
+  Subtitles shorter than this threshold will be omitted from the final subtitle file.
+
+- `use_server_model`
+
+  By default the smaller model are used for the OCR process. This parameter enables the usage of the server models for OCR. This can result in better text detection at the cost of more processing power. Should only ever be used in the GPU version.
+
+
   
   
