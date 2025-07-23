@@ -1,17 +1,21 @@
 from __future__ import annotations
-from typing import List
-import cv2
-import numpy as np
-import os
-import subprocess
+
 import ast
+import os
 import re
-import tempfile
 import shutil
+import subprocess
+import tempfile
+
+import fast_ssim
+import numpy as np
+import wordninja_enhanced as wordninja
+from PIL import Image
+from pymediainfo import MediaInfo
 
 from . import utils
 from .models import PredictedFrames, PredictedSubtitle
-from .opencv_adapter import Capture
+from .pyav_adapter import Capture, get_video_properties
 
 
 class Video:
@@ -19,46 +23,75 @@ class Video:
     lang: str
     use_fullframe: bool
     paddleocr_path: str
+    post_processing: bool
     det_model_dir: str
     rec_model_dir: str
     cls_model_dir: str
     num_frames: int
     fps: float
     height: int
-    pred_frames: List[PredictedFrames]
-    pred_subs: List[PredictedSubtitle]
+    pred_frames_zone1: list[PredictedFrames]
+    pred_frames_zone2: list[PredictedFrames]
+    pred_subs: list[PredictedSubtitle]
+    validated_zones: list[dict[str, int | float]]
+    is_vfr: bool
+    frame_timestamps: dict[int, float]
+    start_time_offset_ms: float
 
-    def __init__(self, path: str, paddleocr_path: str, det_model_dir: str, rec_model_dir: str, cls_model_dir: str):
+    def __init__(self, path: str, paddleocr_path: str, det_model_dir: str, rec_model_dir: str, cls_model_dir: str, time_end: str | None = None):
         self.path = path
         self.paddleocr_path = paddleocr_path
         self.det_model_dir = det_model_dir
         self.rec_model_dir = rec_model_dir
         self.cls_model_dir = cls_model_dir
-        with Capture(path) as v:
-            self.num_frames = int(v.get(cv2.CAP_PROP_FRAME_COUNT))
-            self.fps = v.get(cv2.CAP_PROP_FPS)
-            self.height = int(v.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.frame_timestamps = {}
+        self.start_time_offset_ms = 0.0
 
-    def run_ocr(self, use_gpu: bool, lang: str, use_angle_cls: bool, time_start: str, time_end: str,
-                conf_threshold: int, use_fullframe: bool, brightness_threshold: int, similar_image_threshold: int, similar_pixel_threshold: int, frames_to_skip: int,
-                crop_x: int, crop_y: int, crop_width: int, crop_height: int) -> None:
-        conf_threshold_percent = float(conf_threshold/100)
+        media_info = MediaInfo.parse(path)
+        video_track = [t for t in media_info.tracks if t.track_type == 'Video'][0]
+
+        self.is_vfr = (
+            video_track.frame_rate_mode == 'VFR'
+            or video_track.framerate_mode_original == 'VFR'
+        )
+
+        self.num_frames = int(video_track.frame_count)
+        self.fps = float(video_track.frame_rate)
+
+        props = get_video_properties(self.path, self.is_vfr, self.num_frames, time_end)
+        self.height = props['height']
+        self.start_time_offset_ms = props['start_time_offset_ms']
+        self.frame_timestamps = props['frame_timestamps']
+
+    def run_ocr(self, use_gpu: bool, lang: str, use_angle_cls: bool, time_start: str, time_end: str, conf_threshold: int, use_fullframe: bool,
+                brightness_threshold: int, ssim_threshold: int, subtitle_position: str, frames_to_skip: int, crop_zones: list[dict]) -> None:
+        conf_threshold = float(conf_threshold / 100)
+        ssim_threshold = float(ssim_threshold / 100)
         self.lang = lang
         self.use_fullframe = use_fullframe
-        self.pred_frames = []
+        self.validated_zones = []
+        self.pred_frames_zone1 = []
+        self.pred_frames_zone2 = []
 
-        ocr_start = utils.get_frame_index(time_start, self.fps) if time_start else 0
-        ocr_end = utils.get_frame_index(time_end, self.fps) if time_end else self.num_frames
+        if self.is_vfr:
+            ocr_start = utils.get_frame_index_from_ms(self.frame_timestamps, utils.get_ms_from_time_str(time_start)) if time_start else 0
+            ocr_end = utils.get_frame_index_from_ms(self.frame_timestamps, utils.get_ms_from_time_str(time_end)) if time_end else self.num_frames
+        else:
+            ocr_start = utils.get_frame_index(time_start, self.fps, self.start_time_offset_ms) if time_start else 0
+            ocr_end = utils.get_frame_index(time_end, self.fps, self.start_time_offset_ms) if time_end else self.num_frames
 
         if ocr_end < ocr_start:
             raise ValueError('time_start is later than time_end')
         num_ocr_frames = ocr_end - ocr_start
 
-        crop_x_end = None
-        crop_y_end = None
-        if crop_x is not None and crop_y is not None and crop_width and crop_height:
-            crop_x_end = crop_x + crop_width
-            crop_y_end = crop_y + crop_height
+        for zone in crop_zones:
+            self.validated_zones.append({
+                'x_start': zone['x'],
+                'y_start': zone['y'],
+                'x_end': zone['x'] + zone['width'],
+                'y_end': zone['y'] + zone['height'],
+                'midpoint_y': zone['y'] + (zone['height'] / 2)
+            })
 
         TEMP_PREFIX = "videocr_temp_"
         base_temp = tempfile.gettempdir()
@@ -73,83 +106,105 @@ class Video:
 
         # get frames from ocr_start to ocr_end
         frame_paths = []
-        frame_indices = []
         with Capture(self.path) as v:
-            v.set(cv2.CAP_PROP_POS_FRAMES, ocr_start)
-            prev_grey = None
-            predicted_frames = None
+            # PyAV does not support accurate seeking and this was also error prone with OpenCV before
+            if ocr_start > 0:
+                for i in range(ocr_start):
+                    v.grab()
+                    print(f"\rAdvancing to frame {i + 1}/{ocr_start}", end="", flush=True)
+                print()
+
+            prev_samples = [None] * len(self.validated_zones) if self.validated_zones else [None]
             modulo = frames_to_skip + 1
+            padding = len(str(num_ocr_frames))
             for i in range(num_ocr_frames):
-                print(f"\rStep 1: Processing image {i+1} of {num_ocr_frames}", end="", flush=True)
+                print(f"\rStep 1: Processing image {i + 1} of {num_ocr_frames}", end="", flush=True)
                 if i % modulo == 0:
-                    frame = v.read()[1]
-                    if frame is None:
+                    read_success, frame = v.read()
+                    if not read_success:
                         continue
-                    if not self.use_fullframe:
-                        if crop_x_end and crop_y_end:
-                            frame = frame[crop_y:crop_y_end, crop_x:crop_x_end]
-                        else:
-                            # only use bottom third of the frame by default
-                            frame = frame[2 * self.height // 3:, :]
 
-                    if brightness_threshold:
-                        frame = cv2.bitwise_and(
-                            frame, frame,
-                            mask=cv2.inRange(frame,
-                                            (brightness_threshold,) * 3,
-                                            (255,) * 3)
-                        )
+                    # Determine regions to process
+                    images_to_process = []
+                    if use_fullframe:
+                        images_to_process.append({'image': frame, 'zone_idx': 0})
+                    elif self.validated_zones:
+                        for idx, zone in enumerate(self.validated_zones):
+                            images_to_process.append({
+                                'image': frame[zone['y_start']:zone['y_end'], zone['x_start']:zone['x_end']],
+                                'zone_idx': idx
+                            })
+                    else:
+                        # Default to bottom third if no zones are specified
+                        images_to_process.append({'image': frame[2 * self.height // 3:, :], 'zone_idx': 0})
 
-                    if similar_image_threshold:
-                        grey = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                        if prev_grey is not None:
-                            _, absdiff = cv2.threshold(
-                                cv2.absdiff(prev_grey, grey),
-                                similar_pixel_threshold, 255, cv2.THRESH_BINARY)
-                            if np.count_nonzero(absdiff) < similar_image_threshold:
-                                prev_grey = grey
-                                continue
-                        prev_grey = grey
+                    for item in images_to_process:
+                        img = item['image']
+                        zone_idx = item['zone_idx']
 
-                    frame_index = i + ocr_start
-                    frame_filename = f"frame_{frame_index}.jpg"
-                    frame_path = os.path.join(temp_dir, frame_filename)
+                        if brightness_threshold:
+                            mask = np.all(img >= brightness_threshold, axis=2)
+                            img[~mask] = 0
 
-                    # Try to improve detection
-                    frame = cv2.copyMakeBorder(frame, 10, 10, 10, 10, cv2.BORDER_CONSTANT, value=(0, 0, 0))
+                        if ssim_threshold < 1:
+                            w = img.shape[1]
+                            if subtitle_position == "center":
+                                w_margin = int(w * 0.35)
+                                sample = img[:, w_margin:w - w_margin]
+                            elif subtitle_position == "left":
+                                sample = img[:, :int(w * 0.3)]
+                            elif subtitle_position == "right":
+                                sample = img[:, int(w * 0.7):]
+                            elif subtitle_position == "any":
+                                sample = frame
+                            else:
+                                raise ValueError(f"Invalid subtitle_position: {subtitle_position}")
 
-                    cv2.imwrite(frame_path, frame)
+                            if prev_samples[zone_idx] is not None:
+                                score = fast_ssim.ssim(prev_samples[zone_idx], sample, data_range=255)
+                                if score > ssim_threshold:
+                                    prev_samples[zone_idx] = sample
+                                    continue
+                            prev_samples[zone_idx] = sample
 
-                    frame_paths.append(frame_path)
-                    frame_indices.append(frame_index)
+                        frame_index = i + ocr_start
+                        frame_filename = f"frame_{frame_index:0{padding}d}_zone{zone_idx}.jpg"
+                        frame_path = os.path.join(temp_dir, frame_filename)
+
+                        Image.fromarray(img).save(frame_path, format="JPEG", quality=95)
+                        frame_paths.append(frame_path)
                 else:
-                    v.read()
+                    v.grab()
 
         print()
         env = os.environ.copy()
         env["PYTHONIOENCODING"] = "utf-8"
         args = [
             self.paddleocr_path,
-            "--image_dir", temp_dir,
-            "--use_gpu", "true" if use_gpu else "false",
-            "--use_angle_cls", "true" if use_angle_cls else "false",
+            "ocr",
+            "--input", temp_dir,
+            "--device", "gpu" if use_gpu else "cpu",
+            "--use_textline_orientation", "true" if use_angle_cls else "false",
+            "--use_doc_orientation_classify", "False",
+            "--use_doc_unwarping", "False",
             "--lang", self.lang,
-            "--show_log", "false",
-            "--enable_mkldnn", "true"
         ]
 
         # Conditionally add model dirs
         if self.det_model_dir:
-            args += ["--det_model_dir", self.det_model_dir]
+            args += ["--text_detection_model_dir", self.det_model_dir]
+            args += ["--text_detection_model_name", os.path.basename(self.det_model_dir)]
         if self.rec_model_dir:
-            args += ["--rec_model_dir", self.rec_model_dir]
-        if self.cls_model_dir:
-            args += ["--cls_model_dir", self.cls_model_dir]
+            args += ["--text_recognition_model_dir", self.rec_model_dir]
+            args += ["--text_recognition_model_name", os.path.basename(self.rec_model_dir)]
+        if self.cls_model_dir and use_angle_cls:
+            args += ["--textline_orientation_model_dir", self.cls_model_dir]
+            args += ["--textline_orientation_model_name", os.path.basename(self.cls_model_dir)]
 
         print("Starting PaddleOCR... This can take a while...", flush=True)
 
         if not os.path.isfile(self.paddleocr_path):
-            raise IOError(f"PaddleOCR executable not found at: {self.paddleocr_path}")
+            raise OSError(f"PaddleOCR executable not found at: {self.paddleocr_path}")
 
         # Run PaddleOCR
         with subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", env=env, bufsize=1) as process:
@@ -176,69 +231,191 @@ class Video:
                             ocr_outputs[current_image].append(parsed)
                     except Exception as e:
                         print(f"Error parsing OCR for {current_image}: {e}")
-
         print()
 
-        # Map to predictedframes
-        previous_index = None
-        previous_pred = None
+        # Map to predicted_frames for each zone
+        frame_predictions_by_zone = {0: {}, 1: {}}
 
         for path in frame_paths:
             frame_filename = os.path.basename(path)
-            match = re.search(r"frame_(\d+)\.jpg", frame_filename)
+            match = re.search(r"frame_(\d+)_zone(\d)\.jpg", frame_filename)
             if not match:
                 continue
-
-            frame_index = int(match.group(1))
+            frame_index, zone_index = int(match.group(1)), int(match.group(2))
             ocr_result = ocr_outputs.get(frame_filename, [])
             pred_data = [ocr_result] if ocr_result else [[]]
-            predicted_frames = PredictedFrames(frame_index, pred_data, conf_threshold_percent)
-            self.pred_frames.append(predicted_frames)
 
-            # Handle skipped frames (due to similarity threshold)
-            if previous_index is not None and frame_index > previous_index + 1:
-                # We assume the skipped frames belong to the previous prediction
-                previous_pred.end_index = frame_index - (frames_to_skip + 1)
+            predicted_frame = PredictedFrames(frame_index, pred_data, conf_threshold, zone_index)
+            frame_predictions_by_zone[zone_index][frame_index] = predicted_frame
 
-            previous_index = frame_index
-            previous_pred = predicted_frames
+        for zone_idx in frame_predictions_by_zone:
+            frames = sorted(frame_predictions_by_zone[zone_idx].values(), key=lambda f: f.start_index)
 
-        if previous_pred.end_index < ocr_end:
-            previous_pred.end_index = ocr_end - 1
+            if not frames:
+                continue
+
+            for i in range(len(frames) - 1):
+                current_pred = frames[i]
+                next_pred = frames[i + 1]
+
+                current_pred.end_index = next_pred.start_index - 1
+
+            if frames:
+                frames[-1].end_index = ocr_end - 1
+
+            frame_predictions_by_zone[zone_idx] = frames
+
+        self.pred_frames_zone1 = frame_predictions_by_zone.get(0, [])
+        self.pred_frames_zone2 = frame_predictions_by_zone.get(1, [])
 
         # Cleanup
         shutil.rmtree(temp_dir, ignore_errors=True)
 
-    def get_subtitles(self, sim_threshold: int, max_merge_gap_sec: float) -> str:
-        self._generate_subtitles(sim_threshold, max_merge_gap_sec)
-        return ''.join(
-            '{}\n{} --> {}\n{}\n\n'.format(
-                i,
-                utils.get_srt_timestamp(sub.index_start, self.fps),
-                utils.get_srt_timestamp(sub.index_end + 1, self.fps),
-                sub.text)
-            for i, sub in enumerate(self.pred_subs, start=1))
+    def get_subtitles(self, sim_threshold: int, max_merge_gap_sec: float, lang: str, post_processing: bool, min_subtitle_duration_sec: float) -> str:
+        self._generate_subtitles(sim_threshold, max_merge_gap_sec, lang, post_processing, min_subtitle_duration_sec)
 
-    def _generate_subtitles(self, sim_threshold: int, max_merge_gap_sec: float) -> None:
+        srt_lines = []
+        for i, sub in enumerate(self.pred_subs, 1):
+            start_time, end_time = self._get_srt_timestamps(sub)
+            srt_lines.append(f'{i}\n{start_time} --> {end_time}\n{sub.text}\n\n')
+
+        return ''.join(srt_lines)
+
+    def _generate_subtitles(self, sim_threshold: int, max_merge_gap_sec: float, lang: str, post_processing: bool, min_subtitle_duration_sec: float) -> None:
         print("Generating subtitles...", flush=True)
-        self.pred_subs = []
 
-        if self.pred_frames is None:
-            raise AttributeError(
-                'Please call self.run_ocr() first to perform ocr on frames')
+        subs_zone1 = self._process_single_zone(self.pred_frames_zone1, sim_threshold, max_merge_gap_sec, lang, post_processing, min_subtitle_duration_sec)
+        subs_zone2 = self._process_single_zone(self.pred_frames_zone2, sim_threshold, max_merge_gap_sec, lang, post_processing, min_subtitle_duration_sec)
 
-        max_frame_merge_diff = int(max_merge_gap_sec * self.fps) + 1
-        for frame in self.pred_frames:
-            self._append_sub(PredictedSubtitle([frame], sim_threshold), max_frame_merge_diff)
+        if subs_zone1 and not subs_zone2:
+            self.pred_subs = subs_zone1
+        elif not subs_zone1 and subs_zone2:
+            self.pred_subs = subs_zone2
+        elif subs_zone1 and subs_zone2:
+            self.pred_subs = self._merge_dual_zone_subtitles(subs_zone1, subs_zone2)
+        else:
+            self.pred_subs = []
 
-    def _append_sub(self, sub: PredictedSubtitle, max_frame_merge_diff: int) -> None:
-        if len(sub.frames) == 0 or len(sub.frames[0].lines) == 0:
-            return
+    def _process_single_zone(self, pred_frames: list[PredictedFrames], sim_threshold: int, max_merge_gap_sec: float, lang: str,
+                             post_processing: bool, min_subtitle_duration_sec: float) -> list[PredictedSubtitle]:
+        if not pred_frames:
+            return []
 
-        if self.pred_subs:
-            last_sub = self.pred_subs[-1]
-            if sub.index_start - last_sub.index_end <= max_frame_merge_diff and last_sub.is_similar_to(sub):
-                del self.pred_subs[-1]
-                sub = PredictedSubtitle(last_sub.frames + sub.frames, sub.sim_threshold)
+        language_mapping = {
+            "en": "en",
+            "fr": "fr",
+            "german": "de",
+            "it": "it",
+            "es": "es",
+            "pt": "pt"
+        }
 
-        self.pred_subs.append(sub)
+        language_model = None
+        if post_processing:
+            if lang in language_mapping:
+                language_model = wordninja.LanguageModel(language=language_mapping[lang])
+
+        subs = []
+        for frame in sorted(pred_frames, key=lambda f: f.start_index):
+            new_sub = PredictedSubtitle([frame], frame.zone_index, sim_threshold, lang, language_model)
+            if not new_sub.text:
+                continue
+
+            if subs:
+                last_sub = subs[-1]
+                if self._is_gap_mergeable(last_sub, new_sub, max_merge_gap_sec) and last_sub.is_similar_to(new_sub):
+                    last_sub.frames.extend(new_sub.frames)
+                    last_sub.frames.sort(key=lambda f: f.start_index)
+                else:
+                    subs.append(new_sub)
+            else:
+                subs.append(new_sub)
+
+        for sub in subs:
+            sub.finalize_text(post_processing)
+
+        # Filter out subs that are too short
+        filtered_subs = [
+            sub for sub in subs if self._get_subtitle_duration_sec(sub) >= min_subtitle_duration_sec
+        ]
+
+        if not filtered_subs:
+            return []
+
+        # Re-merge the cleaned-up list of subtitles if applicable
+        cleaned_subs = [filtered_subs[0]]
+        for next_sub in filtered_subs[1:]:
+            last_sub = cleaned_subs[-1]
+            if self._is_gap_mergeable(last_sub, next_sub, max_merge_gap_sec) and last_sub.is_similar_to(next_sub):
+                last_sub.frames.extend(next_sub.frames)
+                last_sub.frames.sort(key=lambda f: f.start_index)
+                last_sub.finalize_text(post_processing)
+            else:
+                cleaned_subs.append(next_sub)
+
+        return cleaned_subs
+
+    def _merge_dual_zone_subtitles(self, subs1: list[PredictedSubtitle], subs2: list[PredictedSubtitle]) -> list[PredictedSubtitle]:
+        all_subs = sorted(subs1 + subs2, key=lambda s: s.index_start)
+
+        if not all_subs:
+            return []
+
+        merged_subs = [all_subs[0]]
+        for current_sub in all_subs[1:]:
+            last_sub = merged_subs[-1]
+
+            if current_sub.index_start <= last_sub.index_end:
+                last_zone_info = self.validated_zones[last_sub.zone_index]
+                current_zone_info = self.validated_zones[current_sub.zone_index]
+
+                if current_zone_info['midpoint_y'] < last_zone_info['midpoint_y']:
+                    last_sub.text = f"{current_sub.text}\n{last_sub.text}"
+                else:
+                    last_sub.text = f"{last_sub.text}\n{current_sub.text}"
+
+                last_sub.frames.extend(current_sub.frames)
+                last_sub.frames.sort(key=lambda f: f.start_index)
+            else:
+                merged_subs.append(current_sub)
+
+        return merged_subs
+
+    def _get_srt_timestamps(self, sub: PredictedSubtitle) -> tuple[str, str]:
+        if self.is_vfr:
+            start_ms, end_ms = self._get_subtitle_ms_times(sub)
+            start_time = utils.get_srt_timestamp_from_ms(start_ms)
+            end_time = utils.get_srt_timestamp_from_ms(end_ms)
+            return start_time, end_time
+        else:
+            start_time = utils.get_srt_timestamp(sub.index_start, self.fps, self.start_time_offset_ms)
+            end_time = utils.get_srt_timestamp(sub.index_end + 1, self.fps, self.start_time_offset_ms)
+            return start_time, end_time
+
+    def _get_subtitle_ms_times(self, sub: PredictedSubtitle) -> tuple[int, float]:
+        start_time_ms = self.frame_timestamps.get(sub.index_start, 0)
+        end_time_ms = self.frame_timestamps.get(sub.index_end + 1)
+
+        # For the end time, we try to get the timestamp of the next frame, if it doesn't exist, we fall back to estimating duration of last frame
+        if end_time_ms is None:
+            end_time_ms = self.frame_timestamps.get(sub.index_end, 0) + (1000 / self.fps)
+
+        return start_time_ms, end_time_ms
+
+    def _get_subtitle_duration_sec(self, sub: PredictedSubtitle) -> float:
+        if self.is_vfr:
+            start_ms, end_ms = self._get_subtitle_ms_times(sub)
+            return (end_ms - start_ms) / 1000
+        else:
+            return (sub.index_end + 1 - sub.index_start) / self.fps
+
+    def _is_gap_mergeable(self, last_sub: PredictedSubtitle, next_sub: PredictedSubtitle, max_merge_gap_sec: float) -> bool:
+        if self.is_vfr:
+            end_time_ms = self.frame_timestamps.get(last_sub.index_end, 0)
+            start_time_ms = self.frame_timestamps.get(next_sub.index_start, 0)
+            gap_ms = start_time_ms - end_time_ms
+            return gap_ms <= (max_merge_gap_sec * 1000)
+        else:
+            max_frame_merge_diff = int(max_merge_gap_sec * self.fps) + 1
+            gap_frames = next_sub.index_start - last_sub.index_end
+            return gap_frames <= max_frame_merge_diff
