@@ -50,21 +50,23 @@ class Video:
         media_info = MediaInfo.parse(path)
         video_track = [t for t in media_info.tracks if t.track_type == 'Video'][0]
 
+        initial_fps = float(video_track.frame_rate) if video_track.frame_rate else 0.0
+        initial_num_frames = int(video_track.frame_count) if video_track.frame_count else 0
+
         self.is_vfr = (
             video_track.frame_rate_mode == 'VFR'
             or video_track.framerate_mode_original == 'VFR'
         )
 
-        self.num_frames = int(video_track.frame_count)
-        self.fps = float(video_track.frame_rate)
-
-        props = get_video_properties(self.path, self.is_vfr, self.num_frames, time_end)
+        props = get_video_properties(self.path, self.is_vfr, time_end, initial_fps, initial_num_frames)
         self.height = props['height']
+        self.fps = props['fps']
+        self.num_frames = props['num_frames']
         self.start_time_offset_ms = props['start_time_offset_ms']
         self.frame_timestamps = props['frame_timestamps']
 
     def run_ocr(self, use_gpu: bool, lang: str, use_angle_cls: bool, time_start: str, time_end: str, conf_threshold: int, use_fullframe: bool,
-                brightness_threshold: int, ssim_threshold: int, subtitle_position: str, frames_to_skip: int, crop_zones: list[dict]) -> None:
+                brightness_threshold: int, ssim_threshold: int, subtitle_position: str, frames_to_skip: int, crop_zones: list[dict], ocr_image_max_width: int) -> None:
         conf_threshold = float(conf_threshold / 100)
         ssim_threshold = float(ssim_threshold / 100)
         self.lang = lang
@@ -74,11 +76,20 @@ class Video:
         self.pred_frames_zone2 = []
 
         if self.is_vfr:
-            ocr_start = utils.get_frame_index_from_ms(self.frame_timestamps, utils.get_ms_from_time_str(time_start)) if time_start else 0
-            ocr_end = utils.get_frame_index_from_ms(self.frame_timestamps, utils.get_ms_from_time_str(time_end)) if time_end else self.num_frames
+            if time_start:
+                start_target_ms = utils.get_ms_from_time_str(time_start) + self.start_time_offset_ms
+                ocr_start = utils.get_frame_index_from_ms(self.frame_timestamps, start_target_ms)
+            else:
+                ocr_start = 0
+
+            if time_end:
+                end_target_ms = utils.get_ms_from_time_str(time_end) + self.start_time_offset_ms
+                ocr_end = utils.get_frame_index_from_ms(self.frame_timestamps, end_target_ms)
+            else:
+                ocr_end = self.num_frames
         else:
-            ocr_start = utils.get_frame_index(time_start, self.fps, self.start_time_offset_ms) if time_start else 0
-            ocr_end = utils.get_frame_index(time_end, self.fps, self.start_time_offset_ms) if time_end else self.num_frames
+            ocr_start = utils.get_frame_index(time_start, self.fps) if time_start else 0
+            ocr_end = utils.get_frame_index(time_end, self.fps) if time_end else self.num_frames
 
         if ocr_end < ocr_start:
             raise ValueError('time_start is later than time_end')
@@ -141,6 +152,14 @@ class Video:
                     for item in images_to_process:
                         img = item['image']
                         zone_idx = item['zone_idx']
+
+                        if ocr_image_max_width and img.shape[1] > ocr_image_max_width:
+                            original_height, original_width = img.shape[:2]
+                            scale_ratio = ocr_image_max_width / original_width
+                            new_height = int(original_height * scale_ratio)
+                            pil_img = Image.fromarray(img)
+                            resized_pil_img = pil_img.resize((ocr_image_max_width, new_height), Image.Resampling.LANCZOS)
+                            img = np.array(resized_pil_img)
 
                         if brightness_threshold:
                             mask = np.all(img >= brightness_threshold, axis=2)
@@ -392,7 +411,10 @@ class Video:
             end_time = utils.get_srt_timestamp(sub.index_end + 1, self.fps, self.start_time_offset_ms)
             return start_time, end_time
 
-    def _get_subtitle_ms_times(self, sub: PredictedSubtitle) -> tuple[int, float]:
+    def _get_subtitle_ms_times(self, sub: PredictedSubtitle) -> tuple[float, float]:
+        first_frame_ms = self.frame_timestamps.get(0, 0)
+        correction_delta = first_frame_ms - self.start_time_offset_ms
+
         start_time_ms = self.frame_timestamps.get(sub.index_start, 0)
         end_time_ms = self.frame_timestamps.get(sub.index_end + 1)
 
@@ -400,7 +422,11 @@ class Video:
         if end_time_ms is None:
             end_time_ms = self.frame_timestamps.get(sub.index_end, 0) + (1000 / self.fps)
 
-        return start_time_ms, end_time_ms
+        # Apply the correction to align with the container's start time
+        corrected_start_time_ms = start_time_ms - correction_delta
+        corrected_end_time_ms = end_time_ms - correction_delta
+
+        return corrected_start_time_ms, corrected_end_time_ms
 
     def _get_subtitle_duration_sec(self, sub: PredictedSubtitle) -> float:
         if self.is_vfr:

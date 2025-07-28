@@ -6,9 +6,9 @@
 # Windows-specific metadata for the executable
 # nuitka-project-if: {OS} == "Windows":
 #     nuitka-project: --file-description="VideOCR CLI"
-#     nuitka-project: --file-version="1.3.0"
+#     nuitka-project: --file-version="1.3.1"
 #     nuitka-project: --product-name="VideOCR-CLI"
-#     nuitka-project: --product-version="1.3.0"
+#     nuitka-project: --product-version="1.3.1"
 #     nuitka-project: --copyright="timminator"
 
 import argparse
@@ -37,6 +37,7 @@ def main():
     parser.add_argument('--frames_to_skip', type=int, default=1, help='Frames to skip (default: 1)')
     parser.add_argument('--post_processing', type=lambda x: x.lower() == 'true', default=False, help='Enable post processing of subtitles (true/false)')
     parser.add_argument('--min_subtitle_duration', type=float, default=0.2, help='Minimum subtitle duration in seconds (default: 0.2)')
+    parser.add_argument('--ocr_image_max_width', type=int, default=1280, help='Maximum image width used for OCR (default: 1280)')
     parser.add_argument('--use_dual_zone', type=lambda x: x.lower() == 'true', default=False, help='Enable dual zone OCR processing (true/false)')
     parser.add_argument('--crop_x', type=int, default=None, help='(Zone 1) Crop start X')
     parser.add_argument('--crop_y', type=int, default=None, help='(Zone 1) Crop start Y')
@@ -89,6 +90,7 @@ def main():
         crop_zones=crop_zones,
         post_processing=args.post_processing,
         min_subtitle_duration_sec=args.min_subtitle_duration,
+        ocr_image_max_width=args.ocr_image_max_width,
     )
 
 

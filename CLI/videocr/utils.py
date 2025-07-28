@@ -14,7 +14,7 @@ from .models import PredictedText
 
 
 # convert time string to frame index
-def get_frame_index(time_str: str, fps: float, offset_ms: float = 0.0) -> int:
+def get_frame_index(time_str: str, fps: float) -> int:
     t = time_str.split(':')
     t = list(map(float, t))
     if len(t) == 3:
@@ -25,10 +25,10 @@ def get_frame_index(time_str: str, fps: float, offset_ms: float = 0.0) -> int:
         raise ValueError(
             f'Time data "{time_str}" does not match format "%H:%M:%S"')
 
-    total_ms = td.total_seconds() * 1000 - offset_ms
-    if total_ms < 0:
+    total_seconds = td.total_seconds()
+    if total_seconds < 0:
         return 0
-    return int((total_ms / 1000) * fps)
+    return int(total_seconds * fps)
 
 
 # convert time string to milliseconds

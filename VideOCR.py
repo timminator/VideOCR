@@ -8,9 +8,9 @@
 # Windows-specific metadata for the executable
 # nuitka-project-if: {OS} == "Windows":
 #     nuitka-project: --file-description="VideOCR"
-#     nuitka-project: --file-version="1.3.0"
+#     nuitka-project: --file-version="1.3.1"
 #     nuitka-project: --product-name="VideOCR-GUI"
-#     nuitka-project: --product-version="1.3.0"
+#     nuitka-project: --product-version="1.3.1"
 #     nuitka-project: --copyright="timminator"
 #     nuitka-project: --windows-icon-from-ico=VideOCR.ico
 
@@ -134,14 +134,11 @@ def send_notification(title, message):
 
 # --- Determine VideOCR location ---
 def find_videocr_program():
-    """Determines the path to the videocr-cli-sa executable (.exe or .bin)."""
+    """Determines the path to the videocr-cli executable (.exe or .bin)."""
     possible_folders = [f'videocr-cli-CPU-v{PROGRAM_VERSION}', f'videocr-cli-GPU-v{PROGRAM_VERSION}']
     program_name = 'videocr-cli'
 
-    if platform.system() == "Windows":
-        extensions = '.exe'
-    else:
-        extensions = '.bin'
+    extensions = ".exe" if platform.system() == "Windows" else ".bin"
 
     for folder in possible_folders:
         potential_path = os.path.join(APP_DIR, folder, f'{program_name}{extensions}')
@@ -152,7 +149,7 @@ def find_videocr_program():
 
 
 # --- Configuration ---
-PROGRAM_VERSION = "1.3.0"
+PROGRAM_VERSION = "1.3.1"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 VIDEOCR_PATH = find_videocr_program()
 DEFAULT_OUTPUT_SRT = ""
@@ -163,6 +160,7 @@ DEFAULT_SIM_THRESHOLD = 80
 DEFAULT_MAX_MERGE_GAP = 0.1
 DEFAULT_MIN_SUBTITLE_DURATION = 0.2
 DEFAULT_SSIM_THRESHOLD = 92
+DEFAULT_OCR_IMAGE_MAX_WIDTH = 1280
 DEFAULT_FRAMES_TO_SKIP = 1
 DEFAULT_TIME_START = "0:00"
 KEY_SEEK_STEP = 1
@@ -367,6 +365,7 @@ def get_default_settings():
     '--max_merge_gap': str(DEFAULT_MAX_MERGE_GAP),
     '--brightness_threshold': '',
     '--ssim_threshold': str(DEFAULT_SSIM_THRESHOLD),
+    '--ocr_image_max_width': str(DEFAULT_OCR_IMAGE_MAX_WIDTH),
     '--frames_to_skip': str(DEFAULT_FRAMES_TO_SKIP),
     '--use_fullframe': False,
     '--use_gpu': True,
@@ -397,6 +396,7 @@ def save_settings(values):
         '--max_merge_gap': values.get('--max_merge_gap', get_default_settings().get('--max_merge_gap')),
         '--brightness_threshold': values.get('--brightness_threshold', get_default_settings().get('--brightness_threshold')),
         '--ssim_threshold': values.get('--ssim_threshold', get_default_settings().get('--ssim_threshold')),
+        '--ocr_image_max_width': values.get('--ocr_image_max_width', get_default_settings().get('--ocr_image_max_width')),
         '--frames_to_skip': values.get('--frames_to_skip', get_default_settings().get('--frames_to_skip')),
         '--use_fullframe': values.get('--use_fullframe', get_default_settings().get('--use_fullframe')),
         '--use_gpu': values.get('--use_gpu', get_default_settings().get('--use_gpu')),
@@ -440,6 +440,7 @@ def load_settings(window):
                     ('--max_merge_gap', 'input'),
                     ('--brightness_threshold', 'input'),
                     ('--ssim_threshold', 'input'),
+                    ('--ocr_image_max_width', 'input'),
                     ('--frames_to_skip', 'input'),
                     ('--use_fullframe', 'checkbox'),
                     ('--use_gpu', 'checkbox'),
@@ -740,7 +741,7 @@ sg.theme("Darkgrey13")
 
 tab1_content = [
     [sg.Text("Video File:", size=(15, 1)), sg.Input(key="-VIDEO_PATH-", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, enable_events=True, size=(40, 1)),
-     sg.FileBrowse(file_types=(("Video Files", "*.mp4 *.avi *.mkv *.mov *.webm *.flv *.wmv"), ("All Files", "*.*")))],
+     sg.FileBrowse(file_types=(("Video Files", "*.mp4 *.avi *.mkv *.mov *.webm *.flv *.wmv *.ts *.m2ts"), ("All Files", "*.*")))],
     [sg.Text("Output SRT:", size=(15, 1)), sg.Input(key="--output", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, disabled=True, size=(40, 1)),
      sg.Button('Save As...', key="-SAVE_AS_BTN-", disabled=True)],
     [sg.Text("Subtitle Language:", size=(15, 1)),
@@ -786,6 +787,8 @@ tab2_content = [
      sg.Input("", key="--brightness_threshold", size=(10, 1), enable_events=True, tooltip="Applies a brightness filter before OCR.\nPixels below the threshold are blacked out. Leave empty to disable.")],
     [sg.Text("SSIM Threshold (0-100):", size=(30, 1), tooltip="If the SSIM between frames exceeds this threshold,\nthe frame is considered similar and skipped for OCR."),
      sg.Input(DEFAULT_SSIM_THRESHOLD, key="--ssim_threshold", size=(10, 1), enable_events=True, tooltip="If the SSIM between frames exceeds this threshold,\nthe frame is considered similar and skipped for OCR.")],
+    [sg.Text("Max OCR Image Width (pixel):", size=(30, 1), tooltip="Maximum image width for OCR. Larger images are scaled\ndown to this width to improve performance. Set to 0 to disable."),
+     sg.Input(DEFAULT_OCR_IMAGE_MAX_WIDTH, key="--ocr_image_max_width", size=(10, 1), enable_events=True, tooltip="Maximum image width for OCR. Larger images are scaled\ndown to this width to improve performance. Set to 0 to disable.")],
     [sg.Text("Frames to Skip:", size=(30, 1), tooltip="Process every Nth frame (e.g., 1 = every 2nd).\nHigher = faster but less accurate, lower = slower but more accurate."),
      sg.Input(DEFAULT_FRAMES_TO_SKIP, key="--frames_to_skip", size=(10, 1), enable_events=True, tooltip="Process every Nth frame (e.g., 1 = every 2nd).\nHigher = faster but less accurate, lower = slower but more accurate.")],
     [sg.Text("Minimum Subtitle Duration (seconds):", size=(30, 1), tooltip="Detected subtitles below this duration are omitted from the SRT file."),
@@ -957,6 +960,7 @@ KEYS_TO_AUTOSAVE = [
     '--max_merge_gap',
     '--brightness_threshold',
     '--ssim_threshold',
+    '--ocr_image_max_width',
     '--frames_to_skip',
     '--use_fullframe',
     '--use_gpu',
@@ -1308,6 +1312,7 @@ while True:
             '--sim_threshold': (int, 0, 100, "Similarity Threshold"),
             '--brightness_threshold': (int, 0, 255, "Brightness Threshold"),
             '--ssim_threshold': (int, 0, 100, "SSIM Threshold"),
+            '--ocr_image_max_width': (int, 0, None, "Max OCR Image Width"),
             '--frames_to_skip': (int, 0, None, "Frames to Skip"),
             '--max_merge_gap': (float, 0.0, None, "Max Merge Gap"),
             '--min_subtitle_duration': (float, 0.0, None, "Minimum Subtitle Duration"),
