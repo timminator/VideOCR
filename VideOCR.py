@@ -14,6 +14,7 @@
 #     nuitka-project: --copyright="timminator"
 #     nuitka-project: --windows-icon-from-ico=VideOCR.ico
 
+import ast
 import configparser
 import ctypes
 import datetime
@@ -378,38 +379,35 @@ def get_default_settings():
     '--default_output_dir': DEFAULT_DOCUMENTS_DIR,
     '--save_in_video_dir': True,
     '--send_notification': True,
+    '--save_crop_box': True,
+    '--saved_crop_boxes': '[]',
     }
 
 
-def save_settings(values):
+def save_settings(window, values):
     """Saves current settings from GUI elements to the config file."""
     config = configparser.ConfigParser()
     config.add_section(CONFIG_SECTION)
 
-    settings_to_save = {
-        '-LANG_COMBO-': values.get('-LANG_COMBO-', get_default_settings().get('-LANG_COMBO-')),
-        '-SUBTITLE_POS_COMBO-': values.get('-SUBTITLE_POS_COMBO-', get_default_settings().get('-SUBTITLE_POS_COMBO-')),
-        '--time_start': values.get('--time_start', get_default_settings().get('--time_start')),
-        '--time_end': values.get('--time_end', get_default_settings().get('--time_end')),
-        '--conf_threshold': values.get('--conf_threshold', get_default_settings().get('--conf_threshold')),
-        '--sim_threshold': values.get('--sim_threshold', get_default_settings().get('--sim_threshold')),
-        '--max_merge_gap': values.get('--max_merge_gap', get_default_settings().get('--max_merge_gap')),
-        '--brightness_threshold': values.get('--brightness_threshold', get_default_settings().get('--brightness_threshold')),
-        '--ssim_threshold': values.get('--ssim_threshold', get_default_settings().get('--ssim_threshold')),
-        '--ocr_image_max_width': values.get('--ocr_image_max_width', get_default_settings().get('--ocr_image_max_width')),
-        '--frames_to_skip': values.get('--frames_to_skip', get_default_settings().get('--frames_to_skip')),
-        '--use_fullframe': values.get('--use_fullframe', get_default_settings().get('--use_fullframe')),
-        '--use_gpu': values.get('--use_gpu', get_default_settings().get('--use_gpu')),
-        '--use_angle_cls': values.get('--use_angle_cls', get_default_settings().get('--use_angle_cls')),
-        '--post_processing': values.get('--post_processing', get_default_settings().get('--post_processing')),
-        '--min_subtitle_duration': values.get('--min_subtitle_duration', get_default_settings().get('--min_subtitle_duration')),
-        '--use_server_model': values.get('--use_server_model', get_default_settings().get('--use_server_model')),
-        '--use_dual_zone': values.get('--use_dual_zone', get_default_settings().get('--use_dual_zone')),
-        '--keyboard_seek_step': values.get('--keyboard_seek_step', get_default_settings().get('--keyboard_seek_step')),
-        '--default_output_dir': values.get('--default_output_dir', get_default_settings().get('--default_output_dir')),
-        '--save_in_video_dir': values.get('--save_in_video_dir', get_default_settings().get('--save_in_video_dir')),
-        '--send_notification': values.get('--send_notification', get_default_settings().get('--send_notification')),
-    }
+    settings_to_save = {key: values.get(key, get_default_settings().get(key)) for key in get_default_settings() if key != '--saved_crop_boxes'}
+
+    crop_boxes_to_save = []
+    if original_frame_width == 0 and original_frame_height == 0:
+        crop_boxes_to_save = getattr(window, 'saved_crop_boxes_from_config', [])
+    else:
+        if values.get('--save_crop_box'):
+            for box in getattr(window, 'crop_boxes', []):
+                abs_coords = box['coords']
+                relative_coords = {
+                    'crop_x': abs_coords['crop_x'] / original_frame_width,
+                    'crop_y': abs_coords['crop_y'] / original_frame_height,
+                    'crop_width': abs_coords['crop_width'] / original_frame_width,
+                    'crop_height': abs_coords['crop_height'] / original_frame_height,
+                }
+                crop_boxes_to_save.append({'coords': relative_coords})
+
+    settings_to_save['--saved_crop_boxes'] = repr(crop_boxes_to_save)
+    window.saved_crop_boxes_from_config = crop_boxes_to_save
 
     # --- Write settings to the config object ---
     for key, value in settings_to_save.items():
@@ -453,6 +451,7 @@ def load_settings(window):
                     ('--default_output_dir', 'input'),
                     ('--save_in_video_dir', 'checkbox'),
                     ('--send_notification', 'checkbox'),
+                    ('--save_crop_box', 'checkbox'),
                 ]
 
                 for key, elem_type in settings_to_load:
@@ -483,8 +482,15 @@ def load_settings(window):
                         except Exception as e:
                             log_error(f"Error loading setting '{key}' from {CONFIG_FILE}: {e}. Using default.")
 
+                saved_boxes_str = config.get(CONFIG_SECTION, '--saved_crop_boxes', fallback='[]')
+                try:
+                    window.saved_crop_boxes_from_config = ast.literal_eval(saved_boxes_str)
+                except (ValueError, SyntaxError):
+                    window.saved_crop_boxes_from_config = []
+                    log_error(f"Could not parse saved_crop_boxes: {saved_boxes_str}")
+
             current_gui_values = window.read(timeout=0)[1]
-            save_settings(current_gui_values)
+            save_settings(window, current_gui_values)
 
         except configparser.Error as e:
             log_error(f"Error parsing config file {CONFIG_FILE}: {e}. Creating default config.")
@@ -801,6 +807,7 @@ tab2_content = [
     [sg.Checkbox("Use Server Model", default=False, key="--use_server_model", enable_events=True, tooltip="Enables the server model with higher OCR capabilities.\nThis mode can deliver better results but requires also more computing power.\nA GPU is highly recommended when using this mode.")],
     [sg.HorizontalSeparator()],
     [sg.Text("VideOCR Settings:", font=('Arial', 10, 'bold'))],
+    [sg.Checkbox("Save Crop Box Selection", default=True, key="--save_crop_box", enable_events=True, tooltip="If checked, the crop box will be saved as a\nrelative position and restored for the next video/session.")],
     [sg.Checkbox("Save SRT in Video Directory", size=(30, 1), default=True, key="--save_in_video_dir", enable_events=True, tooltip="Save the output SRT file in the same directory as the video file.\nIf enabled, \"Output directory\" is disabled.")],
     [sg.Text("Output Directory:", size=(30, 1), tooltip="Folder where generated SRT files will be placed.\nDisabled when \"Save SRT in Video Directory\" is enabled."),
      sg.Input(DEFAULT_DOCUMENTS_DIR, key="--default_output_dir", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, size=(40, 1), enable_events=True, tooltip="Folder where generated SRT files will be placed.\nDisabled when \"Save SRT in Video Directory\" is enabled."),
@@ -973,6 +980,7 @@ KEYS_TO_AUTOSAVE = [
     '--default_output_dir',
     '--save_in_video_dir',
     '--send_notification',
+    '--save_crop_box',
 ]
 
 # --- Event Loop ---
@@ -991,13 +999,14 @@ while True:
     # --- Handle events sent from the worker thread ---
     if event in KEYS_TO_AUTOSAVE:
         if values is not None:
-            save_settings(values)
+            save_settings(window, values)
 
         if event == '--use_dual_zone' or event == '--use_fullframe':
             reset_crop_state()
             if video_path and current_image_bytes:
                 graph.erase()
                 graph.draw_image(data=current_image_bytes, location=(image_offset_x, image_offset_y))
+            save_settings(window, values)
 
         # --- Handle possible output path change ---
         if event == '--save_in_video_dir':
@@ -1144,6 +1153,56 @@ while True:
                 window['--output'].update("", disabled=False)
                 window['-SAVE_AS_BTN-'].update(disabled=False)
 
+            # --- Auto-load crop box if setting is enabled ---
+            if values.get('--save_crop_box') and hasattr(window, 'saved_crop_boxes_from_config') and window.saved_crop_boxes_from_config:
+                loaded_boxes_data = window.saved_crop_boxes_from_config
+                new_crop_boxes_to_apply = []
+
+                for box_data in loaded_boxes_data:
+                    rel_coords = box_data.get('coords', {})
+                    if not rel_coords:
+                        continue
+
+                    abs_coords = {
+                        'crop_x': math.floor(rel_coords.get('crop_x', 0) * original_frame_width),
+                        'crop_y': math.floor(rel_coords.get('crop_y', 0) * original_frame_height),
+                        'crop_width': math.ceil(rel_coords.get('crop_width', 0) * original_frame_width),
+                        'crop_height': math.ceil(rel_coords.get('crop_height', 0) * original_frame_height),
+                    }
+
+                    scale_w = resized_frame_width / original_frame_width if original_frame_width > 0 else 0
+                    scale_h = resized_frame_height / original_frame_height if original_frame_height > 0 else 0
+
+                    rect_x1_img = abs_coords['crop_x'] * scale_w
+                    rect_y1_img = abs_coords['crop_y'] * scale_h
+                    rect_x2_img = (abs_coords['crop_x'] + abs_coords['crop_width']) * scale_w
+                    rect_y2_img = (abs_coords['crop_y'] + abs_coords['crop_height']) * scale_h
+
+                    new_box_to_apply = {
+                        'coords': abs_coords,
+                        'img_points': ((rect_x1_img, rect_y1_img), (rect_x2_img, rect_y2_img))
+                    }
+                    new_crop_boxes_to_apply.append(new_box_to_apply)
+
+                use_dual_zone = values.get('--use_dual_zone', False)
+                limit = 2 if use_dual_zone else 1
+                window.crop_boxes = new_crop_boxes_to_apply[:limit]
+
+                if window.crop_boxes:
+                    redraw_canvas_and_boxes()
+
+                    if not use_dual_zone:
+                        b = window.crop_boxes[0]
+                        coord_text = f"({b['coords']['crop_x']}, {b['coords']['crop_y']}, {b['coords']['crop_width']}, {b['coords']['crop_height']})"
+                    else:
+                        coords_str_parts = []
+                        for i, b in enumerate(window.crop_boxes):
+                            coords_str_parts.append(f"Zone {i + 1}: ({b['coords']['crop_x']}, {b['coords']['crop_y']}, {b['coords']['crop_width']}, {b['coords']['crop_height']})")
+                        coord_text = "  |  ".join(coords_str_parts)
+
+                    window['-CROP_COORDS-'].update(coord_text)
+                    window["-CLEAR_CROP-"].update(disabled=False)
+
         else:
             custom_popup(window, "Invalid or Empty Video File",
                 f"Could not load video, video has no frames, or FPS is zero:\n{video_path}",
@@ -1261,12 +1320,15 @@ while True:
             window['-CROP_COORDS-'].update(coord_text)
             window["-CLEAR_CROP-"].update(disabled=False)
 
+            save_settings(window, values)
+
     # --- Clear Crop Button ---
     elif event == "-CLEAR_CROP-":
         reset_crop_state()
         if video_path and current_image_bytes:
             graph.erase()
             graph.draw_image(data=current_image_bytes, location=(image_offset_x, image_offset_y))
+        save_settings(window, values)
 
     # --- Run Button Clicked ---
     elif event == "Run" and video_path:
