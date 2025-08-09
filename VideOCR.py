@@ -616,6 +616,9 @@ def handle_progress(match, label_format, last_percentage, threshold, taskbar_bas
 
         if taskbar_progress_supported and show_taskbar_progress and taskbar_base is not None:
             progress_value = taskbar_base + int(percentage * 0.5)
+            if current_item == 1 and progress_value <= taskbar_base:
+                progress_value = taskbar_base + 1
+
             window.write_event_value('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': progress_value})
 
         return percentage
@@ -636,6 +639,8 @@ def run_videocr(args_dict, window):
                 else:
                     command.append(str(value))
 
+    UNSUPPORTED_HARDWARE_ERROR_PATTERN = re.compile(r"Unsupported Hardware Error: (.*)")
+    WARNING_HARDWARE_PATTERN = re.compile(r"Hardware Check Warning: (.*)")
     STEP1_PROGRESS_PATTERN = re.compile(r"Step 1: Processing image (\d+) of (\d+)")
     STEP2_PROGRESS_PATTERN = re.compile(r"Step 2: Performing OCR on image (\d+) of (\d+)")
     STARTING_OCR_PATTERN = re.compile(r"Starting PaddleOCR")
@@ -675,6 +680,22 @@ def run_videocr(args_dict, window):
                 if process.poll() is not None and line == '':
                     break
                 line = line.rstrip('\r\n')
+
+                fatal_error_match = UNSUPPORTED_HARDWARE_ERROR_PATTERN.search(line)
+                if fatal_error_match:
+                    error_message = fatal_error_match.group(1)
+                    output = (f"\n--- FATAL ERROR ---\n"
+                            f"Your system does not meet the hardware requirements.\n\n"
+                            f"Reason: {error_message}\n")
+                    window.write_event_value('-VIDEOCR_OUTPUT-', output)
+                    continue
+
+                warning_match = WARNING_HARDWARE_PATTERN.search(line)
+                if warning_match:
+                    warning_message = warning_match.group(1)
+                    output = (f"\nWARNING: {warning_message}\n")
+                    window.write_event_value('-VIDEOCR_OUTPUT-', output)
+                    continue
 
                 match1 = STEP1_PROGRESS_PATTERN.search(line)
                 if match1:
@@ -1430,7 +1451,7 @@ while True:
             args['subtitle_position'] = pos_value
 
         for key in values:
-            if key.startswith('--') and key not in ['--keyboard_seek_step', '--default_output_dir', '--save_in_video_dir', '--send_notification']:
+            if key.startswith('--') and key not in ['--keyboard_seek_step', '--default_output_dir', '--save_in_video_dir', '--send_notification', '--save_crop_box']:
                 stripped_key = key.lstrip('-')
                 value = values.get(key)
                 if isinstance(value, bool):

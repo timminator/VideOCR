@@ -14,6 +14,7 @@ from PIL import Image
 from pymediainfo import MediaInfo
 
 from . import utils
+from .lang_dictionaries import ARABIC_LANGS
 from .models import PredictedFrames, PredictedSubtitle
 from .pyav_adapter import Capture, get_video_properties
 
@@ -111,7 +112,7 @@ class Video:
                 try:
                     shutil.rmtree(os.path.join(base_temp, name), ignore_errors=True)
                 except Exception as e:
-                    print(f"Could not remove leftover temp dir '{name}': {e}")
+                    print(f"Could not remove leftover temp dir '{name}': {e}", flush=True)
 
         temp_dir = tempfile.mkdtemp(prefix=TEMP_PREFIX)
 
@@ -246,10 +247,17 @@ class Video:
                         # Extract only the OCR data after 'ppocr INFO:'
                         match = re.search(r"ppocr INFO:\s*(\[.+\])", line)
                         if match:
-                            parsed = ast.literal_eval(match.group(1))
-                            ocr_outputs[current_image].append(parsed)
+                            ocr_data_raw = ast.literal_eval(match.group(1))
+
+                            # RTL languages require reversal of the text
+                            if self.lang in ARABIC_LANGS:
+                                box, (text, score) = ocr_data_raw
+                                corrected_data = [box, (text[::-1], score)]
+                                ocr_outputs[current_image].append(corrected_data)
+                            else:
+                                ocr_outputs[current_image].append(ocr_data_raw)
                     except Exception as e:
-                        print(f"Error parsing OCR for {current_image}: {e}")
+                        print(f"Error parsing OCR for {current_image}: {e}", flush=True)
         print()
 
         # Map to predicted_frames for each zone

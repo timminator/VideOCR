@@ -32,7 +32,7 @@ def get_video_properties(path: str, is_vfr: bool, time_end: str | None, initial_
             properties['start_time_offset_ms'] = container.start_time / 1000.0
 
         if is_vfr:
-            print("Variable frame rate detected. Building timestamp map...")
+            print("Variable frame rate detected. Building timestamp map...", flush=True)
             stop_at_ms = None
             if time_end:
                 relative_end_ms = utils.get_ms_from_time_str(time_end)
@@ -51,7 +51,7 @@ def get_video_properties(path: str, is_vfr: bool, time_end: str | None, initial_
                     properties['frame_timestamps'][i] = timestamp_ms
 
                     if stop_at_ms and timestamp_ms > stop_at_ms:
-                        print(f"\nReached target time. Stopped map generation after frame {i + 1}.")
+                        print(f"\nReached target time. Stopped map generation after frame {i + 1}.", flush=True)
                         stopped_early = True
                         break
                 except StopIteration:
