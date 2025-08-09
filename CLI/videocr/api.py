@@ -13,6 +13,12 @@ def save_subtitles_to_file(
         crop_zones = []
 
     paddleocr_path = utils.find_paddleocr()
+    try:
+        utils.perform_hardware_check(paddleocr_path)
+    except SystemExit as e:
+        print(e, flush=True)
+        return
+
     det_model_dir, rec_model_dir, cls_model_dir = utils.resolve_model_dirs(lang, use_server_model)
 
     v = Video(video_path, paddleocr_path, det_model_dir, rec_model_dir, cls_model_dir, time_end)

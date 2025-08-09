@@ -1,7 +1,10 @@
 import datetime
 import os
 import platform
+import subprocess
 import sys
+
+from cpuid import cpuid
 
 from .lang_dictionaries import (
     ARABIC_LANGS,
@@ -162,3 +165,71 @@ def resolve_model_dirs(lang: str, use_server_model: bool) -> tuple[str, str, str
         os.path.join(rec_path, rec_sub),
         cls_path
     )
+
+
+# checks if the current system supports the hardware requirements
+def perform_hardware_check(paddleocr_path: str) -> None:
+    error_prefix = "Unsupported Hardware Error:"
+    warning_prefix = "Hardware Check Warning:"
+
+    def has_avx() -> bool:
+        _, _, ecx, _ = cpuid(1)
+        return bool(ecx & (1 << 28)) and bool(ecx & (1 << 27))  # AVX + OSXSAVE
+
+    def check_cpu() -> None:
+        try:
+            if not has_avx():
+                raise SystemExit(f"{error_prefix} CPU does not support the AVX instruction set, which is required.")
+        except Exception as e:
+            print(f"{warning_prefix} Could not determine CPU AVX support due to an error: {e}. Functionality is uncertain.", flush=True)
+
+    CUDA_COMPATIBILITY_MAP = {
+        "CUDA-11.8": (6.0, 8.9),
+        "CUDA-12.9": (9.0, 12.0),
+    }
+
+    CUDA_DRIVER_MAP = {
+        "CUDA-11.8": "522.25",
+        "CUDA-12.9": "576.02",
+    }
+
+    def parse_version(v_str: str) -> tuple[int, ...]:
+        return tuple(map(int, v_str.split('.')))
+
+    def check_gpu() -> None:
+        try:
+            command = ["nvidia-smi", "--query-gpu=driver_version,compute_cap", "--format=csv,noheader"]
+            result = subprocess.run(command, capture_output=True, text=True, check=True, encoding='utf-8')
+
+            first_gpu_info = result.stdout.strip().split('\n')[0]
+            if not first_gpu_info:
+                raise SystemExit(f"{error_prefix} GPU mode enabled, but 'nvidia-smi' returned no GPU info.")
+
+            driver_version_str, compute_cap_str = [item.strip() for item in first_gpu_info.split(',')]
+            compute_capability = float(compute_cap_str)
+
+            detected_cuda_version = next((v for v in CUDA_COMPATIBILITY_MAP if v in paddleocr_path), None)
+
+            if detected_cuda_version:
+                # Check Compute Capability
+                min_cc, max_cc = CUDA_COMPATIBILITY_MAP[detected_cuda_version]
+                if not (min_cc <= compute_capability <= max_cc):
+                    raise SystemExit(
+                        f"{error_prefix} GPU compute capability is {compute_capability}, but this build "
+                        f"({detected_cuda_version}) requires a value between {min_cc} and {max_cc}."
+                    )
+
+                # Check NVIDIA Driver Version
+                required_driver = CUDA_DRIVER_MAP[detected_cuda_version]
+                if parse_version(driver_version_str) < parse_version(required_driver):
+                    raise SystemExit(
+                        f"{error_prefix} NVIDIA driver version is {driver_version_str}, but this build "
+                        f"({detected_cuda_version}) requires version {required_driver} or newer."
+                    )
+
+        except Exception as e:
+            print(f"{warning_prefix} Could not determine GPU support due to an error: {e}. Functionality is uncertain.", flush=True)
+
+    check_cpu()
+    if 'GPU' in paddleocr_path.upper():
+        check_gpu()
