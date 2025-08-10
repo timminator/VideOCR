@@ -249,10 +249,10 @@ class Video:
                         if match:
                             ocr_data_raw = ast.literal_eval(match.group(1))
 
-                            # RTL languages require reversal of the text
+                            # RTL languages require converting the text
                             if self.lang in ARABIC_LANGS:
                                 box, (text, score) = ocr_data_raw
-                                corrected_data = [box, (text[::-1], score)]
+                                corrected_data = [box, (utils.convert_visual_to_logical(text), score)]
                                 ocr_outputs[current_image].append(corrected_data)
                             else:
                                 ocr_outputs[current_image].append(ocr_data_raw)
