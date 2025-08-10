@@ -112,7 +112,7 @@ def extract_non_chinese_segments(text) -> list[tuple[str, str]]:
 def convert_visual_to_logical(text: str) -> str:
 
     ARABIC_CHARS = re.compile(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+')
-    ARABIC_TRAILING_PUNCT = re.compile(r'([،؟؛!,.]+)$')
+    ARABIC_TRAILING_PUNCT = re.compile(r'([،؟؛!,.:?()\'"]+)$')
 
     words = text.split()
     fixed_words = []
@@ -269,3 +269,29 @@ def perform_hardware_check(paddleocr_path: str) -> None:
     check_cpu()
     if 'GPU' in paddleocr_path.upper():
         check_gpu()
+
+
+# reads lines from a pipe and appends them to a list
+def read_pipe(pipe, output_list: list[str]) -> None:
+    try:
+        for line in iter(pipe.readline, ''):
+            output_list.append(line)
+    finally:
+        pipe.close()
+
+
+# saves errors to log file
+def log_error(message: str, log_name: str = "error_log.txt") -> str:
+    if platform.system() == "Windows":
+        log_dir = os.path.join(os.getenv('LOCALAPPDATA'), "VideOCR")
+    else:
+        log_dir = os.path.join(os.path.expanduser('~'), ".config", "VideOCR")
+
+    os.makedirs(log_dir, exist_ok=True)
+
+    log_path = os.path.join(log_dir, log_name)
+    timestamp = datetime.datetime.now().strftime("[%Y-%m-%d %H:%M:%S]")
+    with open(log_path, "a", encoding="utf-8") as f:
+        f.write(f"{timestamp} {message}\n")
+
+    return log_path

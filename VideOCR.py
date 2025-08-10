@@ -56,6 +56,8 @@ def log_error(message: str, log_name="error_log.txt"):
     with open(log_path, "a", encoding="utf-8") as f:
         f.write(f"{timestamp} {message}\n")
 
+    return log_path
+
 
 # --- Make application DPI aware ---
 def make_dpi_aware():
@@ -116,21 +118,27 @@ taskbar_progress_supported = supports_taskbar_progress()
 def send_notification(title, message):
     """Sends a notification via winotify on Windows and via Plyer on Linux."""
     if platform.system() == "Windows":
-        toast = Notification(
-            app_id="VideOCR",
-            title=title,
-            msg=message,
-            icon=os.path.join(APP_DIR, 'VideOCR.ico')
-        )
-        toast.set_audio(audio.Default, loop=False)
-        toast.show()
+        try:
+            toast = Notification(
+                app_id="VideOCR",
+                title=title,
+                msg=message,
+                icon=os.path.join(APP_DIR, 'VideOCR.ico')
+            )
+            toast.set_audio(audio.Default, loop=False)
+            toast.show()
+        except Exception as e:
+            log_error(f"Failed to send notification. Error: {e}")
     else:
-        notification.notify(
-            title=title,
-            message=message,
-            app_name='VideOCR',
-            app_icon=os.path.join(APP_DIR, 'VideOCR.png')
-        )
+        try:
+            notification.notify(
+                title=title,
+                message=message,
+                app_name='VideOCR',
+                app_icon=os.path.join(APP_DIR, 'VideOCR.png')
+            )
+        except Exception as e:
+            log_error(f"Failed to send notification. Error: {e}")
 
 
 # --- Determine VideOCR location ---
@@ -625,6 +633,15 @@ def handle_progress(match, label_format, last_percentage, threshold, taskbar_bas
     return last_percentage
 
 
+def read_pipe(pipe, output_list):
+    """Reads lines from a pipe and appends them to a list."""
+    try:
+        for line in iter(pipe.readline, ''):
+            output_list.append(line)
+    finally:
+        pipe.close()
+
+
 def run_videocr(args_dict, window):
     """Runs the videocr-cli tool in a separate process and streams output."""
     command = [VIDEOCR_PATH]
@@ -641,6 +658,7 @@ def run_videocr(args_dict, window):
 
     UNSUPPORTED_HARDWARE_ERROR_PATTERN = re.compile(r"Unsupported Hardware Error: (.*)")
     WARNING_HARDWARE_PATTERN = re.compile(r"Hardware Check Warning: (.*)")
+    PADDLE_ERROR_PATTERN = re.compile(r"Error: PaddleOCR failed.")
     STEP1_PROGRESS_PATTERN = re.compile(r"Step 1: Processing image (\d+) of (\d+)")
     STEP2_PROGRESS_PATTERN = re.compile(r"Step 2: Performing OCR on image (\d+) of (\d+)")
     STARTING_OCR_PATTERN = re.compile(r"Starting PaddleOCR")
@@ -655,6 +673,9 @@ def run_videocr(args_dict, window):
     last_reported_percentage_vfr = -1
     last_reported_percentage_seek = -1
 
+    expecting_log_path = False
+    paddle_error_message = ""
+
     taskbar_progress_started = False
 
     window.write_event_value('-VIDEOCR_OUTPUT-', "Starting subtitle extraction...\n")
@@ -662,9 +683,12 @@ def run_videocr(args_dict, window):
     process = None
 
     try:
+        stdout_lines = []
+        stderr_lines = []
+
         process = subprocess.Popen(command,
                                    stdout=subprocess.PIPE,
-                                   stderr=subprocess.STDOUT,
+                                   stderr=subprocess.PIPE,
                                    text=True,
                                    encoding='utf-8',
                                    errors='replace',
@@ -675,11 +699,30 @@ def run_videocr(args_dict, window):
 
         window.write_event_value('-PROCESS_STARTED-', process.pid)
 
+        stderr_thread = threading.Thread(target=read_pipe, args=(process.stderr, stderr_lines))
+        stderr_thread.start()
+
         if process.stdout:
             for line in iter(process.stdout.readline, ''):
+                stdout_lines.append(line)
+
                 if process.poll() is not None and line == '':
                     break
                 line = line.rstrip('\r\n')
+
+                if expecting_log_path:
+                    log_path = line.strip()
+                    full_error_output = f"\n{paddle_error_message}\n{log_path}\n"
+                    window.write_event_value('-VIDEOCR_OUTPUT-', full_error_output)
+                    expecting_log_path = False
+                    paddle_error_message = ""
+                    continue
+
+                paddle_error_match = PADDLE_ERROR_PATTERN.search(line)
+                if paddle_error_match:
+                    paddle_error_message = line.strip()
+                    expecting_log_path = True
+                    continue
 
                 fatal_error_match = UNSUPPORTED_HARDWARE_ERROR_PATTERN.search(line)
                 if fatal_error_match:
@@ -738,10 +781,29 @@ def run_videocr(args_dict, window):
                     continue
 
         exit_code = process.wait()
+        stderr_thread.join()
 
         process_was_cancelled = getattr(window, 'cancelled_by_user', False)
         if exit_code != 0 and not process_was_cancelled:
-            window.write_event_value('-VIDEOCR_OUTPUT-', f"\nProcess finished with non-zero exit code: {exit_code}\n")
+            full_stdout = "".join(stdout_lines)
+            full_stderr = "".join(stderr_lines)
+
+            if ("Error: PaddleOCR failed" not in full_stdout and "Unsupported Hardware Error:" not in full_stdout):
+                log_message = (
+                    f"The videocr-cli process crashed with exit code {exit_code}.\n\n"
+                    f"--- COMMAND ---\n{' '.join(command)}\n\n"
+                    f"--- STDOUT ---\n{full_stdout}\n\n"
+                    f"--- STDERR ---\n{full_stderr}\n"
+                )
+
+                log_file_path = log_error(log_message, log_name="videocr-cli_crash.log")
+
+                error_display_message = (
+                    f"\n--- UNEXPECTED ERROR ---\n"
+                    f"The subtitle extraction process failed unexpectedly.\n"
+                    f"A detailed crash report has been saved to:\n{log_file_path}\n"
+                )
+                window.write_event_value('-VIDEOCR_OUTPUT-', error_display_message)
 
         return exit_code == 0
 

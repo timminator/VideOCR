@@ -1,3 +1,5 @@
+import sys
+
 from . import utils
 from .video import Video
 
@@ -17,7 +19,7 @@ def save_subtitles_to_file(
         utils.perform_hardware_check(paddleocr_path)
     except SystemExit as e:
         print(e, flush=True)
-        return
+        sys.exit(1)
 
     det_model_dir, rec_model_dir, cls_model_dir = utils.resolve_model_dirs(lang, use_server_model)
 

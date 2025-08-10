@@ -5,7 +5,9 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
+import threading
 
 import fast_ssim
 import numpy as np
@@ -227,14 +229,23 @@ class Video:
             raise OSError(f"PaddleOCR executable not found at: {self.paddleocr_path}")
 
         # Run PaddleOCR
-        with subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", env=env, bufsize=1) as process:
-            # Parse results into {filename: [ocr lines]}
-            ocr_outputs = {}
-            current_image = None
-            total_images = len(frame_paths)
-            ocr_image_index = 0
-            for line in process.stdout:
+        process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", env=env, bufsize=1)
+
+        stdout_lines = []
+        stderr_lines = []
+
+        stderr_thread = threading.Thread(target=utils.read_pipe, args=(process.stderr, stderr_lines))
+        stderr_thread.start()
+
+        ocr_outputs = {}
+        current_image = None
+        total_images = len(frame_paths)
+        ocr_image_index = 0
+        try:
+            for line in iter(process.stdout.readline, ''):
+                stdout_lines.append(line)
                 line = line.strip()
+
                 if "ppocr INFO: **********" in line:
                     match = re.search(r"\*+(.+?)\*+$", line)
                     if match:
@@ -244,12 +255,9 @@ class Video:
                         print(f"\rStep 2: Performing OCR on image {ocr_image_index} of {total_images}", end="", flush=True)
                 elif current_image and '[[' in line:
                     try:
-                        # Extract only the OCR data after 'ppocr INFO:'
                         match = re.search(r"ppocr INFO:\s*(\[.+\])", line)
                         if match:
                             ocr_data_raw = ast.literal_eval(match.group(1))
-
-                            # RTL languages require converting the text
                             if self.lang in ARABIC_LANGS:
                                 box, (text, score) = ocr_data_raw
                                 corrected_data = [box, (utils.convert_visual_to_logical(text), score)]
@@ -258,7 +266,27 @@ class Video:
                                 ocr_outputs[current_image].append(ocr_data_raw)
                     except Exception as e:
                         print(f"Error parsing OCR for {current_image}: {e}", flush=True)
+        finally:
+            process.stdout.close()
+
+        exit_code = process.wait()
+        stderr_thread.join()
         print()
+
+        if exit_code != 0:
+            full_stdout = "".join(stdout_lines)
+            full_stderr = "".join(stderr_lines)
+
+            command_str = ' '.join(args)
+            log_message = (
+                f"PaddleOCR process failed with exit code {exit_code}.\n"
+                f"Command: {command_str}\n\n"
+                f"--- STDOUT ---\n{full_stdout}\n\n"
+                f"--- STDERR ---\n{full_stderr}\n"
+            )
+            log_file_path = utils.log_error(log_message, log_name="paddleocr_error.log")
+            print(f"Error: PaddleOCR failed. See the log file for technical details:\n{log_file_path}", flush=True)
+            sys.exit(1)
 
         # Map to predicted_frames for each zone
         frame_predictions_by_zone = {0: {}, 1: {}}
