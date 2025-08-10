@@ -267,7 +267,10 @@ def perform_hardware_check(paddleocr_path: str) -> None:
             print(f"{warning_prefix} Could not determine GPU support due to an error: {e}. Functionality is uncertain.", flush=True)
 
     check_cpu()
-    if 'GPU' in paddleocr_path.upper():
+
+    build_folder_name = os.path.basename(os.path.dirname(paddleocr_path))
+
+    if 'GPU' in build_folder_name.upper():
         check_gpu()
 
 
