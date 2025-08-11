@@ -146,7 +146,7 @@ def convert_visual_to_logical(text: str) -> str:
 # finds the available PaddleOCR executable and returns its path
 def find_paddleocr() -> str:
     program_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
-    possible_folders = [
+    base_folders = [
         "PaddleOCR-CPU-v1.3.0",
         "PaddleOCR-GPU-v1.3.0-CUDA-11.8"
     ]
@@ -156,11 +156,14 @@ def find_paddleocr() -> str:
 
     executable_name = f"{program_name}{ext}"
 
-    for folder in possible_folders:
-        path = os.path.join(program_dir, folder, executable_name)
-        if os.path.isfile(path):
-            return path
-    raise FileNotFoundError(f"Could not find {executable_name} in expected folders: {possible_folders}")
+    for entry in os.listdir(program_dir):
+        for base in base_folders:
+            if entry.startswith(base):
+                path = os.path.join(program_dir, entry, executable_name)
+                if os.path.isfile(path):
+                    return path
+
+    raise FileNotFoundError(f"Could not find {executable_name} in any folder matching: {base_folders}")
 
 
 # resolves the model directory for the specified language and mode

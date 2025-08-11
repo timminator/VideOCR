@@ -2,8 +2,8 @@
 # nuitka-project: --standalone
 # nuitka-project: --enable-plugin=tk-inter
 # nuitka-project: --windows-console-mode=disable
-# nuitka-project: --include-data-files=*.ico=VideOCR.ico
-# nuitka-project: --include-data-files=*.png=VideOCR.png
+# nuitka-project: --include-data-files=Installer/*.ico=VideOCR.ico
+# nuitka-project: --include-data-files=Installer/*.png=VideOCR.png
 
 # Windows-specific metadata for the executable
 # nuitka-project-if: {OS} == "Windows":
@@ -12,7 +12,7 @@
 #     nuitka-project: --product-name="VideOCR-GUI"
 #     nuitka-project: --product-version="1.3.1"
 #     nuitka-project: --copyright="timminator"
-#     nuitka-project: --windows-icon-from-ico=VideOCR.ico
+#     nuitka-project: --windows-icon-from-ico=Installer/VideOCR.ico
 
 import ast
 import configparser
@@ -144,15 +144,17 @@ def send_notification(title, message):
 # --- Determine VideOCR location ---
 def find_videocr_program():
     """Determines the path to the videocr-cli executable (.exe or .bin)."""
-    possible_folders = [f'videocr-cli-CPU-v{PROGRAM_VERSION}', f'videocr-cli-GPU-v{PROGRAM_VERSION}']
+    base_folders = [f'videocr-cli-CPU-v{PROGRAM_VERSION}', f'videocr-cli-GPU-v{PROGRAM_VERSION}']
     program_name = 'videocr-cli'
 
     extensions = ".exe" if platform.system() == "Windows" else ".bin"
 
-    for folder in possible_folders:
-        potential_path = os.path.join(APP_DIR, folder, f'{program_name}{extensions}')
-        if os.path.exists(potential_path):
-            return potential_path
+    for entry in os.listdir(APP_DIR):
+        for base in base_folders:
+            if entry.startswith(base):
+                potential_path = os.path.join(APP_DIR, entry, f'{program_name}{extensions}')
+                if os.path.exists(potential_path):
+                    return potential_path
     # Should never be reached
     return None
 

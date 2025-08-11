@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=77.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "VideOCR"
+version = "1.3.1"
+description = "Extract hardcoded subtitles from videos via a simple GUI using machine learning."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["machine-learning", "ocr", "deep-learning", "subtitles", "hardsub"]
+authors = [{name = "Tim Lodemann"}]
+requires-python = ">=3.9"
+classifiers = [
+    "Intended Audience :: Developers",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "av",
+    "cpuid",
+    "Fast-SSIM",
+    "opencv-python",
+    "Pillow",
+    "pymediainfo",
+    "PySimpleGUI-4-foss",
+    "thefuzz",
+    "wordninja-enhanced",
+    "PyTaskbarProgress @ https://github.com/N3RDIUM/PyTaskbar/releases/download/0.0.8/PyTaskbarProgress-0.0.8-py3-none-any.whl ; sys_platform == 'win32'",
+    "winotify ; sys_platform == 'win32'",
+    "plyer ; sys_platform != 'win32'",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "nuitka @ git+https://github.com/timminator/nuitka.git@62815ad7278edb4b9fd07cac76c6f6b52229bd9c",
+    "requests"
+]
+
+[project.urls]
+Homepage = "https://github.com/timminator/VideOCR"
+documentation = "https://github.com/timminator/VideOCR/blob/master/README.md"
+Repository = "https://github.com/timminator/VideOCR.git"
+Issues = "https://github.com/timminator/VideOCR/issues"
+
+[tool.setuptools]
+packages = []
+
+[tool.ruff]
+exclude = ["build", "venv", ".venv", "__pycache__"]
+preview = true
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "W"]
+ignore = ["E501", "SIM108", "SIM102", "SIM114"]
