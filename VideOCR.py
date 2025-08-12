@@ -22,6 +22,7 @@ import configparser
 import ctypes
 import datetime
 import io
+import json
 import math
 import os
 import pathlib
@@ -30,6 +31,7 @@ import re
 import subprocess
 import threading
 import tkinter.font as tkFont
+import urllib.request
 import webbrowser
 
 import cv2
@@ -366,6 +368,62 @@ def custom_popup(parent_window, title, message, icon=None, modal=True):
     popup_window.close()
 
 
+def update_popup(parent_window, version_info, current_version, icon=None):
+    """Creates and shows a centered popup to notify the user of a new version relative to the parent window."""
+    url = version_info['url']
+    new_version = version_info['version']
+
+    popup_layout = [
+        [sg.Text(f"A new version of VideOCR ({new_version}) is available!")],
+        [sg.Text(f"You are currently using version {current_version}.")],
+        [sg.Text("Click the link below to visit the download page:")],
+        [sg.Text(url, font=('Arial', 11, 'underline'), enable_events=True, key='-UPDATE_LINK-')],
+        [sg.Push(), sg.Button('Dismiss'), sg.Push()]
+    ]
+    update_window = sg.Window("Update Available", popup_layout, alpha_channel=0, finalize=True, modal=True, icon=icon)
+
+    update_window.refresh()
+    center_popup(parent_window, update_window)
+    update_window.refresh()
+    update_window.set_alpha(1)
+
+    update_window['-UPDATE_LINK-'].Widget.config(cursor="hand2")
+
+    while True:
+        popup_event, _ = update_window.read()
+        if popup_event in (sg.WIN_CLOSED, 'Dismiss'):
+            break
+        elif popup_event == '-UPDATE_LINK-':
+            webbrowser.open(url)
+            break
+    update_window.close()
+
+
+def check_for_updates(window, manual_check=False):
+    """Checks GitHub for a new release."""
+    try:
+        headers = {'User-Agent': 'VideOCR-GUI'}
+        req = urllib.request.Request("https://api.github.com/repos/timminator/VideOCR/releases/latest", headers=headers)
+
+        with urllib.request.urlopen(req, timeout=5) as response:
+            if response.status == 200:
+                data = json.loads(response.read().decode())
+                latest_version_str = data['tag_name']
+
+                current_version_tuple = tuple(map(int, (PROGRAM_VERSION.split('.'))))
+                latest_version_tuple = tuple(map(int, (latest_version_str.lstrip('v').split('.'))))
+
+                if latest_version_tuple > current_version_tuple:
+                    release_url = data['html_url']
+                    window.write_event_value('-NEW_VERSION_FOUND-', {'version': latest_version_str, 'url': release_url})
+                elif manual_check:
+                    window.write_event_value('-NO_UPDATE_FOUND-', None)
+    except Exception as e:
+        log_error(f"Failed to check for updates: {e}")
+        if manual_check:
+            window.write_event_value('-UPDATE_CHECK_FAILED-', None)
+
+
 # --- Settings Save/Load Functions ---
 def get_default_settings():
     """Returns a dictionary of default settings."""
@@ -394,6 +452,7 @@ def get_default_settings():
     '--send_notification': True,
     '--save_crop_box': True,
     '--saved_crop_boxes': '[]',
+    '--check_for_updates': True,
     }
 
 
@@ -465,6 +524,7 @@ def load_settings(window):
                     ('--save_in_video_dir', 'checkbox'),
                     ('--send_notification', 'checkbox'),
                     ('--save_crop_box', 'checkbox'),
+                    ('--check_for_updates', 'checkbox'),
                 ]
 
                 for key, elem_type in settings_to_load:
@@ -895,14 +955,25 @@ tab2_content = [
     [sg.Checkbox("Use Server Model", default=False, key="--use_server_model", enable_events=True, tooltip="Enables the server model with higher OCR capabilities.\nThis mode can deliver better results but requires also more computing power.\nA GPU is highly recommended when using this mode.")],
     [sg.HorizontalSeparator()],
     [sg.Text("VideOCR Settings:", font=('Arial', 10, 'bold'))],
-    [sg.Checkbox("Save Crop Box Selection", default=True, key="--save_crop_box", enable_events=True, tooltip="If checked, the crop box will be saved as a\nrelative position and restored for the next video/session.")],
-    [sg.Checkbox("Save SRT in Video Directory", size=(30, 1), default=True, key="--save_in_video_dir", enable_events=True, tooltip="Save the output SRT file in the same directory as the video file.\nIf enabled, \"Output directory\" is disabled.")],
-    [sg.Text("Output Directory:", size=(30, 1), tooltip="Folder where generated SRT files will be placed.\nDisabled when \"Save SRT in Video Directory\" is enabled."),
-     sg.Input(DEFAULT_DOCUMENTS_DIR, key="--default_output_dir", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, size=(40, 1), enable_events=True, tooltip="Folder where generated SRT files will be placed.\nDisabled when \"Save SRT in Video Directory\" is enabled."),
-     sg.FolderBrowse(key="-FOLDER_BROWSE_BTN-", disabled=True)],
-    [sg.Text("Keyboard Seek Step (frames):", size=(30, 1), tooltip="Number of frames to jump when using Left/Right arrows."),
-     sg.Input(KEY_SEEK_STEP, key="--keyboard_seek_step", size=(10, 1), enable_events=True, tooltip="Number of frames to jump when using Left/Right arrows.")],
-    [sg.Checkbox("Send Notification", default=True, key="--send_notification", enable_events=True, tooltip="Send notification when the process is complete.")],
+    [
+        sg.Column([
+            [sg.Checkbox("Save Crop Box Selection", default=True, key="--save_crop_box", enable_events=True, tooltip="If checked, the crop box will be saved as a\nrelative position and restored for the next video/session.")],
+            [sg.Checkbox("Save SRT in Video Directory", default=True, key="--save_in_video_dir", enable_events=True, tooltip='Save the output SRT file in the same directory as the video file.\nIf enabled, "Output directory" is disabled.')],
+            [sg.Text("Output Directory:", size=(30, 1), tooltip='Folder where generated SRT files will be placed.\nDisabled when "Save SRT in Video Directory" is enabled.')],
+            [sg.Text("Keyboard Seek Step (frames):", size=(30, 1), tooltip="Number of frames to jump when using Left/Right arrows.")],
+            [sg.Checkbox("Send Notification", default=True, key="--send_notification", enable_events=True, tooltip="Send notification when the process is complete.")],
+            [sg.Checkbox("Check for Updates On Startup", default=True, key="--check_for_updates", enable_events=True, tooltip="Automatically check for new versions of VideOCR when the application starts.")],
+        ]),
+        sg.Column([
+            [sg.Text('')],
+            [sg.Text('')],
+            [sg.Input(DEFAULT_DOCUMENTS_DIR, key="--default_output_dir", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, size=(40, 1), enable_events=True),
+             sg.FolderBrowse(key="-FOLDER_BROWSE_BTN-", disabled=True)],
+            [sg.Input(KEY_SEEK_STEP, key="--keyboard_seek_step", size=(10, 1), enable_events=True)],
+            [sg.Text('')],
+            [sg.Button("Check Now", key="-CHECK_UPDATE_MANUAL-")],
+        ])
+    ]
 ]
 tab2_layout = [[sg.Column(tab2_content,
                            size_subsample_height=1,
@@ -1040,6 +1111,10 @@ releases_link_element.Widget.bind("<Leave>", on_releases_leave)
 # --- Load settings when the application starts ---
 load_settings(window)
 
+check_for_updates_checked_at_start = window.find_element('--check_for_updates').get()
+if check_for_updates_checked_at_start:
+    threading.Thread(target=check_for_updates, args=(window,), daemon=True).start()
+
 save_in_video_dir_checked_at_start = window.find_element('--save_in_video_dir').get()
 if not save_in_video_dir_checked_at_start:
     window['-FOLDER_BROWSE_BTN-'].update(disabled=False)
@@ -1069,6 +1144,7 @@ KEYS_TO_AUTOSAVE = [
     '--save_in_video_dir',
     '--send_notification',
     '--save_crop_box',
+    '--check_for_updates',
 ]
 
 # --- Event Loop ---
@@ -1106,6 +1182,23 @@ while True:
             if video_path:
                 output_path = generate_output_path(video_path, values)
                 window['--output'].update(str(output_path))
+
+    elif event == '-NEW_VERSION_FOUND-':
+        update_popup(
+            parent_window=window,
+            version_info=values[event],
+            current_version=PROGRAM_VERSION,
+            icon=ICON_PATH
+        )
+
+    elif event == '-CHECK_UPDATE_MANUAL-':
+        threading.Thread(target=check_for_updates, args=(window, True), daemon=True).start()
+
+    elif event == '-NO_UPDATE_FOUND-':
+        custom_popup(window, "Up to Date", "You are running the latest version of VideOCR.", icon=ICON_PATH)
+
+    elif event == '-UPDATE_CHECK_FAILED-':
+        custom_popup(window, "Error", "Failed to check for updates.\nPlease check your internet connection.", icon=ICON_PATH)
 
     elif event == '-TABGROUP-' and values.get('-TABGROUP-') == '-TAB-VIDEO-':
         if '-GRAPH-' in window.AllKeysDict:
@@ -1518,7 +1611,7 @@ while True:
             args['subtitle_position'] = pos_value
 
         for key in values:
-            if key.startswith('--') and key not in ['--keyboard_seek_step', '--default_output_dir', '--save_in_video_dir', '--send_notification', '--save_crop_box']:
+            if key.startswith('--') and key not in ['--keyboard_seek_step', '--default_output_dir', '--save_in_video_dir', '--send_notification', '--save_crop_box', '--check_for_updates']:
                 stripped_key = key.lstrip('-')
                 value = values.get(key)
                 if isinstance(value, bool):
