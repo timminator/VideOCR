@@ -5,6 +5,9 @@
 # nuitka-project: --include-data-files=Installer/*.ico=VideOCR.ico
 # nuitka-project: --include-data-files=Installer/*.png=VideOCR.png
 
+# nuitka-project-if: {OS} == "Windows":
+#     nuitka-project: --include-module=comtypes.stream
+
 # Windows-specific metadata for the executable
 # nuitka-project-if: {OS} == "Windows":
 #     nuitka-project: --file-description="VideOCR"

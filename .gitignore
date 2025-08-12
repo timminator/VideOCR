@@ -1,6 +1,9 @@
 # Pycache
 __pycache__/
 
+# Config file
+videocr_gui_config.ini
+
 # Distribution / SCM
 *.egg-info/
 /Releases/
