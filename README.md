@@ -81,7 +81,7 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
 `SSIM threshold`          | Lower threshold             | Higher Threshold    | If the SSIM between consecutive frames exceeds this threshold, the frame is considered similar and skipped for OCR. A lower value can greatly reduce the number of images OCR needs to be performed on.
 
 
-### Command Line Parameters (CLI version)
+## Command Line Parameters (CLI version)
 
 - `video_path`
 
@@ -167,5 +167,36 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
   By default the smaller model are used for the OCR process. This parameter enables the usage of the server models for OCR. This can result in better text detection at the cost of more processing power. Should only ever be used in the GPU version.
 
 
-  
-  
+## Build and Compile Instructions
+
+- Requirements:
+    - Python 3.9 or higher
+
+    - Windows:
+        - C++ Build Tools (e.g Visual Studio with "Desktop development with C++" kit installed)
+        - 7zip (needs to be available from path)
+        - Tkinter (comes with the default python installation on Windows)
+
+    - Linux:
+        - Tkinter
+        - Working dbus installation is recommended
+
+- Instructions:
+
+    - Clone the repository to your desired location:
+    ```bash
+    git clone https://github.com/timminator/VideOCR.git
+    ```
+    - Navigate into the cloned folder and install all dependencies:
+    ```bash
+    cd VideOCR
+    pip install -e ".[dev]"
+    ```
+    - Execute the build script to create the desired build:
+    ```bash
+    python build.py --target cpu
+    ```
+    More info can be found via:
+    ```bash
+    python build.py -h
+    ```
