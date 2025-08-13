@@ -4,6 +4,7 @@
 # nuitka-project: --windows-console-mode=disable
 # nuitka-project: --include-data-files=Installer/*.ico=VideOCR.ico
 # nuitka-project: --include-data-files=Installer/*.png=VideOCR.png
+# nuitka-project: --include-data-dir=languages=languages
 
 # nuitka-project-if: {OS} == "Windows":
 #     nuitka-project: --include-module=comtypes.stream
@@ -167,6 +168,7 @@ def find_videocr_program():
 # --- Configuration ---
 PROGRAM_VERSION = "1.3.1"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
+LANGUAGES_DIR = os.path.join(APP_DIR, 'languages')
 VIDEOCR_PATH = find_videocr_program()
 DEFAULT_OUTPUT_SRT = ""
 DEFAULT_LANG = "en"
@@ -186,6 +188,17 @@ try:
     DEFAULT_DOCUMENTS_DIR = str(pathlib.Path.home() / "Documents")
 except Exception:
     DEFAULT_DOCUMENTS_DIR = ""
+
+# --- Language Data ---
+LANGUAGE_CODE_TO_NATIVE_NAME = {
+    'en': 'English',
+    'de': 'Deutsch',
+    'ch': '中文',
+    'es': 'Español',
+    'fr': 'Français',
+    'pt': 'Português',
+    'it': 'Italiano',
+}
 
 # --- Language Data ---
 languages_list = [
@@ -218,14 +231,12 @@ default_display_language = 'English'
 
 # --- Subtitle Position Data ---
 subtitle_positions_list = [
-    ('Center', 'center'),
-    ('Left', 'left'),
-    ('Right', 'right'),
-    ('Any', 'any')
+    ('pos_center', 'center'),
+    ('pos_left', 'left'),
+    ('pos_right', 'right'),
+    ('pos_any', 'any')
 ]
-subtitle_position_display_names = [pos[0] for pos in subtitle_positions_list]
-subtitle_pos_lookup = {name: value for name, value in subtitle_positions_list}
-default_display_subtitle_position = 'Center'
+default_internal_subtitle_position = 'center'
 
 # --- Global Variables ---
 video_path = None
@@ -241,6 +252,146 @@ image_offset_y = 0
 graph_size = (int(640 * dpi_scale), int(360 * dpi_scale))
 current_image_bytes = None
 previous_taskbar_state = None
+LANG = {}
+
+
+# --- i18n Language Functions ---
+def get_available_languages():
+    """Scans the 'languages' directory and returns a dict mapping native names to language codes."""
+    langs = {}
+    if not os.path.isdir(LANGUAGES_DIR):
+        log_error(f"Languages directory not found at {LANGUAGES_DIR}")
+        return {'English': 'en'}
+
+    for filename in os.listdir(LANGUAGES_DIR):
+        if filename.endswith('.json'):
+            lang_code = filename[:-5]
+            native_name = LANGUAGE_CODE_TO_NATIVE_NAME.get(lang_code, lang_code.capitalize())
+            langs[native_name] = lang_code
+
+    return langs if langs else {'English': 'en'}
+
+
+def load_language(lang_code):
+    """Loads a language JSON file into a dictionary. Falls back to 'en'."""
+    global LANG
+
+    def load_file(code):
+        lang_path = os.path.join(LANGUAGES_DIR, f"{code}.json")
+        if os.path.exists(lang_path):
+            try:
+                with open(lang_path, encoding='utf-8') as f:
+                    return json.load(f)
+            except json.JSONDecodeError as e:
+                log_error(f"Syntax error in language file {code}.json: {e}")
+        return None
+
+    LANG = load_file(lang_code)
+    if LANG is None:
+        log_error(f"Language file for '{lang_code}' not found or invalid. Falling back to English.")
+        LANG = load_file('en')
+        if LANG is None:
+            log_error("CRITICAL: English language file 'en.json' is missing or invalid.")
+            sg.popup_error("Critical Error: Default language file 'en.json' is missing or corrupt.\nPlease reinstall the application.", title="Fatal Error")
+            exit()
+
+
+def update_gui_text(window):
+    """Updates all text elements in the GUI based on the loaded LANG dictionary."""
+    if not LANG:
+        return
+
+    key_map = {
+        # Tab 1
+        '-SAVE_AS_BTN-': {'text': 'btn_save_as'},
+        '-BTN-VIDEO_BROWSE-': {'text': 'btn_browse'},
+        '-BTN-FOLDER_BROWSE-': {'text': 'btn_browse'},
+        '-TAB-VIDEO-': {'text': 'tab_video'},
+        '-LBL-VIDEO_PATH-': {'text': 'lbl_video_path'},
+        '-LBL-OUTPUT_SRT-': {'text': 'lbl_output_srt'},
+        '-LBL-SUB_LANG-': {'text': 'lbl_sub_lang'},
+        '-LBL-SUB_POS-': {'text': 'lbl_sub_pos', 'tooltip': 'tip_sub_pos'},
+        '-SUBTITLE_POS_COMBO-': {'tooltip': 'tip_sub_pos'},
+        '-BTN-HELP-': {'text': 'btn_how_to_use'},
+        '-LBL-SEEK-': {'text': 'lbl_seek'},
+        '-LBL-CROP_BOX-': {'text': 'lbl_crop_box'},
+        '-CROP_COORDS-': {'text': 'crop_not_set'},
+        '-FRAME_TEXT-': {'text': 'frame_text_empty'},
+        '-TIME_TEXT-': {'text': 'time_text_empty'},
+        '-BTN-RUN-': {'text': 'btn_run'},
+        '-BTN-CANCEL-': {'text': 'btn_cancel'},
+        '-BTN-CLEAR_CROP-': {'text': 'btn_clear_crop'},
+        '-LBL-PROGRESS-': {'text': 'lbl_progress'},
+
+        # Tab 2
+        '-TAB-ADVANCED-': {'text': 'tab_advanced'},
+        '-LBL-OCR_SETTINGS-': {'text': 'lbl_ocr_settings'},
+        '-LBL-TIME_START-': {'text': 'lbl_time_start', 'tooltip': 'tip_time_start'},
+        '--time_start': {'tooltip': 'tip_time_start'},
+        '-LBL-TIME_END-': {'text': 'lbl_time_end', 'tooltip': 'tip_time_end'},
+        '--time_end': {'tooltip': 'tip_time_end'},
+        '-LBL-CONF_THRESHOLD-': {'text': 'lbl_conf_threshold', 'tooltip': 'tip_conf_threshold'},
+        '--conf_threshold': {'tooltip': 'tip_conf_threshold'},
+        '-LBL-SIM_THRESHOLD-': {'text': 'lbl_sim_threshold', 'tooltip': 'tip_sim_threshold'},
+        '--sim_threshold': {'tooltip': 'tip_sim_threshold'},
+        '-LBL-MERGE_GAP-': {'text': 'lbl_merge_gap', 'tooltip': 'tip_merge_gap'},
+        '--max_merge_gap': {'tooltip': 'tip_merge_gap'},
+        '-LBL-BRIGHTNESS-': {'text': 'lbl_brightness', 'tooltip': 'tip_brightness'},
+        '--brightness_threshold': {'tooltip': 'tip_brightness'},
+        '-LBL-SSIM-': {'text': 'lbl_ssim', 'tooltip': 'tip_ssim'},
+        '--ssim_threshold': {'tooltip': 'tip_ssim'},
+        '-LBL-OCR_WIDTH-': {'text': 'lbl_ocr_width', 'tooltip': 'tip_ocr_width'},
+        '--ocr_image_max_width': {'tooltip': 'tip_ocr_width'},
+        '-LBL-FRAMES_SKIP-': {'text': 'lbl_frames_skip', 'tooltip': 'tip_frames_skip'},
+        '--frames_to_skip': {'tooltip': 'tip_frames_skip'},
+        '-LBL-MIN_DURATION-': {'text': 'lbl_min_duration', 'tooltip': 'tip_min_duration'},
+        '--min_subtitle_duration': {'tooltip': 'tip_min_duration'},
+        '--use_gpu': {'text': 'chk_use_gpu', 'tooltip': 'tip_use_gpu'},
+        '--use_fullframe': {'text': 'chk_full_frame', 'tooltip': 'tip_full_frame'},
+        '--use_dual_zone': {'text': 'chk_dual_zone', 'tooltip': 'tip_dual_zone'},
+        '--use_angle_cls': {'text': 'chk_angle_cls', 'tooltip': 'tip_angle_cls'},
+        '--post_processing': {'text': 'chk_post_processing', 'tooltip': 'tip_post_processing'},
+        '--use_server_model': {'text': 'chk_server_model', 'tooltip': 'tip_server_model'},
+        '-LBL-VIDEOCR_SETTINGS-': {'text': 'lbl_videocr_settings'},
+        '--save_crop_box': {'text': 'chk_save_crop_box', 'tooltip': 'tip_save_crop_box'},
+        '--save_in_video_dir': {'text': 'chk_save_in_video_dir', 'tooltip': 'tip_save_in_video_dir'},
+        '-LBL-OUTPUT_DIR-': {'text': 'lbl_output_dir', 'tooltip': 'tip_output_dir'},
+        '-LBL-SEEK_STEP-': {'text': 'lbl_seek_step', 'tooltip': 'tip_seek_step'},
+        '--send_notification': {'text': 'chk_send_notification', 'tooltip': 'tip_send_notification'},
+        '--check_for_updates': {'text': 'chk_check_updates', 'tooltip': 'tip_check_updates'},
+        '-BTN-CHECK_UPDATE_MANUAL-': {'text': 'btn_check_now'},
+        '-LBL-UI_LANG-': {'text': 'lbl_ui_lang'},
+
+        # Tab 3
+        '-TAB-ABOUT-': {'text': 'tab_about'},
+        '-LBL-ABOUT_VERSION-': {'text': 'lbl_about_version'},
+        '-LBL-GET_NEWEST-': {'text': 'lbl_get_newest'},
+        '-LBL-BUG_REPORT-': {'text': 'lbl_bug_report'},
+    }
+
+    tab_group = window['-TABGROUP-']
+
+    for key, lang_keys in key_map.items():
+        if key.startswith('-TAB-'):
+            if 'text' in lang_keys and lang_keys['text'] in LANG:
+                tab_element_widget = window[key].Widget
+                tab_group.Widget.tab(tab_element_widget, text=LANG[lang_keys['text']])
+            continue
+
+        if key in window.AllKeysDict:
+            element = window[key]
+
+            if 'text' in lang_keys and lang_keys['text'] in LANG:
+                new_content = LANG[lang_keys['text']]
+                if lang_keys['text'] == 'lbl_about_version':
+                    new_content = new_content.format(version=PROGRAM_VERSION)
+                if isinstance(element, (sg.Button, sg.Checkbox)):
+                    element.update(text=new_content)
+                else:
+                    element.update(value=new_content)
+
+            if 'tooltip' in lang_keys and lang_keys['tooltip'] in LANG:
+                element.SetTooltip(LANG[lang_keys['tooltip']])
 
 
 # --- Helper Functions ---
@@ -278,15 +429,19 @@ def format_time(seconds):
 
 def update_frame_and_time_display(window, current_frame, total_frames, fps):
     """Updates the frame count and time text elements."""
-    window["-FRAME_TEXT-"].update(f"Frame: {current_frame + 1} / {total_frames}")
+    frame_text_format = LANG.get('frame_text_format', 'Frame: {} / {}')
+    time_text_format = LANG.get('time_text_format', 'Time: {} / {}')
+
+    window["-FRAME_TEXT-"].update(frame_text_format.format(current_frame + 1, total_frames))
 
     if total_frames > 0 and fps > 0:
         current_seconds = current_frame / fps
         total_seconds = total_frames / fps
         time_text = f"{format_time(current_seconds)} / {format_time(total_seconds)}"
-        window["-TIME_TEXT-"].update(f"Time: {time_text}")
+        window["-TIME_TEXT-"].update(time_text_format.format(time_text))
     else:
-        window["-TIME_TEXT-"].update("Time: -/-")
+        time_text_empty = LANG.get('time_text_empty', 'Time: -/-')
+        window["-TIME_TEXT-"].update(time_text_empty)
 
 
 def _parse_and_validate_time_parts(time_str: str) -> tuple[int, int, int] | None:
@@ -351,7 +506,7 @@ def custom_popup(parent_window, title, message, icon=None, modal=True):
     """Create and show a centered popup relative to the parent window."""
     layout = [
         [sg.Text(message)],
-        [sg.Push(), sg.Button('OK', bind_return_key=True), sg.Push()]
+        [sg.Push(), sg.Button(LANG.get('btn_ok', 'OK'), key='OK', bind_return_key=True), sg.Push()]
     ]
     popup_window = sg.Window(title, layout, alpha_channel=0, finalize=True, icon=icon, modal=modal)
 
@@ -374,13 +529,13 @@ def update_popup(parent_window, version_info, current_version, icon=None):
     new_version = version_info['version']
 
     popup_layout = [
-        [sg.Text(f"A new version of VideOCR ({new_version}) is available!")],
-        [sg.Text(f"You are currently using version {current_version}.")],
-        [sg.Text("Click the link below to visit the download page:")],
+        [sg.Text(LANG.get('update_available_1', 'A new version of VideOCR ({}) is available!').format(new_version))],
+        [sg.Text(LANG.get('update_available_2', 'You are currently using version {}.').format(current_version))],
+        [sg.Text(LANG.get('update_available_3', 'Click the link below to visit the download page:'))],
         [sg.Text(url, font=('Arial', 11, 'underline'), enable_events=True, key='-UPDATE_LINK-')],
-        [sg.Push(), sg.Button('Dismiss'), sg.Push()]
+        [sg.Push(), sg.Button(LANG.get('btn_dismiss', 'Dismiss'), key='Dismiss'), sg.Push()]
     ]
-    update_window = sg.Window("Update Available", popup_layout, alpha_channel=0, finalize=True, modal=True, icon=icon)
+    update_window = sg.Window(LANG.get('update_title', "Update Available"), popup_layout, alpha_channel=0, finalize=True, modal=True, icon=icon)
 
     update_window.refresh()
     center_popup(parent_window, update_window)
@@ -424,12 +579,24 @@ def check_for_updates(window, manual_check=False):
             window.write_event_value('-UPDATE_CHECK_FAILED-', None)
 
 
+def update_subtitle_pos_combo(window, selected_internal_pos=None):
+    """Updates the Subtitle Position combo box with translated values and sets the selected item."""
+    pos_to_select = selected_internal_pos if selected_internal_pos is not None else default_internal_subtitle_position
+
+    internal_to_display_name_map = {internal_val: LANG.get(lang_key, lang_key) for lang_key, internal_val in subtitle_positions_list}
+    display_pos = internal_to_display_name_map.get(pos_to_select, internal_to_display_name_map[default_internal_subtitle_position])
+    translated_pos_names = [internal_to_display_name_map[internal_val] for lang_key, internal_val in subtitle_positions_list]
+
+    window['-SUBTITLE_POS_COMBO-'].update(value=display_pos, values=translated_pos_names, size=(38, 4))
+
+
 # --- Settings Save/Load Functions ---
 def get_default_settings():
     """Returns a dictionary of default settings."""
     return {
+    '--language': 'en',
     '-LANG_COMBO-': default_display_language,
-    '-SUBTITLE_POS_COMBO-': default_display_subtitle_position,
+    '-SUBTITLE_POS_COMBO-': default_internal_subtitle_position,
     '--time_start': DEFAULT_TIME_START,
     '--time_end': '',
     '--conf_threshold': str(DEFAULT_CONF_THRESHOLD),
@@ -462,6 +629,15 @@ def save_settings(window, values):
     config.add_section(CONFIG_SECTION)
 
     settings_to_save = {key: values.get(key, get_default_settings().get(key)) for key in get_default_settings() if key != '--saved_crop_boxes'}
+
+    display_name_to_internal_map = {LANG.get(lang_key, lang_key): internal_val for lang_key, internal_val in subtitle_positions_list}
+    selected_display_name = values.get('-SUBTITLE_POS_COMBO-')
+    internal_pos_value = display_name_to_internal_map.get(selected_display_name, default_internal_subtitle_position)
+    settings_to_save['-SUBTITLE_POS_COMBO-'] = internal_pos_value
+
+    selected_lang_display_name = values.get('-UI_LANG_COMBO-')
+    if selected_lang_display_name in available_languages:
+        settings_to_save['--language'] = available_languages[selected_lang_display_name]
 
     crop_boxes_to_save = []
     if original_frame_width == 0 and original_frame_height == 0:
@@ -500,9 +676,18 @@ def load_settings(window):
         try:
             config.read(CONFIG_FILE)
             if config.has_section(CONFIG_SECTION):
+                saved_lang_code = config.get(CONFIG_SECTION, '--language', fallback='en')
+                load_language(saved_lang_code)
+
+                saved_internal_pos = config.get(CONFIG_SECTION, '-SUBTITLE_POS_COMBO-', fallback=default_internal_subtitle_position)
+                update_subtitle_pos_combo(window, saved_internal_pos)
+
+                code_to_native_name_map = {v: k for k, v in available_languages.items()}
+                display_lang = code_to_native_name_map.get(saved_lang_code, 'English')
+                window['-UI_LANG_COMBO-'].update(value=display_lang)
+
                 settings_to_load = [
                     ('-LANG_COMBO-', 'combo_lang'),
-                    ('-SUBTITLE_POS_COMBO-', 'combo_pos'),
                     ('--time_start', 'input'),
                     ('--time_end', 'input'),
                     ('--conf_threshold', 'input'),
@@ -538,14 +723,6 @@ def load_settings(window):
                                     value = value_str
                                 else:
                                     value = default_display_language
-                            elif elem_type == 'combo_pos':
-                                value_str = config.get(CONFIG_SECTION, key)
-                                if value_str in subtitle_position_display_names:
-                                    value = value_str
-                                else:
-                                    value = default_display_subtitle_position
-                            elif elem_type == 'input':
-                                value = config.get(CONFIG_SECTION, key)
                             else:
                                 value = config.get(CONFIG_SECTION, key)
 
@@ -572,6 +749,11 @@ def load_settings(window):
 
     else:
         # --- Config file doesn't exist, create it with default settings ---
+        load_language('en')
+        window['-UI_LANG_COMBO-'].update(value='English')
+
+        update_subtitle_pos_combo(window)
+
         default_settings = get_default_settings()
         config.add_section(CONFIG_SECTION)
         for key, value in default_settings.items():
@@ -677,11 +859,13 @@ def get_video_frame(video_path, frame_number, display_size):
     return io.BytesIO(buffer), original_width, original_height, total_frames, cv_fps, new_w, new_h, offset_x, offset_y
 
 
-def handle_progress(match, label_format, last_percentage, threshold, taskbar_base=0, show_taskbar_progress=True):
+def handle_progress(match, label_format_key, last_percentage, threshold, taskbar_base=0, show_taskbar_progress=True):
     """Handles progress parsing and updating GUI."""
     current_item = int(match.group(1))
     total_items = int(match.group(2))
     percentage = int((current_item / total_items) * 100) if total_items > 0 else 0
+
+    label_format = LANG.get(label_format_key, "Processing {current}/{total} ({percent}%)")
 
     if current_item == 1 or percentage >= last_percentage + threshold or percentage == 100:
         message = f"{label_format.format(current=current_item, total=total_items, percent=percentage)}\n"
@@ -731,7 +915,7 @@ def run_videocr(args_dict, window):
     VFR_PATTERN = re.compile(r"Variable frame rate detected. Building timestamp map...")
     VFR_PROGRESS_PATTERN = re.compile(r"Mapping frame (\d+) of (\d+)")
     SEEK_PROGRESS_PATTERN = re.compile(r"Advancing to frame (\d+)/(\d+)")
-    MAP_GENERATION_STOP_PATTERN = re.compile(r"Reached target time. Stopped map generation after frame \d+.")
+    MAP_GENERATION_STOP_PATTERN = re.compile(r"Reached target time. Stopped map generation after frame (\d+)\.")
 
     last_reported_percentage_step1 = -1
     last_reported_percentage_step2 = -1
@@ -743,7 +927,7 @@ def run_videocr(args_dict, window):
 
     taskbar_progress_started = False
 
-    window.write_event_value('-VIDEOCR_OUTPUT-', "Starting subtitle extraction...\n")
+    window.write_event_value('-VIDEOCR_OUTPUT-', LANG.get('status_starting', "Starting subtitle extraction...\n"))
 
     process = None
 
@@ -792,30 +976,30 @@ def run_videocr(args_dict, window):
                 fatal_error_match = UNSUPPORTED_HARDWARE_ERROR_PATTERN.search(line)
                 if fatal_error_match:
                     error_message = fatal_error_match.group(1)
-                    output = (f"\n--- FATAL ERROR ---\n"
-                            f"Your system does not meet the hardware requirements.\n\n"
-                            f"Reason: {error_message}\n")
+                    output = (f"\n{LANG.get('fatal_error_header', '--- FATAL ERROR ---')}\n"
+                            f"{LANG.get('fatal_error_reason_1', 'Your system does not meet the hardware requirements.')}\n\n"
+                            f"{LANG.get('fatal_error_reason_2', 'Reason:')} {error_message}\n")
                     window.write_event_value('-VIDEOCR_OUTPUT-', output)
                     continue
 
                 warning_match = WARNING_HARDWARE_PATTERN.search(line)
                 if warning_match:
                     warning_message = warning_match.group(1)
-                    output = (f"\nWARNING: {warning_message}\n")
+                    output = (f"\n{LANG.get('warning_header', 'WARNING:')} {warning_message}\n")
                     window.write_event_value('-VIDEOCR_OUTPUT-', output)
                     continue
 
                 match1 = STEP1_PROGRESS_PATTERN.search(line)
                 if match1:
                     last_reported_percentage_step1 = handle_progress(
-                        match1, "Step 1: Processed image {current} of {total} ({percent}%)",
+                        match1, "progress_step1",
                         last_reported_percentage_step1, 5, taskbar_base=0)
                     continue
 
                 match2 = STEP2_PROGRESS_PATTERN.search(line)
                 if match2:
                     last_reported_percentage_step2 = handle_progress(
-                        match2, "Step 2: Performed OCR on image {current} of {total} ({percent}%)",
+                        match2, "progress_step2",
                         last_reported_percentage_step2, 5, taskbar_base=50)
                     continue
 
@@ -826,7 +1010,7 @@ def run_videocr(args_dict, window):
                         taskbar_progress_started = True
 
                     last_reported_percentage_vfr = handle_progress(
-                        match3, "Mapped frame {current} of {total} ({percent}%)",
+                        match3, "progress_vfr",
                         last_reported_percentage_vfr, 20, show_taskbar_progress=False)
                     continue
 
@@ -837,12 +1021,24 @@ def run_videocr(args_dict, window):
                         taskbar_progress_started = True
 
                     last_reported_percentage_seek = handle_progress(
-                        match4, "Advanced to frame {current}/{total} ({percent}%)",
+                        match4, "progress_seek",
                         last_reported_percentage_seek, 20, show_taskbar_progress=False)
                     continue
 
-                if STARTING_OCR_PATTERN.search(line) or GENERATING_SUBTITLES_PATTERN.search(line) or VFR_PATTERN.search(line) or MAP_GENERATION_STOP_PATTERN.search(line):
-                    window.write_event_value('-VIDEOCR_OUTPUT-', f"{line}\n")
+                if STARTING_OCR_PATTERN.search(line):
+                    window.write_event_value('-VIDEOCR_OUTPUT-', LANG.get('cli_starting_ocr', line) + '\n')
+                    continue
+                elif GENERATING_SUBTITLES_PATTERN.search(line):
+                    window.write_event_value('-VIDEOCR_OUTPUT-', LANG.get('cli_generating_subs', line) + '\n')
+                    continue
+                elif VFR_PATTERN.search(line):
+                    window.write_event_value('-VIDEOCR_OUTPUT-', LANG.get('cli_vfr_detected', line) + '\n')
+                    continue
+                elif map_gen_match := MAP_GENERATION_STOP_PATTERN.search(line):
+                    frame_num = map_gen_match.group(1)
+                    template = LANG.get('cli_map_gen_stopped', line)
+                    output = template.format(frame_num=frame_num)
+                    window.write_event_value('-VIDEOCR_OUTPUT-', output + '\n')
                     continue
 
         exit_code = process.wait()
@@ -864,19 +1060,21 @@ def run_videocr(args_dict, window):
                 log_file_path = log_error(log_message, log_name="videocr-cli_crash.log")
 
                 error_display_message = (
-                    f"\n--- UNEXPECTED ERROR ---\n"
-                    f"The subtitle extraction process failed unexpectedly.\n"
-                    f"A detailed crash report has been saved to:\n{log_file_path}\n"
+                    f"\n{LANG.get('unexpected_error_header', '--- UNEXPECTED ERROR ---')}\n"
+                    f"{LANG.get('unexpected_error_1', 'The subtitle extraction process failed unexpectedly.')}\n"
+                    f"{LANG.get('unexpected_error_2', 'A detailed crash report has been saved to:')}\n{log_file_path}\n"
                 )
                 window.write_event_value('-VIDEOCR_OUTPUT-', error_display_message)
 
         return exit_code == 0
 
     except FileNotFoundError:
-        window.write_event_value('-VIDEOCR_OUTPUT-', f"\nError: '{VIDEOCR_PATH}' not found. Please check the path.\n")
+        error_msg = LANG.get('error_cli_not_found', "\nError: '{}' not found. Please check the path.\n")
+        window.write_event_value('-VIDEOCR_OUTPUT-', error_msg.format(VIDEOCR_PATH))
         return False
     except Exception as e:
-        window.write_event_value('-VIDEOCR_OUTPUT-', f"\nAn error occurred: {e}\n")
+        error_msg = LANG.get('error_generic_exception', "\nAn error occurred: {}\n")
+        window.write_event_value('-VIDEOCR_OUTPUT-', error_msg.format(e))
         return False
 
 
@@ -884,39 +1082,44 @@ def run_ocr_thread(args, window):
     """Thread target for running the OCR process."""
     success = run_videocr(args, window)
     if success:
-        window.write_event_value('-VIDEOCR_OUTPUT-', "\nSuccessfully generated subtitle file!\n")
+        window.write_event_value('-VIDEOCR_OUTPUT-', LANG.get('status_success', "\nSuccessfully generated subtitle file!\n"))
         if args.get('send_notification', True):
-            window.write_event_value('-NOTIFICATION_EVENT-', {'title': "Your Subtitle generation is done!", 'message': f"{os.path.basename(args['output'])}"})
+            notification_title = LANG.get('notification_title', "Your Subtitle generation is done!")
+            window.write_event_value('-NOTIFICATION_EVENT-', {'title': notification_title, 'message': f"{os.path.basename(args['output'])}"})
     window.write_event_value('-PROCESS_FINISHED-', None)
+
+
+available_languages = get_available_languages()
+ui_language_display_names = sorted(list(available_languages.keys()))
 
 
 # --- GUI Layout ---
 sg.theme("Darkgrey13")
 
 tab1_content = [
-    [sg.Text("Video File:", size=(15, 1)), sg.Input(key="-VIDEO_PATH-", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, enable_events=True, size=(40, 1)),
-     sg.FileBrowse(file_types=(("Video Files", "*.mp4 *.avi *.mkv *.mov *.webm *.flv *.wmv *.ts *.m2ts"), ("All Files", "*.*")))],
-    [sg.Text("Output SRT:", size=(15, 1)), sg.Input(key="--output", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, disabled=True, size=(40, 1)),
+    [sg.Text("Video File:", size=(15, 1), key='-LBL-VIDEO_PATH-'), sg.Input(key="-VIDEO_PATH-", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, enable_events=True, size=(40, 1)),
+     sg.Button("Browse...", key="-BTN-VIDEO_BROWSE-")],
+    [sg.Text("Output SRT:", size=(15, 1), key='-LBL-OUTPUT_SRT-'), sg.Input(key="--output", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, disabled=True, size=(40, 1)),
      sg.Button('Save As...', key="-SAVE_AS_BTN-", disabled=True)],
-    [sg.Text("Subtitle Language:", size=(15, 1)),
+    [sg.Text("Subtitle Language:", size=(15, 1), key='-LBL-SUB_LANG-'),
      sg.Combo(language_display_names, default_value=default_display_language, key="-LANG_COMBO-", size=(38, 1), readonly=True, enable_events=True)],
-    [sg.Text("Subtitle Position:", size=(15, 1), tooltip="Select the alignment of subtitles in the video"),
-     sg.Combo(subtitle_position_display_names, default_value=default_display_subtitle_position, key="-SUBTITLE_POS_COMBO-", size=(38, 1), readonly=True, enable_events=True, tooltip="Select the alignment of subtitles in the video"),
+    [sg.Text("Subtitle Position:", size=(15, 1), key='-LBL-SUB_POS-'),
+     sg.Combo([], key="-SUBTITLE_POS_COMBO-", size=(38, 4), readonly=True, enable_events=True),
      sg.Push(),
-     sg.Button("How to Use", key="-HELP-")],
+     sg.Button("How to Use", key="-BTN-HELP-")],
     [sg.Graph(canvas_size=graph_size, graph_bottom_left=(0, graph_size[1]), graph_top_right=(graph_size[0], 0),
               key="-GRAPH-", change_submits=True, drag_submits=True, enable_events=True, background_color='black')],
-    [sg.Text("Seek:"), sg.Slider(range=(0, 0), key="-SLIDER-", orientation='h', size=(45, 15), expand_x=True, enable_events=True, disable_number_display=True, disabled=True)],
+    [sg.Text("Seek:", key='-LBL-SEEK-'), sg.Slider(range=(0, 0), key="-SLIDER-", orientation='h', size=(45, 15), expand_x=True, enable_events=True, disable_number_display=True, disabled=True)],
     [
         sg.Push(),
         sg.Text("Frame: -/-", key="-FRAME_TEXT-"), sg.Text("|"), sg.Text("Time: -/-", key="-TIME_TEXT-")
     ],
-    [sg.Text("Crop Box (X, Y, W, H):"), sg.Text("Not Set", key="-CROP_COORDS-", size=(45, 1), expand_x=True)],
-    [sg.Button("Run", key="Run", disabled=True),
-     sg.Button("Cancel", key="Cancel", disabled=True),
-     sg.Button("Clear Crop", key="-CLEAR_CROP-", disabled=True)],
-    [sg.Text("Progress Info:")],
-    [sg.Multiline(key="-OUTPUT-", size=(None, 6), expand_x=True, autoscroll=True, reroute_stdout=False, reroute_stderr=False, write_only=True, disabled=True)]
+    [sg.Text("Crop Box (X, Y, W, H):", key='-LBL-CROP_BOX-'), sg.Text("Not Set", key="-CROP_COORDS-", size=(45, 1), expand_x=True)],
+    [sg.Button("Run", key="-BTN-RUN-"),
+     sg.Button("Cancel", key="-BTN-CANCEL-", disabled=True),
+     sg.Button("Clear Crop", key="-BTN-CLEAR_CROP-", disabled=True)],
+    [sg.Text("Progress Info:", key='-LBL-PROGRESS-')],
+    [sg.Multiline(key="-OUTPUT-", size=(None, 7), expand_x=True, autoscroll=True, reroute_stdout=False, reroute_stderr=False, write_only=True, disabled=True)]
 ]
 tab1_layout = [[sg.Column(tab1_content,
                            size_subsample_height=1,
@@ -926,52 +1129,54 @@ tab1_layout = [[sg.Column(tab1_content,
                            expand_y=True)]]
 
 tab2_content = [
-    [sg.Text("OCR Settings:", font=('Arial', 10, 'bold'))],
-    [sg.Text("Start Time (e.g., 0:00 or 1:23:45):", size=(30, 1), tooltip="Specify the starting time to begin processing."),
-     sg.Input(DEFAULT_TIME_START, key="--time_start", size=(15, 1), enable_events=True, tooltip="Specify the starting time to begin processing.")],
-    [sg.Text("End Time (e.g., 0:10 or 2:34:56):", size=(30, 1), tooltip="Specify the ending time to stop processing."),
-     sg.Input("", key="--time_end", size=(15, 1), enable_events=True, tooltip="Specify the ending time to stop processing.")],
-    [sg.Text("Confidence Threshold (0-100):", size=(30, 1), tooltip="Minimum confidence score for detected text."),
-     sg.Input(DEFAULT_CONF_THRESHOLD, key="--conf_threshold", size=(10, 1), enable_events=True, tooltip="Minimum confidence score for detected text.")],
-    [sg.Text("Similarity Threshold (0-100):", size=(30, 1), tooltip="Threshold for merging text lines based on content similarity."),
-     sg.Input(DEFAULT_SIM_THRESHOLD, key="--sim_threshold", size=(10, 1), enable_events=True, tooltip="Threshold for merging text lines based on content similarity.")],
-    [sg.Text("Max Merge Gap (seconds):", size=(30, 1), tooltip="Maximum allowed time gap to merge similar subtitles."),
-     sg.Input(DEFAULT_MAX_MERGE_GAP, key="--max_merge_gap", size=(10, 1), enable_events=True, tooltip="Maximum allowed time gap to merge similar subtitles.")],
-    [sg.Text("Brightness Threshold (0-255):", size=(30, 1), tooltip="Applies a brightness filter before OCR.\nPixels below the threshold are blacked out."),
-     sg.Input("", key="--brightness_threshold", size=(10, 1), enable_events=True, tooltip="Applies a brightness filter before OCR.\nPixels below the threshold are blacked out. Leave empty to disable.")],
-    [sg.Text("SSIM Threshold (0-100):", size=(30, 1), tooltip="If the SSIM between frames exceeds this threshold,\nthe frame is considered similar and skipped for OCR."),
-     sg.Input(DEFAULT_SSIM_THRESHOLD, key="--ssim_threshold", size=(10, 1), enable_events=True, tooltip="If the SSIM between frames exceeds this threshold,\nthe frame is considered similar and skipped for OCR.")],
-    [sg.Text("Max OCR Image Width (pixel):", size=(30, 1), tooltip="Maximum image width for OCR. Larger images are scaled\ndown to this width to improve performance. Set to 0 to disable."),
-     sg.Input(DEFAULT_OCR_IMAGE_MAX_WIDTH, key="--ocr_image_max_width", size=(10, 1), enable_events=True, tooltip="Maximum image width for OCR. Larger images are scaled\ndown to this width to improve performance. Set to 0 to disable.")],
-    [sg.Text("Frames to Skip:", size=(30, 1), tooltip="Process every Nth frame (e.g., 1 = every 2nd).\nHigher = faster but less accurate, lower = slower but more accurate."),
-     sg.Input(DEFAULT_FRAMES_TO_SKIP, key="--frames_to_skip", size=(10, 1), enable_events=True, tooltip="Process every Nth frame (e.g., 1 = every 2nd).\nHigher = faster but less accurate, lower = slower but more accurate.")],
-    [sg.Text("Minimum Subtitle Duration (seconds):", size=(30, 1), tooltip="Detected subtitles below this duration are omitted from the SRT file."),
-     sg.Input(DEFAULT_MIN_SUBTITLE_DURATION, key="--min_subtitle_duration", size=(10, 1), enable_events=True, tooltip="Detected subtitles below this duration are omitted from the SRT file.")],
-    [sg.Checkbox("Enable GPU Usage (Only affects GPU version)", default=True, key="--use_gpu", enable_events=True, tooltip="Attempt to use the GPU for OCR processing if available and supported.")],
-    [sg.Checkbox("Use Full Frame OCR", default=False, key="--use_fullframe", enable_events=True, tooltip="Process the entire video frame instead of using a crop box.")],
-    [sg.Checkbox("Enable Dual Zone OCR", default=False, key="--use_dual_zone", enable_events=True, tooltip="Allows selecting two separate crop boxes for OCR.")],
-    [sg.Checkbox("Enable Angle Classification", default=False, key="--use_angle_cls", enable_events=True, tooltip="Detect and correct rotated text angles.")],
-    [sg.Checkbox("Enable Post Processing", default=True, key="--post_processing", enable_events=True, tooltip="Checks the OCR result for missing spaces and tries to insert them automatically.\nDoes not support all languages, more info can be found online.")],
-    [sg.Checkbox("Use Server Model", default=False, key="--use_server_model", enable_events=True, tooltip="Enables the server model with higher OCR capabilities.\nThis mode can deliver better results but requires also more computing power.\nA GPU is highly recommended when using this mode.")],
+    [sg.Text("OCR Settings:", font=('Arial', 10, 'bold'), key='-LBL-OCR_SETTINGS-')],
+    [sg.Text("Start Time (e.g., 0:00 or 1:23:45):", size=(30, 1), key='-LBL-TIME_START-'),
+     sg.Input(DEFAULT_TIME_START, key="--time_start", size=(15, 1), enable_events=True)],
+    [sg.Text("End Time (e.g., 0:10 or 2:34:56):", size=(30, 1), key='-LBL-TIME_END-'),
+     sg.Input("", key="--time_end", size=(15, 1), enable_events=True)],
+    [sg.Text("Confidence Threshold (0-100):", size=(30, 1), key='-LBL-CONF_THRESHOLD-'),
+     sg.Input(DEFAULT_CONF_THRESHOLD, key="--conf_threshold", size=(10, 1), enable_events=True)],
+    [sg.Text("Similarity Threshold (0-100):", size=(30, 1), key='-LBL-SIM_THRESHOLD-'),
+     sg.Input(DEFAULT_SIM_THRESHOLD, key="--sim_threshold", size=(10, 1), enable_events=True)],
+    [sg.Text("Max Merge Gap (seconds):", size=(30, 1), key='-LBL-MERGE_GAP-'),
+     sg.Input(DEFAULT_MAX_MERGE_GAP, key="--max_merge_gap", size=(10, 1), enable_events=True)],
+    [sg.Text("Brightness Threshold (0-255):", size=(30, 1), key='-LBL-BRIGHTNESS-'),
+     sg.Input("", key="--brightness_threshold", size=(10, 1), enable_events=True)],
+    [sg.Text("SSIM Threshold (0-100):", size=(30, 1), key='-LBL-SSIM-'),
+     sg.Input(DEFAULT_SSIM_THRESHOLD, key="--ssim_threshold", size=(10, 1), enable_events=True)],
+    [sg.Text("Max OCR Image Width (pixel):", size=(30, 1), key='-LBL-OCR_WIDTH-'),
+     sg.Input(DEFAULT_OCR_IMAGE_MAX_WIDTH, key="--ocr_image_max_width", size=(10, 1), enable_events=True)],
+    [sg.Text("Frames to Skip:", size=(30, 1), key='-LBL-FRAMES_SKIP-'),
+     sg.Input(DEFAULT_FRAMES_TO_SKIP, key="--frames_to_skip", size=(10, 1), enable_events=True)],
+    [sg.Text("Minimum Subtitle Duration (seconds):", size=(30, 1), key='-LBL-MIN_DURATION-'),
+     sg.Input(DEFAULT_MIN_SUBTITLE_DURATION, key="--min_subtitle_duration", size=(10, 1), enable_events=True)],
+    [sg.Checkbox("Enable GPU Usage", default=True, key="--use_gpu", enable_events=True)],
+    [sg.Checkbox("Use Full Frame OCR", default=False, key="--use_fullframe", enable_events=True)],
+    [sg.Checkbox("Enable Dual Zone OCR", default=False, key="--use_dual_zone", enable_events=True)],
+    [sg.Checkbox("Enable Angle Classification", default=False, key="--use_angle_cls", enable_events=True)],
+    [sg.Checkbox("Enable Post Processing", default=True, key="--post_processing", enable_events=True)],
+    [sg.Checkbox("Use Server Model", default=False, key="--use_server_model", enable_events=True)],
     [sg.HorizontalSeparator()],
-    [sg.Text("VideOCR Settings:", font=('Arial', 10, 'bold'))],
+    [sg.Text("VideOCR Settings:", font=('Arial', 10, 'bold'), key='-LBL-VIDEOCR_SETTINGS-')],
     [
         sg.Column([
-            [sg.Checkbox("Save Crop Box Selection", default=True, key="--save_crop_box", enable_events=True, tooltip="If checked, the crop box will be saved as a\nrelative position and restored for the next video/session.")],
-            [sg.Checkbox("Save SRT in Video Directory", default=True, key="--save_in_video_dir", enable_events=True, tooltip='Save the output SRT file in the same directory as the video file.\nIf enabled, "Output directory" is disabled.')],
-            [sg.Text("Output Directory:", size=(30, 1), tooltip='Folder where generated SRT files will be placed.\nDisabled when "Save SRT in Video Directory" is enabled.')],
-            [sg.Text("Keyboard Seek Step (frames):", size=(30, 1), tooltip="Number of frames to jump when using Left/Right arrows.")],
-            [sg.Checkbox("Send Notification", default=True, key="--send_notification", enable_events=True, tooltip="Send notification when the process is complete.")],
-            [sg.Checkbox("Check for Updates On Startup", default=True, key="--check_for_updates", enable_events=True, tooltip="Automatically check for new versions of VideOCR when the application starts.")],
+            [sg.Text("UI Language:", size=(30, 1), key='-LBL-UI_LANG-')],
+            [sg.Checkbox("Save Crop Box Selection", default=True, key="--save_crop_box", enable_events=True)],
+            [sg.Checkbox("Save SRT in Video Directory", default=True, key="--save_in_video_dir", enable_events=True)],
+            [sg.Text("Output Directory:", size=(30, 1), key='-LBL-OUTPUT_DIR-')],
+            [sg.Text("Keyboard Seek Step (frames):", size=(30, 1), key='-LBL-SEEK_STEP-')],
+            [sg.Checkbox("Send Notification", default=True, key="--send_notification", enable_events=True)],
+            [sg.Checkbox("Check for Updates On Startup", default=True, key="--check_for_updates", enable_events=True)],
         ]),
         sg.Column([
+            [sg.Combo(ui_language_display_names, key='-UI_LANG_COMBO-', size=(32, 1), readonly=True, enable_events=True)],
             [sg.Text('')],
             [sg.Text('')],
-            [sg.Input(DEFAULT_DOCUMENTS_DIR, key="--default_output_dir", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, size=(40, 1), enable_events=True),
-             sg.FolderBrowse(key="-FOLDER_BROWSE_BTN-", disabled=True)],
+            [sg.Input(DEFAULT_DOCUMENTS_DIR, key="--default_output_dir", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, size=(34, 1), enable_events=True),
+             sg.Button("Browse...", key="-BTN-FOLDER_BROWSE-", disabled=True)],
             [sg.Input(KEY_SEEK_STEP, key="--keyboard_seek_step", size=(10, 1), enable_events=True)],
             [sg.Text('')],
-            [sg.Button("Check Now", key="-CHECK_UPDATE_MANUAL-")],
+            [sg.Button("Check Now", key="-BTN-CHECK_UPDATE_MANUAL-")],
         ])
     ]
 ]
@@ -986,12 +1191,12 @@ tab3_layout = [
     [sg.Column([
         [sg.Text("")],
         [sg.Text("VideOCR", font=('Arial', 16, 'bold'))],
-        [sg.Text(f"Version: {PROGRAM_VERSION}", font=('Arial', 11))],
+        [sg.Text(f"Version: {PROGRAM_VERSION}", font=('Arial', 11), key='-LBL-ABOUT_VERSION-')],
         [sg.Text("")],
-        [sg.Text("Get the newest version here:", font=('Arial', 11))],
+        [sg.Text("Get the newest version here:", font=('Arial', 11), key='-LBL-GET_NEWEST-')],
         [sg.Text("https://github.com/timminator/VideOCR/releases", font=('Arial', 11, 'underline'), enable_events=True, key="-GITHUB_RELEASES_LINK-")],
         [sg.Text("")],
-        [sg.Text("Found a bug or have a suggestion? Feel free to open an issue at:", font=('Arial', 11))],
+        [sg.Text("Found a bug or have a suggestion? Feel free to open an issue at:", font=('Arial', 11), key='-LBL-BUG_REPORT-')],
         [sg.Text("https://github.com/timminator/VideOCR/issues", font=('Arial', 11, 'underline'), enable_events=True, key="-GITHUB_ISSUES_LINK-")],
         [sg.Text("")],
         [sg.HorizontalSeparator()],
@@ -1013,6 +1218,11 @@ else:
 
 window = sg.Window("VideOCR", layout, icon=ICON_PATH, finalize=True, resizable=True)
 
+# --- Load settings when the application starts ---
+load_settings(window)
+
+update_gui_text(window)
+
 if taskbar_progress_supported:
     prog = PyTaskbar.Progress(int(window.TKroot.wm_frame(), 16))
     prog.init()
@@ -1031,8 +1241,9 @@ def reset_crop_state():
     window.start_point_img = None
     window.end_point_img = None
     window.crop_boxes = []
-    window['-CROP_COORDS-'].update("Not Set")
-    window["-CLEAR_CROP-"].update(disabled=True)
+    crop_not_set_text = LANG.get('crop_not_set', "Not Set")
+    window['-CROP_COORDS-'].update(crop_not_set_text)
+    window["-BTN-CLEAR_CROP-"].update(disabled=True)
 
 
 reset_crop_state()
@@ -1108,9 +1319,6 @@ def on_releases_leave(event):
 releases_link_element.Widget.bind("<Enter>", on_releases_enter)
 releases_link_element.Widget.bind("<Leave>", on_releases_leave)
 
-# --- Load settings when the application starts ---
-load_settings(window)
-
 check_for_updates_checked_at_start = window.find_element('--check_for_updates').get()
 if check_for_updates_checked_at_start:
     threading.Thread(target=check_for_updates, args=(window,), daemon=True).start()
@@ -1121,6 +1329,7 @@ if not save_in_video_dir_checked_at_start:
 
 # --- Define the list of keys that, when changed, should trigger a settings save ---
 KEYS_TO_AUTOSAVE = [
+    '-UI_LANG_COMBO-',
     '-LANG_COMBO-',
     '-SUBTITLE_POS_COMBO-',
     '--time_start',
@@ -1160,6 +1369,21 @@ while True:
                 log_error(f"Exception during final process kill: {e}")
         break
 
+    # --- Handle UI language change ---
+    if event == '-UI_LANG_COMBO-':
+        selected_native_name = values['-UI_LANG_COMBO-']
+        lang_code = available_languages.get(selected_native_name)
+
+        if lang_code:
+            selected_pos_display_name = values['-SUBTITLE_POS_COMBO-']
+            pos_display_to_internal_map = {LANG.get(lang_key, lang_key): internal_val for lang_key, internal_val in subtitle_positions_list}
+            saved_internal_pos = pos_display_to_internal_map.get(selected_pos_display_name, default_internal_subtitle_position)
+
+            load_language(lang_code)
+            update_gui_text(window)
+
+            update_subtitle_pos_combo(window, saved_internal_pos)
+
     # --- Handle events sent from the worker thread ---
     if event in KEYS_TO_AUTOSAVE:
         if values is not None:
@@ -1175,13 +1399,30 @@ while True:
         # --- Handle possible output path change ---
         if event == '--save_in_video_dir':
             if (values.get('--save_in_video_dir', True)):
-                window['-FOLDER_BROWSE_BTN-'].update(disabled=True)
+                window['-BTN_FOLDER_BROWSE-'].update(disabled=True)
             else:
-                window['-FOLDER_BROWSE_BTN-'].update(disabled=False)
+                window['-BTN_FOLDER_BROWSE-'].update(disabled=False)
 
             if video_path:
                 output_path = generate_output_path(video_path, values)
                 window['--output'].update(str(output_path))
+
+    elif event == '-BTN-VIDEO_BROWSE-':
+        video_file_types = LANG.get('video_file_types', "Video Files")
+        all_file_types = LANG.get('all_file_types', "All Files")
+        filename = sg.tk.filedialog.askopenfilename(
+            filetypes=((video_file_types, "*.mp4 *.avi *.mkv *.mov *.webm *.flv *.wmv *.ts *.m2ts"), (all_file_types, "*.*")),
+            parent=window.TKroot
+        )
+        if filename:
+            window['-VIDEO_PATH-'].update(filename)
+            # Manually trigger the event for the input element to load the video
+            window.write_event_value('-VIDEO_PATH-', filename)
+
+    elif event == '-BTN-FOLDER_BROWSE-':
+        folder = sg.tk.filedialog.askdirectory()
+        if folder:
+            window['--default_output_dir'].update(folder)
 
     elif event == '-NEW_VERSION_FOUND-':
         update_popup(
@@ -1191,26 +1432,26 @@ while True:
             icon=ICON_PATH
         )
 
-    elif event == '-CHECK_UPDATE_MANUAL-':
+    elif event == '-BTN-CHECK_UPDATE_MANUAL-':
         threading.Thread(target=check_for_updates, args=(window, True), daemon=True).start()
 
     elif event == '-NO_UPDATE_FOUND-':
-        custom_popup(window, "Up to Date", "You are running the latest version of VideOCR.", icon=ICON_PATH)
+        custom_popup(window, LANG.get('update_title_uptodate', "Up to Date"), LANG.get('update_msg_uptodate', "You are running the latest version of VideOCR."), icon=ICON_PATH)
 
     elif event == '-UPDATE_CHECK_FAILED-':
-        custom_popup(window, "Error", "Failed to check for updates.\nPlease check your internet connection.", icon=ICON_PATH)
+        custom_popup(window, LANG.get('update_title_error', "Error"), LANG.get('update_msg_error', "Failed to check for updates.\nPlease check your internet connection."), icon=ICON_PATH)
 
     elif event == '-TABGROUP-' and values.get('-TABGROUP-') == '-TAB-VIDEO-':
         if '-GRAPH-' in window.AllKeysDict:
             window['-GRAPH-'].set_focus()
 
-    elif event == "-HELP-":
-        custom_popup(window, "Cropping Info", (
+    elif event == "-BTN-HELP-":
+        custom_popup(window, LANG.get('help_title', "Cropping Info"), LANG.get('help_message', (
             "Draw a crop box over the subtitle region in the video.\n"
             "Use click+drag to select.\n"
             "In 'Dual Zone' mode, you can draw two crop boxes.\n"
             "If no crop box is selected, the bottom third of the video\n"
-            "will be used for OCR by default."),
+            "will be used for OCR by default.")),
             icon=ICON_PATH
         )
 
@@ -1224,14 +1465,18 @@ while True:
         output_path = values["--output"]
         output_file_path = pathlib.Path(output_path)
 
+        save_as_title = LANG.get('save_as_title', "Save As")
+        save_as_filter_name = LANG.get('save_as_filter_name', "SubRip Subtitle")
+        save_as_all_files = LANG.get('save_as_all_files', "All Files")
+
         # Usage of tkinter.tkFileDialog instead of sg.popup_get_file because of the window placement on screen
         filename_chosen = sg.tk.filedialog.asksaveasfilename(
             defaultextension='srt',
-            filetypes=(("SubRip Subtitle", "*.srt"), ("All Files", "*.*")),
+            filetypes=((save_as_filter_name, "*.srt"), (save_as_all_files, "*.*")),
             initialdir=output_file_path.parent,
             initialfile=output_file_path.stem,
             parent=window.TKroot,
-            title="Save As"
+            title=save_as_title
         )
 
         if filename_chosen != "":
@@ -1244,8 +1489,8 @@ while True:
     elif event == '-PROCESS_STARTED-':
         pid = values[event]
         window._videocr_process_pid = pid
-        window['Run'].update(disabled=True)
-        window['Cancel'].update(disabled=False)
+        window['-BTN-RUN-'].update(disabled=True)
+        window['-BTN-CANCEL-'].update(disabled=False)
 
     elif event == '-VIDEOCR_OUTPUT-':
         output_line = values[event]
@@ -1268,10 +1513,10 @@ while True:
             del window._videocr_process_pid
         if hasattr(window, 'cancelled_by_user'):
             del window.cancelled_by_user
-        window['Run'].update(disabled=not video_path)
+        window['-BTN-RUN-'].update(disabled=not video_path)
         window['--output'].update(disabled=not video_path)
         window['-SAVE_AS_BTN-'].update(disabled=not video_path)
-        window['Cancel'].update(disabled=True)
+        window['-BTN-CANCEL-'].update(disabled=True)
         if taskbar_progress_supported:
             prog.setState('normal')
             prog.setProgress(0)
@@ -1286,10 +1531,13 @@ while True:
     # --- Video File Selected ---
     elif event == "-VIDEO_PATH-" and values["-VIDEO_PATH-"]:
         video_path = values["-VIDEO_PATH-"]
-        window["Run"].update(disabled=True)
+        window['-BTN-RUN-'].update(disabled=True)
         window["-SLIDER-"].update(disabled=True)
-        window["-FRAME_TEXT-"].update("Frame -/-")
-        window["-TIME_TEXT-"].update("Time: -/-")
+
+        frame_text_empty = LANG.get('frame_text_empty', 'Frame -/-')
+        time_text_empty = LANG.get('time_text_empty', 'Time: -/-')
+        window["-FRAME_TEXT-"].update(frame_text_empty)
+        window["-TIME_TEXT-"].update(time_text_empty)
         window['--output'].update("", disabled=True)
         window['-SAVE_AS_BTN-'].update(disabled=True)
 
@@ -1320,17 +1568,16 @@ while True:
                 output_path = generate_output_path(video_path, values)
 
                 window['--output'].update(str(output_path))
-                window["Run"].update(disabled=False)
+                window['-BTN-RUN-'].update(disabled=False)
                 window['-SAVE_AS_BTN-'].update(disabled=False)
 
                 if '-GRAPH-' in window.AllKeysDict:
                     window['-GRAPH-'].set_focus()
 
             except Exception as e:
-                custom_popup(window, "Unable to Set Output Path",
-                    f"Could not automatically generate default output path.\nPlease specify one manually.\nError: {e}",
-                    icon=ICON_PATH
-                )
+                popup_title = LANG.get('error_set_path_title', "Unable to Set Output Path")
+                popup_msg = LANG.get('error_set_path_msg', "Could not automatically generate default output path.\nPlease specify one manually.\nError: {}")
+                custom_popup(window, popup_title, popup_msg.format(e), icon=ICON_PATH)
                 window['--output'].update("", disabled=False)
                 window['-SAVE_AS_BTN-'].update(disabled=False)
 
@@ -1377,18 +1624,18 @@ while True:
                         coord_text = f"({b['coords']['crop_x']}, {b['coords']['crop_y']}, {b['coords']['crop_width']}, {b['coords']['crop_height']})"
                     else:
                         coords_str_parts = []
+                        zone_text = LANG.get('crop_zone_text', "Zone")
                         for i, b in enumerate(window.crop_boxes):
-                            coords_str_parts.append(f"Zone {i + 1}: ({b['coords']['crop_x']}, {b['coords']['crop_y']}, {b['coords']['crop_width']}, {b['coords']['crop_height']})")
+                            coords_str_parts.append(f"{zone_text} {i + 1}: ({b['coords']['crop_x']}, {b['coords']['crop_y']}, {b['coords']['crop_width']}, {b['coords']['crop_height']})")
                         coord_text = "  |  ".join(coords_str_parts)
 
                     window['-CROP_COORDS-'].update(coord_text)
-                    window["-CLEAR_CROP-"].update(disabled=False)
+                    window["-BTN-CLEAR_CROP-"].update(disabled=False)
 
         else:
-            custom_popup(window, "Invalid or Empty Video File",
-                f"Could not load video, video has no frames, or FPS is zero:\n{video_path}",
-                icon=ICON_PATH
-            )
+            popup_title = LANG.get('error_invalid_video_title', "Invalid or Empty Video File")
+            popup_msg = LANG.get('error_invalid_video_msg', "Could not load video, video has no frames, or FPS is zero:\n{}")
+            custom_popup(window, popup_title, popup_msg.format(video_path), icon=ICON_PATH)
             video_path = None
             total_frames = 0
             video_fps = 0
@@ -1494,17 +1741,18 @@ while True:
                 coord_text = f"({b['coords']['crop_x']}, {b['coords']['crop_y']}, {b['coords']['crop_width']}, {b['coords']['crop_height']})"
             else:
                 coords_str_parts = []
+                zone_text = LANG.get('crop_zone_text', "Zone")
                 for i, b in enumerate(window.crop_boxes):
-                    coords_str_parts.append(f"Zone {i + 1}: ({b['coords']['crop_x']}, {b['coords']['crop_y']}, {b['coords']['crop_width']}, {b['coords']['crop_height']})")
+                    coords_str_parts.append(f"{zone_text} {i + 1}: ({b['coords']['crop_x']}, {b['coords']['crop_y']}, {b['coords']['crop_width']}, {b['coords']['crop_height']})")
                 coord_text = "  |  ".join(coords_str_parts)
 
             window['-CROP_COORDS-'].update(coord_text)
-            window["-CLEAR_CROP-"].update(disabled=False)
+            window["-BTN-CLEAR_CROP-"].update(disabled=False)
 
             save_settings(window, values)
 
     # --- Clear Crop Button ---
-    elif event == "-CLEAR_CROP-":
+    elif event == "-BTN-CLEAR_CROP-":
         reset_crop_state()
         if video_path and current_image_bytes:
             graph.erase()
@@ -1512,9 +1760,9 @@ while True:
         save_settings(window, values)
 
     # --- Run Button Clicked ---
-    elif event == "Run" and video_path:
+    elif event == "-BTN-RUN-" and video_path:
         if hasattr(window, '_videocr_process_pid') and window._videocr_process_pid:
-            window['-OUTPUT-'].update("Process is already running.\n", append=True)
+            window['-OUTPUT-'].update(LANG.get('error_already_running', "Process is already running.\n"), append=True)
             continue
 
         window.cancelled_by_user = False
@@ -1527,9 +1775,9 @@ while True:
         time_end = values.get('--time_end', '').strip()
 
         if not is_valid_time_format(time_start):
-            errors.append("Invalid Start Time format. Use MM:SS or HH:MM:SS.")
+            errors.append(LANG.get('val_err_start_time', "Invalid Start Time format. Use MM:SS or HH:MM:SS."))
         if not is_valid_time_format(time_end):
-            errors.append("Invalid End Time format. Use MM:SS or HH:MM:SS.")
+            errors.append(LANG.get('val_err_end_time', "Invalid End Time format. Use MM:SS or HH:MM:SS."))
 
         time_start_seconds = time_string_to_seconds(time_start)
         time_end_seconds = time_string_to_seconds(time_end)
@@ -1540,15 +1788,15 @@ while True:
 
         if time_start_seconds is not None:
             if time_start_seconds > video_duration_seconds:
-                errors.append(f"Start Time ({format_time(time_start_seconds)}) exceeds video duration ({format_time(video_duration_seconds)}).")
+                errors.append(LANG.get('val_err_start_exceeds', "Start Time ({}) exceeds video duration ({}).").format(format_time(time_start_seconds), format_time(video_duration_seconds)))
 
         if time_end and time_end_seconds is not None:
             if time_end_seconds > video_duration_seconds:
-                errors.append(f"End Time ({format_time(time_end_seconds)}) exceeds video duration ({format_time(video_duration_seconds)}).")
+                errors.append(LANG.get('val_err_end_exceeds', "End Time ({}) exceeds video duration ({}).").format(format_time(time_end_seconds), format_time(video_duration_seconds)))
 
         if time_start_seconds is not None and time_end_seconds is not None:
             if time_start_seconds > time_end_seconds:
-                errors.append("Start Time cannot be after End Time.")
+                errors.append(LANG.get('val_err_start_after_end', "Start Time cannot be after End Time."))
 
         numeric_params = {
             '--conf_threshold': (int, 0, 100, "Confidence Threshold"),
@@ -1577,15 +1825,17 @@ while True:
             type_name = cast_type.__name__
             article = "an" if type_name.startswith(("i", "I")) else "a"
 
+            error_format = LANG.get('val_err_numeric', "Invalid value for {}. Must be {} {} {}.")
+
             try:
                 value = cast_type(value_str)
                 if (min_val is not None and value < min_val) or (max_val is not None and value > max_val):
                     raise ValueError
             except ValueError:
-                errors.append(f"Invalid value for {name}. Must be {article} {type_name} {range_str}.")
+                errors.append(error_format.format(name, article, type_name, range_str))
 
         if errors:
-            window['-OUTPUT-'].update("Validation Errors:\n", append=True)
+            window['-OUTPUT-'].update(LANG.get('val_err_header', "Validation Errors:\n"), append=True)
             for error in errors:
                 window['-OUTPUT-'].update(f"- {error}\n", append=True)
             window.refresh()
@@ -1594,7 +1844,7 @@ while True:
         use_dual_zone = values.get('--use_dual_zone', False)
 
         if use_dual_zone and len(window.crop_boxes) != 2:
-            window['-OUTPUT-'].update("Dual Zone OCR is enabled, but 2 crop boxes have not been selected.\n")
+            window['-OUTPUT-'].update(LANG.get('val_err_dual_zone', "Dual Zone OCR is enabled, but 2 crop boxes have not been selected.\n"))
             continue
 
         args = {}
@@ -1605,13 +1855,14 @@ while True:
         if lang_abbr:
             args['lang'] = lang_abbr
 
-        selected_pos_name = values.get('-SUBTITLE_POS_COMBO-', default_display_subtitle_position)
-        pos_value = subtitle_pos_lookup.get(selected_pos_name)
+        selected_display_name = values.get('-SUBTITLE_POS_COMBO-')
+        display_name_to_internal_map = {LANG.get(lang_key, lang_key): internal_val for lang_key, internal_val in subtitle_positions_list}
+        pos_value = display_name_to_internal_map.get(selected_display_name)
         if pos_value:
             args['subtitle_position'] = pos_value
 
         for key in values:
-            if key.startswith('--') and key not in ['--keyboard_seek_step', '--default_output_dir', '--save_in_video_dir', '--send_notification', '--save_crop_box', '--check_for_updates']:
+            if key.startswith('--') and key not in ['--keyboard_seek_step', '--default_output_dir', '--save_in_video_dir', '--send_notification', '--save_crop_box', '--check_for_updates', '--language']:
                 stripped_key = key.lstrip('-')
                 value = values.get(key)
                 if isinstance(value, bool):
@@ -1636,31 +1887,32 @@ while True:
             if window.crop_boxes:
                 args.update(window.crop_boxes[0]['coords'])
 
-        window['Run'].update(disabled=True)
-        window['Cancel'].update(disabled=False)
+        window['-BTN-RUN-'].update(disabled=True)
+        window['-BTN-CANCEL-'].update(disabled=False)
 
         ocr_thread = threading.Thread(target=run_ocr_thread, args=(args, window), daemon=True)
         ocr_thread.start()
 
     # --- Cancel Button Clicked ---
-    elif event == "Cancel":
+    elif event == "-BTN-CANCEL-":
         pid_to_kill = getattr(window, '_videocr_process_pid', None)
         if pid_to_kill:
             window.cancelled_by_user = True
-            window['-OUTPUT-'].update("\nCancelling process...\n", append=True)
+            window['-OUTPUT-'].update(LANG.get('status_cancelling', "\nCancelling process...\n"), append=True)
             window.refresh()
             try:
                 kill_process_tree(pid_to_kill)
-                window['-OUTPUT-'].update("\nProcess cancelled by user.\n", append=True)
+                window['-OUTPUT-'].update(LANG.get('status_cancelled', "\nProcess cancelled by user.\n"), append=True)
             except Exception as e:
-                window['-OUTPUT-'].update(f"\nError attempting to cancel process: {e}\n", append=True)
+                error_msg = LANG.get('error_cancel', "\nError attempting to cancel process: {}\n")
+                window['-OUTPUT-'].update(error_msg.format(e), append=True)
             finally:
                 if hasattr(window, '_videocr_process_pid'):
                     del window._videocr_process_pid
         else:
-            window['-OUTPUT-'].update("\nNo process is currently running to cancel.\n", append=True)
-            window['Cancel'].update(disabled=True)
-            window['Run'].update(disabled=not video_path)
+            window['-OUTPUT-'].update(LANG.get('error_no_process_to_cancel', "\nNo process is currently running to cancel.\n"), append=True)
+            window['-BTN-CANCEL-'].update(disabled=True)
+            window['-BTN-RUN-'].update(disabled=not video_path)
 
 # --- Cleanup ---
 window.close()
