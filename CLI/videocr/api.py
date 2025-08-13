@@ -16,7 +16,7 @@ def save_subtitles_to_file(
 
     paddleocr_path = utils.find_paddleocr()
     try:
-        utils.perform_hardware_check(paddleocr_path)
+        utils.perform_hardware_check(paddleocr_path, use_gpu)
     except SystemExit as e:
         print(e, flush=True)
         sys.exit(1)

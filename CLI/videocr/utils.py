@@ -207,7 +207,7 @@ def resolve_model_dirs(lang: str, use_server_model: bool) -> tuple[str, str, str
 
 
 # checks if the current system supports the hardware requirements
-def perform_hardware_check(paddleocr_path: str) -> None:
+def perform_hardware_check(paddleocr_path: str, use_gpu: bool) -> None:
     error_prefix = "Unsupported Hardware Error:"
     warning_prefix = "Hardware Check Warning:"
 
@@ -273,7 +273,7 @@ def perform_hardware_check(paddleocr_path: str) -> None:
 
     build_folder_name = os.path.basename(os.path.dirname(paddleocr_path))
 
-    if 'GPU' in build_folder_name.upper():
+    if use_gpu and 'GPU' in build_folder_name.upper():
         check_gpu()
 
 

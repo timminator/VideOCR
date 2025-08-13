@@ -184,18 +184,18 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
 - Instructions:
 
     - Clone the repository to your desired location:
-    ```bash
-    git clone https://github.com/timminator/VideOCR.git
-    ```
+      ```bash
+      git clone https://github.com/timminator/VideOCR.git
+      ```
     - Navigate into the cloned folder and install all dependencies:
-    ```bash
-    cd VideOCR
-    pip install -e ".[dev]"
-    ```
+      ```bash
+      cd VideOCR
+      pip install -e ".[dev]"
+      ```
     - Execute the build script to create the desired build:
-    ```bash
-    python build.py --target cpu
-    ```
+      ```bash
+      python build.py --target cpu
+      ```
     More info can be found via:
     ```bash
     python build.py -h
