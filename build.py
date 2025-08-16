@@ -22,7 +22,7 @@ SUPPORT_FILES_URLS = {
 PADDLE_URLS = {
     "Windows": {
         "cpu": f"https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{PADDLE_VERSION}/PaddleOCR-CPU-v{PADDLE_VERSION}.7z",
-        "gpu": f"https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{PADDLE_VERSION}/PaddleOCR-GPU-v{PADDLE_VERSION}-CUDA-11.8.7z",
+        "gpu": f"https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{PADDLE_VERSION}/PaddleOCR-GPU-v{PADDLE_VERSION}-CUDA-12.8.7z",
     },
     "Linux": {
         "cpu": f"https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{PADDLE_VERSION}/PaddleOCR-CPU-v{PADDLE_VERSION}-Linux.tar.xz",
@@ -227,8 +227,9 @@ def package_target(build_target, args, releases_dir, base_gui_dist, base_cli_dis
     print_header(f"Assembling Final Directory Structure for {build_target.upper()}")
 
     # Define final names
-    cli_final_name = f"videocr-cli-{build_target.upper()}-v{APP_VERSION}{os_suffix}"
-    final_app_folder_name = f"VideOCR-{build_target.upper()}-v{APP_VERSION}{os_suffix}"
+    release_tag = f"-{args.release_type}" if args.release_type else ""
+    cli_final_name = f"videocr-cli-{build_target.upper()}-v{APP_VERSION}{release_tag}{os_suffix}"
+    final_app_folder_name = f"VideOCR-{build_target.upper()}-v{APP_VERSION}{release_tag}{os_suffix}"
 
     # Move the temp CLI folder to its final standalone location in Releases
     final_cli_path = releases_dir / cli_final_name
@@ -287,6 +288,11 @@ def main():
         "--archive",
         default='false',
         help="(Optional) Set to 'true' to create a compressed archive of the final build folder."
+    )
+    parser.add_argument(
+        "--release-type",
+        default=None,
+        help="(Optional) Specify a release type (e.g., 'Beta', 'RC1') to append to the output artifact names."
     )
     args = parser.parse_args()
 
