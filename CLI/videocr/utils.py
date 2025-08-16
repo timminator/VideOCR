@@ -148,7 +148,7 @@ def find_paddleocr() -> str:
     program_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
     base_folders = [
         "PaddleOCR-CPU-v1.3.0",
-        "PaddleOCR-GPU-v1.3.0-CUDA-11.8"
+        "PaddleOCR-GPU-v1.3.0-CUDA-12.8"
     ]
     program_name = "paddleocr"
 
@@ -222,15 +222,10 @@ def perform_hardware_check(paddleocr_path: str, use_gpu: bool) -> None:
         except Exception as e:
             print(f"{warning_prefix} Could not determine CPU AVX support due to an error: {e}. Functionality is uncertain.", flush=True)
 
-    CUDA_COMPATIBILITY_MAP = {
-        "CUDA-11.8": (6.0, 8.9),
-        "CUDA-12.9": (9.0, 12.0),
-    }
-
-    CUDA_DRIVER_MAP = {
-        "CUDA-11.8": "522.25",
-        "CUDA-12.9": "576.02",
-    }
+    CUDA_VERSION_NAME = "CUDA-12.8"
+    MIN_COMPUTE_CAPABILITY = 6.0
+    MAX_COMPUTE_CAPABILITY = 12.0
+    REQUIRED_DRIVER_VERSION = "527.41"
 
     def parse_version(v_str: str) -> tuple[int, ...]:
         return tuple(map(int, v_str.split('.')))
@@ -247,24 +242,19 @@ def perform_hardware_check(paddleocr_path: str, use_gpu: bool) -> None:
             driver_version_str, compute_cap_str = [item.strip() for item in first_gpu_info.split(',')]
             compute_capability = float(compute_cap_str)
 
-            detected_cuda_version = next((v for v in CUDA_COMPATIBILITY_MAP if v in paddleocr_path), None)
+            # Check Compute Capability
+            if not (MIN_COMPUTE_CAPABILITY <= compute_capability <= MAX_COMPUTE_CAPABILITY):
+                raise SystemExit(
+                    f"{error_prefix} GPU compute capability is {compute_capability}, but this build "
+                    f"({CUDA_VERSION_NAME}) requires a value between {MIN_COMPUTE_CAPABILITY} and {MAX_COMPUTE_CAPABILITY}."
+                )
 
-            if detected_cuda_version:
-                # Check Compute Capability
-                min_cc, max_cc = CUDA_COMPATIBILITY_MAP[detected_cuda_version]
-                if not (min_cc <= compute_capability <= max_cc):
-                    raise SystemExit(
-                        f"{error_prefix} GPU compute capability is {compute_capability}, but this build "
-                        f"({detected_cuda_version}) requires a value between {min_cc} and {max_cc}."
-                    )
-
-                # Check NVIDIA Driver Version
-                required_driver = CUDA_DRIVER_MAP[detected_cuda_version]
-                if parse_version(driver_version_str) < parse_version(required_driver):
-                    raise SystemExit(
-                        f"{error_prefix} NVIDIA driver version is {driver_version_str}, but this build "
-                        f"({detected_cuda_version}) requires version {required_driver} or newer."
-                    )
+            # Check NVIDIA Driver Version
+            if parse_version(driver_version_str) < parse_version(REQUIRED_DRIVER_VERSION):
+                raise SystemExit(
+                    f"{error_prefix} NVIDIA driver version is {driver_version_str}, but this build "
+                    f"({CUDA_VERSION_NAME}) requires version {REQUIRED_DRIVER_VERSION} or newer."
+                )
 
         except Exception as e:
             print(f"{warning_prefix} Could not determine GPU support due to an error: {e}. Functionality is uncertain.", flush=True)
