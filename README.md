@@ -1,3 +1,5 @@
+English | [中文](https://github.com/timminator/VideOCR/blob/master/README_ch.md)
+
 <p align="center">
 <img src="https://github.com/timminator/VideOCR/blob/master/Pictures/VideOCR.png" alt="VideOCR Icon" width="128">
   <h1 align="center">VideOCR</h1>
