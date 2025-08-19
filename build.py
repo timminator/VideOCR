@@ -26,7 +26,7 @@ PADDLE_URLS = {
     },
     "Linux": {
         "cpu": f"https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{PADDLE_VERSION}/PaddleOCR-CPU-v{PADDLE_VERSION}-Linux.tar.xz",
-        "gpu": f"https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{PADDLE_VERSION}/PaddleOCR-GPU-v{PADDLE_VERSION}-CUDA-11.8-Linux.tar.xz",
+        "gpu": f"https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{PADDLE_VERSION}/PaddleOCR-GPU-v{PADDLE_VERSION}-CUDA-12.9-Linux.7z",
     }
 }
 
@@ -69,14 +69,15 @@ def check_dbus():
 
 
 def check_7zip():
-    """Checks if 7-Zip is installed and available on Windows."""
-    if platform.system() == "Windows":
-        print_header("Checking for 7-Zip...")
-        if not (shutil.which("7z") or shutil.which("7z.exe")):
-            print("ERROR: 7-Zip executable ('7z' or '7z.exe') not found in your system's PATH.")
-            print("Please install 7-Zip from https://www.7-zip.org/ and ensure it's added to your PATH.")
-            sys.exit(1)
-        print("7-Zip found.")
+    """Checks if 7-Zip is installed and available."""
+    print_header("Checking for 7-Zip...")
+    if not (shutil.which("7z") or shutil.which("7z.exe")):
+        print("ERROR: 7-Zip executable ('7z' or '7z.exe') not found in your system's PATH.")
+        print("Please install 7-Zip and ensure it's added to your PATH.")
+        print(" - Windows: https://www.7-zip.org/")
+        print(" - Linux (Debian/Ubuntu): sudo apt-get install p7zip-full")
+        sys.exit(1)
+    print("7-Zip found.")
 
 
 def run_command(command, cwd=None):
@@ -125,7 +126,7 @@ def extract_archive(file_path, dest_folder):
     elif file_path.suffix == ".xz":
         try:
             with tarfile.open(file_path, 'r:xz') as archive:
-                archive.extractall(path=dest_folder)
+                archive.extractall(path=dest_folder, filter='data')
         except Exception as e:
             print(f"ERROR: Failed to extract {file_path}. Reason: {e}")
             sys.exit(1)
@@ -160,33 +161,38 @@ def sign_file(signtool_path, cert_name, file_to_sign):
     print(f"Successfully signed {file_to_sign.name}")
 
 
-def create_final_archive(folder_path):
+def create_final_archive(folder_path, build_target):
     """Creates a compressed archive of the final build folder inside its parent directory."""
     print_header(f"Creating final archive for {folder_path.name}")
-    os_name = platform.system()
 
     try:
-        if os_name == "Windows":
-            seven_zip_exe = shutil.which("7z") or shutil.which("7z.exe")
-            if not seven_zip_exe:
-                print("WARNING: 7-Zip not found, cannot create .7z archive. Skipping.")
-                return
-            archive_path = folder_path.parent / f"{folder_path.name}.7z"
-            print(f"Creating {archive_path.name} with high compression...")
+        seven_zip_exe = shutil.which("7z") or shutil.which("7z.exe")
+        if not seven_zip_exe:
+            print("WARNING: 7-Zip not found, cannot create .7z archive. Skipping.")
+            return
+
+        archive_path = folder_path.parent / f"{folder_path.name}.7z"
+        print(f"Creating {archive_path.name} with high compression...")
+
+        is_linux_gpu = platform.system() == "Linux" and build_target == "gpu"
+
+        if is_linux_gpu:
+            print("Using high-compression settings for Linux GPU build...")
             command = [
                 seven_zip_exe, "a", "-t7z",
-                "-mx=9", "-m0=lzma2", "-md=64m", "-mfb=64", "-ms=16g",
+                "-mx=9", "-m0=lzma2", "-md=1024m", "-mfb=273", "-ms=on", "-mmt2",
                 str(archive_path.name), str(folder_path.name)
             ]
-            run_command(command, cwd=str(folder_path.parent))
-        elif os_name == "Linux":
-            archive_path = folder_path.parent / f"{folder_path.name}.tar.xz"
-            print(f"Creating {archive_path.name}...")
-            command = ["tar", "-cJvf", str(archive_path.name), str(folder_path.name)]
-            run_command(command, cwd=str(folder_path.parent))
         else:
-            print(f"WARNING: Archiving not supported on {os_name}. Skipping.")
-            return
+            print("Using standard compression settings...")
+            command = [
+                seven_zip_exe, "a", "-t7z",
+                "-mx=9", "-m0=lzma2", "-md=128m", "-mfb=128", "-ms=on",
+                str(archive_path.name), str(folder_path.name)
+            ]
+
+        run_command(command, cwd=str(folder_path.parent))
+
         print(f"Archive created successfully: {archive_path}")
     except Exception as e:
         print(f"ERROR: Failed to create archive. Reason: {e}")
@@ -262,8 +268,8 @@ def package_target(build_target, args, releases_dir, base_gui_dist, base_cli_dis
     shutil.rmtree(work_dir)
 
     if args.archive and args.archive.lower() == 'true':
-        create_final_archive(final_app_path)
-        create_final_archive(final_cli_path)
+        create_final_archive(final_app_path, build_target)
+        create_final_archive(final_cli_path, build_target)
 
 
 def main():

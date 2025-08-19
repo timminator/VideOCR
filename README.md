@@ -180,6 +180,7 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
         - Tkinter (comes with the default python installation on Windows)
 
     - Linux:
+        - 7zip
         - Tkinter
         - Working dbus installation is recommended
 

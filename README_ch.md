@@ -172,6 +172,7 @@
         - 7zip（需添加到PATH）
         - Tkinter（Windows默认Python安装包含）
     - Linux:
+        - 7zip
         - Tkinter
         - 建议安装dbus
 

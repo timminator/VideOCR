@@ -148,7 +148,7 @@ def find_paddleocr() -> str:
     program_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
     base_folders = [
         "PaddleOCR-CPU-v1.3.0",
-        "PaddleOCR-GPU-v1.3.0-CUDA-12.8"
+        "PaddleOCR-GPU-v1.3.0"
     ]
     program_name = "paddleocr"
 
@@ -222,10 +222,9 @@ def perform_hardware_check(paddleocr_path: str, use_gpu: bool) -> None:
         except Exception as e:
             print(f"{warning_prefix} Could not determine CPU AVX support due to an error: {e}. Functionality is uncertain.", flush=True)
 
-    CUDA_VERSION_NAME = "CUDA-12.8"
     MIN_COMPUTE_CAPABILITY = 6.0
     MAX_COMPUTE_CAPABILITY = 12.0
-    REQUIRED_DRIVER_VERSION = "527.41"
+    REQUIRED_DRIVER_VERSION = "527.41" if platform.system() == "Windows" else "525.60.13"
 
     def parse_version(v_str: str) -> tuple[int, ...]:
         return tuple(map(int, v_str.split('.')))
@@ -246,14 +245,14 @@ def perform_hardware_check(paddleocr_path: str, use_gpu: bool) -> None:
             if not (MIN_COMPUTE_CAPABILITY <= compute_capability <= MAX_COMPUTE_CAPABILITY):
                 raise SystemExit(
                     f"{error_prefix} GPU compute capability is {compute_capability}, but this build "
-                    f"({CUDA_VERSION_NAME}) requires a value between {MIN_COMPUTE_CAPABILITY} and {MAX_COMPUTE_CAPABILITY}."
+                    f"requires a value between {MIN_COMPUTE_CAPABILITY} and {MAX_COMPUTE_CAPABILITY}."
                 )
 
             # Check NVIDIA Driver Version
             if parse_version(driver_version_str) < parse_version(REQUIRED_DRIVER_VERSION):
                 raise SystemExit(
                     f"{error_prefix} NVIDIA driver version is {driver_version_str}, but this build "
-                    f"({CUDA_VERSION_NAME}) requires version {REQUIRED_DRIVER_VERSION} or newer."
+                    f"requires version {REQUIRED_DRIVER_VERSION} or newer."
                 )
 
         except Exception as e:
