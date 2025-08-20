@@ -1,9 +1,10 @@
 #define MyAppName "VideOCR"
-#define MyAppVersion "1.3.0"
+#define MyAppVersion "1.3.1"
 #define MyAppURL "https://github.com/timminator/VideOCR"
 #define MyAppExeName "VideOCR.exe"
-#define MyInstallerVersion "1.3.0.0"
+#define MyInstallerVersion "1.3.1.0"
 #define MyAppCopyright "timminator"
+#define SourceDir "..\VideOCR GUI\VideOCR-GPU-v1.3.1"
 
 [Setup]
 SignTool=signtool $f
@@ -34,63 +35,34 @@ UninstallDisplayIcon={app}\{#MyAppExeName}
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
+Name: "german"; MessagesFile: "compiler:Languages\German.isl"
+Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
+Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
+Name: "french"; MessagesFile: "compiler:Languages\French.isl"
+Name: "portuguese"; MessagesFile: "compiler:Languages\Portuguese.isl"
+Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
 
 [Dirs]
 Name: "{app}"; Permissions: everyone-full
 
 [Files]
-Source: "..\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\_bz2.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\_ctypes.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\_decimal.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\_elementtree.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\_hashlib.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\_lzma.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\_multiprocessing.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\_queue.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\_socket.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\_ssl.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\_tkinter.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\_uuid.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\_win32sysloader.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\_wmi.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\libcrypto-3.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\libffi-8.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\libssl-3.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\mfc140u.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\pyexpat.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\python3.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\python312.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\pythoncom312.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\pywintypes312.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\select.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\tcl86t.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\tk86t.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\unicodedata.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\vcruntime140.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\vcruntime140_1.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\VideOCR.ico"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\VideOCR.png"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\win32api.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\win32gui.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\win32ui.pyd"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\zlib1.dll"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\cv2\*"; DestDir: "{app}\cv2"; Flags: ignoreversion recursesubdirs
-Source: "..\numpy\*"; DestDir: "{app}\numpy"; Flags: ignoreversion recursesubdirs
-Source: "..\numpy.libs\*"; DestDir: "{app}\numpy.libs"; Flags: ignoreversion recursesubdirs
-Source: "..\PIL\*"; DestDir: "{app}\PIL"; Flags: ignoreversion recursesubdirs
-Source: "..\pymediainfo\*"; DestDir: "{app}\pymediainfo"; Flags: ignoreversion recursesubdirs
-Source: "..\PyTaskbar\*"; DestDir: "{app}\PyTaskbar"; Flags: ignoreversion recursesubdirs
-Source: "..\tcl\*"; DestDir: "{app}\tcl"; Flags: ignoreversion recursesubdirs
-Source: "..\tcl8\*"; DestDir: "{app}\tcl8"; Flags: ignoreversion recursesubdirs
-Source: "..\tk\*"; DestDir: "{app}\tk"; Flags: ignoreversion recursesubdirs
-Source: "..\win32com\*"; DestDir: "{app}\win32com"; Flags: ignoreversion recursesubdirs
-Source: "..\videocr-cli-GPU-v1.3.0\*"; DestDir: "{app}\videocr-cli-GPU-v1.3.0"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#SourceDir}\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#SourceDir}\*.*"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [InstallDelete]
 Type: files; Name: "{commonprograms}\(Default)\VideOCR.lnk"
 Type: dirifempty; Name: "{commonprograms}\(Default)"
 Type: files; Name: "{app}\videocr_gui_config.ini"
+Type: filesandordirs; Name: "{app}\win32com"
+Type: files; Name: "{app}\win32api.pyd"
+Type: files; Name: "{app}\win32gui.pyd"
+Type: files; Name: "{app}\win32ui.pyd"
+Type: files; Name: "{app}\pythoncom312.dll"
+Type: files; Name: "{app}\pywintypes312.dll"
+Type: files; Name: "{app}\mfc140u.dll"
+Type: files; Name: "{app}\_win32sysloader.pyd"
+Type: filesandordirs; Name: "{app}\videocr-cli-GPU-v1.3.0"
 Type: filesandordirs; Name: "{app}\videocr-cli-sa-GPU-v1.2.1"
 Type: filesandordirs; Name: "{app}\videocr-cli-sa-GPU-v1.2.0"
 Type: filesandordirs; Name: "{app}\videocr-cli-sa-GPU-v1.1.0"
@@ -100,6 +72,33 @@ Type: files; Name: "{app}\videocr_gui_config.ini"
 Type: filesandordirs; Name: "{localappdata}\VideOCR"
 
 [Code]
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ConfigPath: string;
+  SelectedLanguage: string;
+begin
+  if CurStep = ssPostInstall then
+  begin
+    ConfigPath := ExpandConstant('{app}\videocr_gui_config.ini');
+
+    if not FileExists(ConfigPath) then
+    begin
+      SelectedLanguage := ActiveLanguage();
+
+      case SelectedLanguage of
+        'german':            SetIniString('Settings', '--language', 'de', ConfigPath);
+        'chinesesimplified': SetIniString('Settings', '--language', 'ch', ConfigPath);
+        'spanish':           SetIniString('Settings', '--language', 'es', ConfigPath);
+        'french':            SetIniString('Settings', '--language', 'fr', ConfigPath);
+        'portuguese':        SetIniString('Settings', '--language', 'pt', ConfigPath);
+        'italian':           SetIniString('Settings', '--language', 'it', ConfigPath);
+      else
+        SetIniString('Settings', '--language', 'en', ConfigPath);
+      end;
+    end;
+  end;
+end;
+
 procedure DeleteTempFolders;
 var
   FindRec: TFindRec;
