@@ -1325,7 +1325,7 @@ if check_for_updates_checked_at_start:
 
 save_in_video_dir_checked_at_start = window.find_element('--save_in_video_dir').get()
 if not save_in_video_dir_checked_at_start:
-    window['-FOLDER_BROWSE_BTN-'].update(disabled=False)
+    window['-BTN-FOLDER_BROWSE-'].update(disabled=False)
 
 # --- Define the list of keys that, when changed, should trigger a settings save ---
 KEYS_TO_AUTOSAVE = [
@@ -1399,9 +1399,9 @@ while True:
         # --- Handle possible output path change ---
         if event == '--save_in_video_dir':
             if (values.get('--save_in_video_dir', True)):
-                window['-BTN_FOLDER_BROWSE-'].update(disabled=True)
+                window['-BTN-FOLDER_BROWSE-'].update(disabled=True)
             else:
-                window['-BTN_FOLDER_BROWSE-'].update(disabled=False)
+                window['-BTN-FOLDER_BROWSE-'].update(disabled=False)
 
             if video_path:
                 output_path = generate_output_path(video_path, values)
