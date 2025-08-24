@@ -114,6 +114,8 @@
     "cli_starting_ocr": "Démarrage de PaddleOCR...",
     "cli_generating_subs": "Génération des sous-titres...",
     "cli_vfr_detected": "Fréquence d'images variable détectée. Construction de la carte temporelle...",
+    "cli_vfr_estimating": "Nombre d'images non trouvé. Estimation de la progression...",
+    "unknown": "inconnu",
     "cli_map_gen_stopped": "Temps cible atteint. Génération de la carte arrêtée après l'image {frame_num}.",
 
     "fatal_error_header": "--- ERREUR FATALE ---",

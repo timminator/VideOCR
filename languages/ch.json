@@ -114,6 +114,8 @@
     "cli_starting_ocr": "正在启动 PaddleOCR...",
     "cli_generating_subs": "正在生成字幕...",
     "cli_vfr_detected": "检测到可变帧率，正在构建时间戳映射...",
+    "cli_vfr_estimating": "未找到帧数。正在估算进度...",
+    "unknown": "未知",
     "cli_map_gen_stopped": "已达到目标时间，在第 {frame_num} 帧停止生成映射。",
 
     "fatal_error_header": "--- 致命错误 ---",

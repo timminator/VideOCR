@@ -9,6 +9,7 @@ videocr_gui_config.ini
 /Releases/
 /VideOCR.dist/
 /CLI/videocr_cli.dist/
+/CLI/PaddleOCR*
 
 # Environments
 .env

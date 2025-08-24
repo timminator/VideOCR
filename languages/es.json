@@ -114,6 +114,8 @@
     "cli_starting_ocr": "Iniciando PaddleOCR...",
     "cli_generating_subs": "Generando subtítulos...",
     "cli_vfr_detected": "Tasa de fotogramas variable detectada. Construyendo mapa de tiempo...",
+    "cli_vfr_estimating": "Número de fotogramas no encontrado. Estimando progreso...",
+    "unknown": "desconocido",
     "cli_map_gen_stopped": "Se alcanzó el tiempo objetivo. Generación de mapa detenida después del fotograma {frame_num}.",
 
     "fatal_error_header": "--- ERROR FATAL ---",

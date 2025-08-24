@@ -114,6 +114,8 @@
     "cli_starting_ocr": "Iniciando PaddleOCR...",
     "cli_generating_subs": "Gerando legendas...",
     "cli_vfr_detected": "Taxa de quadros variável detectada. Construindo mapa de tempo...",
+    "cli_vfr_estimating": "Número de frames não encontrado. A estimar o progresso...",
+    "unknown": "desconhecido",
     "cli_map_gen_stopped": "Tempo-alvo atingido. Geração de mapa interrompida após o quadro {frame_num}.",
 
     "fatal_error_header": "--- ERRO FATAL ---",

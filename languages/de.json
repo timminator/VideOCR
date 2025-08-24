@@ -114,6 +114,8 @@
     "cli_starting_ocr": "Starte PaddleOCR...",
     "cli_generating_subs": "Erstelle Untertitel...",
     "cli_vfr_detected": "Variable Bildrate erkannt. Erstelle Zeitstempel-Zuordnung...",
+    "cli_vfr_estimating": "Frame-Anzahl nicht gefunden. Fortschritt wird geschätzt...",
+    "unknown": "unbekannt",
     "cli_map_gen_stopped": "Zielzeit erreicht. Zuordnungserstellung nach Frame {frame_num} gestoppt.",
 
     "fatal_error_header": "--- FATALER FEHLER ---",

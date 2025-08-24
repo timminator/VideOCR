@@ -9,9 +9,9 @@
 # Windows-specific metadata for the executable
 # nuitka-project-if: {OS} == "Windows":
 #     nuitka-project: --file-description="VideOCR CLI"
-#     nuitka-project: --file-version="1.3.1"
+#     nuitka-project: --file-version="1.3.2"
 #     nuitka-project: --product-name="VideOCR-CLI"
-#     nuitka-project: --product-version="1.3.1"
+#     nuitka-project: --product-version="1.3.2"
 #     nuitka-project: --copyright="timminator"
 
 import argparse

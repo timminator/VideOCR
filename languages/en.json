@@ -114,6 +114,8 @@
     "cli_starting_ocr": "Starting PaddleOCR...",
     "cli_generating_subs": "Generating subtitles...",
     "cli_vfr_detected": "Variable frame rate detected. Building timestamp map...",
+    "cli_vfr_estimating": "Frame count not found. Estimating progress...",
+    "unknown": "unknown",
     "cli_map_gen_stopped": "Reached target time. Stopped map generation after frame {frame_num}.",
 
     "fatal_error_header": "--- FATAL ERROR ---",

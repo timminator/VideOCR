@@ -24,9 +24,6 @@ def get_video_properties(path: str, is_vfr: bool, time_end: str | None, initial_
         if not properties['num_frames'] or properties['num_frames'] <= 0:
             if stream.frames > 0:
                 properties['num_frames'] = stream.frames
-            elif stream.duration is not None and properties['fps'] > 0:
-                duration_sec = float(stream.duration * stream.time_base)
-                properties['num_frames'] = int(duration_sec * properties['fps'])
 
         if container.start_time is not None:
             properties['start_time_offset_ms'] = container.start_time / 1000.0
@@ -39,23 +36,50 @@ def get_video_properties(path: str, is_vfr: bool, time_end: str | None, initial_
                 absolute_target_ms = relative_end_ms + properties['start_time_offset_ms']
                 stop_at_ms = absolute_target_ms + VFR_TIMESTAMP_BUFFER_MS
 
+            frame_iter = container.decode(stream)
             num_frames_to_map = properties['num_frames']
             stopped_early = False
-            frame_iter = container.decode(stream)
-            for i in range(num_frames_to_map):
-                print(f"\rMapping frame {i + 1} of {num_frames_to_map}", end="", flush=True)
 
-                try:
-                    frame = next(frame_iter)
-                    timestamp_ms = float(frame.pts * stream.time_base * 1000)
-                    properties['frame_timestamps'][i] = timestamp_ms
+            if num_frames_to_map > 0:
+                for i in range(num_frames_to_map):
+                    print(f"\rMapping frame {i + 1} of {num_frames_to_map}", end="", flush=True)
+                    try:
+                        frame = next(frame_iter)
+                        timestamp_ms = float(frame.pts * stream.time_base * 1000)
+                        properties['frame_timestamps'][i] = timestamp_ms
 
-                    if stop_at_ms and timestamp_ms > stop_at_ms:
-                        print(f"\nReached target time. Stopped map generation after frame {i + 1}.", flush=True)
-                        stopped_early = True
+                        if stop_at_ms and timestamp_ms > stop_at_ms:
+                            print(f"\nReached target time. Stopped map generation after frame {i + 1}.", flush=True)
+                            stopped_early = True
+                            break
+                    except StopIteration:
+                        properties['num_frames'] = i
                         break
-                except StopIteration:
-                    pass
+            else:
+                print("Frame count not found. Estimating progress based on duration...", flush=True)
+
+                duration_sec = float(container.duration / av.time_base) if container.duration is not None else 0.0
+                estimated_frames = int(duration_sec * properties['fps']) if duration_sec > 0 and properties['fps'] > 0 else 0
+                progress_total = f"~{estimated_frames}" if estimated_frames > 0 else "unknown"
+
+                i = 0
+                while True:
+                    print(f"\rMapping frame {i + 1} of {progress_total}", end="", flush=True)
+                    try:
+                        frame = next(frame_iter)
+                        timestamp_ms = float(frame.pts * stream.time_base * 1000)
+                        properties['frame_timestamps'][i] = timestamp_ms
+
+                        if stop_at_ms and timestamp_ms > stop_at_ms:
+                            print(f"\nReached target time. Stopped map generation after frame {i + 1}.", flush=True)
+                            stopped_early = True
+                            properties['num_frames'] = i + 1
+                            break
+                        i += 1
+                    except StopIteration:
+                        properties['num_frames'] = i
+                        break
+
             if not stopped_early:
                 print()
 

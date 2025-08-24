@@ -114,6 +114,8 @@
     "cli_starting_ocr": "Avvio PaddleOCR...",
     "cli_generating_subs": "Generazione sottotitoli...",
     "cli_vfr_detected": "Rilevato frame rate variabile. Creazione mappa temporale...",
+    "cli_vfr_estimating": "Numero di frame non trovato. Stima del progresso in corso...",
+    "unknown": "sconosciuto",
     "cli_map_gen_stopped": "Tempo obiettivo raggiunto. Mappa interrotta dopo il fotogramma {frame_num}.",
 
     "fatal_error_header": "--- ERRORE FATALE ---",

@@ -12,9 +12,9 @@
 # Windows-specific metadata for the executable
 # nuitka-project-if: {OS} == "Windows":
 #     nuitka-project: --file-description="VideOCR"
-#     nuitka-project: --file-version="1.3.1"
+#     nuitka-project: --file-version="1.3.2"
 #     nuitka-project: --product-name="VideOCR-GUI"
-#     nuitka-project: --product-version="1.3.1"
+#     nuitka-project: --product-version="1.3.2"
 #     nuitka-project: --copyright="timminator"
 #     nuitka-project: --windows-icon-from-ico=Installer/VideOCR.ico
 
@@ -166,7 +166,7 @@ def find_videocr_program():
 
 
 # --- Configuration ---
-PROGRAM_VERSION = "1.3.1"
+PROGRAM_VERSION = "1.3.2"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 LANGUAGES_DIR = os.path.join(APP_DIR, 'languages')
 VIDEOCR_PATH = find_videocr_program()
@@ -862,13 +862,24 @@ def get_video_frame(video_path, frame_number, display_size):
 def handle_progress(match, label_format_key, last_percentage, threshold, taskbar_base=0, show_taskbar_progress=True):
     """Handles progress parsing and updating GUI."""
     current_item = int(match.group(1))
-    total_items = int(match.group(2))
+    total_str = match.group(2)
+
+    if total_str == 'unknown':
+        total_items = 0
+        display_total = LANG.get('unknown', 'unknown')
+    elif total_str.startswith('~'):
+        total_items = int(total_str[1:])
+        display_total = f"~{total_items}"
+    else:
+        total_items = int(total_str)
+        display_total = str(total_items)
+
     percentage = int((current_item / total_items) * 100) if total_items > 0 else 0
 
     label_format = LANG.get(label_format_key, "Processing {current}/{total} ({percent}%)")
 
     if current_item == 1 or percentage >= last_percentage + threshold or percentage == 100:
-        message = f"{label_format.format(current=current_item, total=total_items, percent=percentage)}\n"
+        message = f"{label_format.format(current=current_item, total=display_total, percent=percentage)}\n"
         window.write_event_value('-VIDEOCR_OUTPUT-', message)
 
         if taskbar_progress_supported and show_taskbar_progress and taskbar_base is not None:
@@ -913,7 +924,8 @@ def run_videocr(args_dict, window):
     STARTING_OCR_PATTERN = re.compile(r"Starting PaddleOCR")
     GENERATING_SUBTITLES_PATTERN = re.compile(r"Generating subtitles")
     VFR_PATTERN = re.compile(r"Variable frame rate detected. Building timestamp map...")
-    VFR_PROGRESS_PATTERN = re.compile(r"Mapping frame (\d+) of (\d+)")
+    VFR_ESTIMATING_PATTERN = re.compile(r"Frame count not found. Estimating progress based on duration...")
+    VFR_PROGRESS_PATTERN = re.compile(r"Mapping frame (\d+) of (~?\d+|unknown)")
     SEEK_PROGRESS_PATTERN = re.compile(r"Advancing to frame (\d+)/(\d+)")
     MAP_GENERATION_STOP_PATTERN = re.compile(r"Reached target time. Stopped map generation after frame (\d+)\.")
 
@@ -1030,6 +1042,9 @@ def run_videocr(args_dict, window):
                     continue
                 elif GENERATING_SUBTITLES_PATTERN.search(line):
                     window.write_event_value('-VIDEOCR_OUTPUT-', LANG.get('cli_generating_subs', line) + '\n')
+                    continue
+                elif VFR_ESTIMATING_PATTERN.search(line):
+                    window.write_event_value('-VIDEOCR_OUTPUT-', LANG.get('cli_vfr_estimating', line) + '\n')
                     continue
                 elif VFR_PATTERN.search(line):
                     window.write_event_value('-VIDEOCR_OUTPUT-', LANG.get('cli_vfr_detected', line) + '\n')
