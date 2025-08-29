@@ -147,8 +147,9 @@ def convert_visual_to_logical(text: str) -> str:
 def find_paddleocr() -> str:
     program_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
     base_folders = [
-        "PaddleOCR-CPU-v1.3.0",
-        "PaddleOCR-GPU-v1.3.0"
+        "PaddleOCR-CPU-v1.3.2",
+        "PaddleOCR-GPU-v1.3.2-CUDA-11.8",
+        "PaddleOCR-GPU-v1.3.2-CUDA-12.9"
     ]
     program_name = "paddleocr"
 
@@ -178,13 +179,13 @@ def resolve_model_dirs(lang: str, use_server_model: bool) -> tuple[str, str, str
     mode = "server" if use_server_model else "mobile"
 
     # DET
-    if lang in {"ch", "chinese_cht", "en", "japan", "korean"} | LATIN_LANGS | ESLAV_LANGS:
+    if lang in {"ch", "chinese_cht", "en", "japan", "korean", "th", "el"} | LATIN_LANGS | ESLAV_LANGS:
         det_sub = f"PP-OCRv5_{mode}_det"
     else:
         det_sub = "PP-OCRv3_mobile_det"
 
     # REC
-    if lang in ("ch", "chinese_cht", "en", "japan"):
+    if lang in ("ch", "chinese_cht", "japan"):
         rec_sub = f"PP-OCRv5_{mode}_rec"
     elif lang in LATIN_LANGS:
         rec_sub = "latin_PP-OCRv5_mobile_rec"
@@ -196,8 +197,8 @@ def resolve_model_dirs(lang: str, use_server_model: bool) -> tuple[str, str, str
         rec_sub = "cyrillic_PP-OCRv3_mobile_rec"
     elif lang in DEVANAGARI_LANGS:
         rec_sub = "devanagari_PP-OCRv3_mobile_rec"
-    elif lang == "korean":
-        rec_sub = "korean_PP-OCRv5_mobile_rec"
+    elif lang in ("korean", "en", "th", "el"):
+        rec_sub = f"{lang}_PP-OCRv5_mobile_rec"
 
     return (
         os.path.join(det_path, det_sub),
@@ -222,9 +223,15 @@ def perform_hardware_check(paddleocr_path: str, use_gpu: bool) -> None:
         except Exception as e:
             print(f"{warning_prefix} Could not determine CPU AVX support due to an error: {e}. Functionality is uncertain.", flush=True)
 
-    MIN_COMPUTE_CAPABILITY = 6.0
-    MAX_COMPUTE_CAPABILITY = 12.0
-    REQUIRED_DRIVER_VERSION = "527.41" if platform.system() == "Windows" else "525.60.13"
+    CUDA_COMPATIBILITY_MAP = {
+        "CUDA-11.8": (6.1, 8.9) if platform.system() == "Windows" else (6.0, 8.9),
+        "CUDA-12.9": (7.5, 12.0),
+    }
+
+    CUDA_DRIVER_MAP = {
+        "CUDA-11.8": "451.22" if platform.system() == "Windows" else "450.36.06",
+        "CUDA-12.9": "527.41" if platform.system() == "Windows" else "525.60.13",
+    }
 
     def parse_version(v_str: str) -> tuple[int, ...]:
         return tuple(map(int, v_str.split('.')))
@@ -241,19 +248,24 @@ def perform_hardware_check(paddleocr_path: str, use_gpu: bool) -> None:
             driver_version_str, compute_cap_str = [item.strip() for item in first_gpu_info.split(',')]
             compute_capability = float(compute_cap_str)
 
-            # Check Compute Capability
-            if not (MIN_COMPUTE_CAPABILITY <= compute_capability <= MAX_COMPUTE_CAPABILITY):
-                raise SystemExit(
-                    f"{error_prefix} GPU compute capability is {compute_capability}, but this build "
-                    f"requires a value between {MIN_COMPUTE_CAPABILITY} and {MAX_COMPUTE_CAPABILITY}."
-                )
+            detected_cuda_version = next((v for v in CUDA_COMPATIBILITY_MAP if v in paddleocr_path), None)
 
-            # Check NVIDIA Driver Version
-            if parse_version(driver_version_str) < parse_version(REQUIRED_DRIVER_VERSION):
-                raise SystemExit(
-                    f"{error_prefix} NVIDIA driver version is {driver_version_str}, but this build "
-                    f"requires version {REQUIRED_DRIVER_VERSION} or newer."
-                )
+            if detected_cuda_version:
+                # Check Compute Capability
+                min_cc, max_cc = CUDA_COMPATIBILITY_MAP[detected_cuda_version]
+                if not (min_cc <= compute_capability <= max_cc):
+                    raise SystemExit(
+                        f"{error_prefix} GPU compute capability is {compute_capability}, but this build "
+                        f"({detected_cuda_version}) requires a value between {min_cc} and {max_cc}."
+                    )
+
+                # Check NVIDIA Driver Version
+                required_driver = CUDA_DRIVER_MAP[detected_cuda_version]
+                if parse_version(driver_version_str) < parse_version(required_driver):
+                    raise SystemExit(
+                        f"{error_prefix} NVIDIA driver version is {driver_version_str}, but this build "
+                        f"({detected_cuda_version}) requires version {required_driver} or newer."
+                    )
 
         except Exception as e:
             print(f"{warning_prefix} Could not determine GPU support due to an error: {e}. Functionality is uncertain.", flush=True)
