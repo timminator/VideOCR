@@ -36,6 +36,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "ruff",
+    "pre-commit",
     "nuitka @ git+https://github.com/timminator/nuitka.git@62815ad7278edb4b9fd07cac76c6f6b52229bd9c",
     "requests"
 ]
