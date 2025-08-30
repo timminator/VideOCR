@@ -222,7 +222,7 @@ def create_windows_installer(final_app_path, args):
         print("         or provide the path to iscc.exe using the --iscc argument.")
         return
 
-    display_target_name = final_app_path.name.replace(f"VideOCR-", "").replace(f"-v{APP_VERSION}", "")
+    display_target_name = final_app_path.name.replace("VideOCR-", "").replace(f"-v{APP_VERSION}", "")
     print_header(f"Creating Windows Installer for {display_target_name}")
 
     script_path = Path("Installer/Windows/installer_template.iss")
@@ -248,7 +248,7 @@ def create_windows_installer(final_app_path, args):
             signtool_params += f' /n $q{args.sign_cert_name}$q $f'
         else:
             signtool_params += ' /a $f'
-        
+
         iscc_sign_param = f'/Ssigntool=$q{args.signtool}$q {signtool_params}'
         command.append(iscc_sign_param)
 
