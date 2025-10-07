@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import ast
 import os
-import platform
 import re
 import shutil
 import subprocess
@@ -126,8 +125,8 @@ class Video:
                         if os.path.isdir(temp_path):
                             if not utils.is_process_running(dir_pid):
                                 shutil.rmtree(temp_path, ignore_errors=True)
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"Could not remove leftover temp dir '{name}': {e}", flush=True)
 
         temp_dir = tempfile.mkdtemp(prefix=TEMP_PREFIX)
 
