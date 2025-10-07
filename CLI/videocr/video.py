@@ -110,62 +110,24 @@ class Video:
 
         TEMP_PREFIX = f"videocr_temp_{os.getpid()}_"
         base_temp = tempfile.gettempdir()
-        
-        # Clean up orphaned temp directories from other processes
-        import time
-        import re
-        current_time = time.time()
         current_pid = os.getpid()
-        
-        def is_process_running(pid):
-            """Check if a process with given PID is still running (cross-platform)"""
-            try:
-                if platform.system() == "Windows":
-                    # Windows: Use tasklist command to check if process exists
-                    import subprocess
-                    result = subprocess.run(
-                        ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
-                        capture_output=True, text=True, timeout=5
-                    )
-                    return str(pid) in result.stdout
-                else:
-                    # Unix-like systems (Linux, macOS): Use /proc or signal method
-                    if os.path.exists(f"/proc/{pid}"):
-                        return True
-                    # Fallback: try to send signal 0 (doesn't actually send signal, just checks if process exists)
-                    os.kill(pid, 0)
-                    return True
-            except (OSError, ProcessLookupError, subprocess.TimeoutExpired, FileNotFoundError):
-                return False
-        
+
         for name in os.listdir(base_temp):
             if name.startswith("videocr_temp_"):
                 temp_path = os.path.join(base_temp, name)
                 try:
-                    # Extract PID from directory name
                     match = re.match(r"videocr_temp_(\d+)_", name)
                     if match:
                         dir_pid = int(match.group(1))
-                        
-                        # Skip if it's our own current process
+
                         if dir_pid == current_pid:
                             continue
-                            
-                        # Check if the process is still running
+
                         if os.path.isdir(temp_path):
-                            if not is_process_running(dir_pid):
-                                # Process is dead, clean up its temp directory
+                            if not utils.is_process_running(dir_pid):
                                 shutil.rmtree(temp_path, ignore_errors=True)
-                            elif (current_time - os.path.getctime(temp_path)) > 1800:  # 30 minutes
-                                # Process might be hanging, directory is old
-                                shutil.rmtree(temp_path, ignore_errors=True)
-                except Exception as e:
-                    # On any error, fall back to time-based cleanup for this directory
-                    try:
-                        if os.path.isdir(temp_path) and (current_time - os.path.getctime(temp_path)) > 1800:
-                            shutil.rmtree(temp_path, ignore_errors=True)
-                    except Exception:
-                        pass
+                except Exception:
+                    pass
 
         temp_dir = tempfile.mkdtemp(prefix=TEMP_PREFIX)
 

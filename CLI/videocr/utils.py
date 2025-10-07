@@ -275,6 +275,23 @@ def read_pipe(pipe, output_list: list[str]) -> None:
         pipe.close()
 
 
+# Check if a process with given PID is still running (cross-platform)
+def is_process_running(pid: int) -> bool:
+    try:
+        if platform.system() == "Windows":
+            result = subprocess.run(
+                ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
+                capture_output=True, text=True, timeout=5
+            )
+            return str(pid) in result.stdout
+        else:
+            if os.path.exists(f"/proc/{pid}"):
+                return True
+    except (OSError, ProcessLookupError, subprocess.TimeoutExpired, FileNotFoundError):
+        return False
+    return False
+
+
 # saves errors to log file
 def log_error(message: str, log_name: str = "error_log.txt") -> str:
     if platform.system() == "Windows":
