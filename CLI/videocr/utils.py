@@ -5,7 +5,7 @@ import re
 import subprocess
 import sys
 
-from cpuid import cpuid
+from cpuid import cpuid, xgetbv
 
 from .lang_dictionaries import (
     ARABIC_LANGS,
@@ -212,14 +212,32 @@ def perform_hardware_check(paddleocr_path: str, use_gpu: bool) -> None:
     error_prefix = "Unsupported Hardware Error:"
     warning_prefix = "Hardware Check Warning:"
 
-    def has_avx() -> bool:
+    def has_avx2_and_fma() -> bool:
+        # CPUID leaf 1: AVX, OSXSAVE, FMA
         _, _, ecx, _ = cpuid(1)
-        return bool(ecx & (1 << 28)) and bool(ecx & (1 << 27))  # AVX + OSXSAVE
+        osxsave = bool(ecx & (1 << 27))
+        avx = bool(ecx & (1 << 28))
+        fma = bool(ecx & (1 << 12))
+
+        # OS support check: XGETBV for YMM registers
+        ymm_supported = True
+        if osxsave:
+            try:
+                xcr0 = xgetbv(0)
+                ymm_supported = (xcr0 & 0b110) == 0b110
+            except Exception:
+                ymm_supported = False
+
+        # CPUID leaf 7: AVX2
+        _, ebx, _, _ = cpuid(7)
+        avx2 = bool(ebx & (1 << 5))
+
+        return osxsave and avx and avx2 and fma and ymm_supported
 
     def check_cpu() -> None:
         try:
-            if not has_avx():
-                raise SystemExit(f"{error_prefix} CPU does not support the AVX instruction set, which is required.")
+            if not has_avx2_and_fma():
+                raise SystemExit(f"{error_prefix} CPU does not support AVX2 and/or FMA, which is required.")
         except Exception as e:
             print(f"{warning_prefix} Could not determine CPU AVX support due to an error: {e}. Functionality is uncertain.", flush=True)
 
