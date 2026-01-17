@@ -12,9 +12,9 @@
 # Windows-specific metadata for the executable
 # nuitka-project-if: {OS} == "Windows":
 #     nuitka-project: --file-description="VideOCR"
-#     nuitka-project: --file-version="1.3.2"
+#     nuitka-project: --file-version="1.3.3"
 #     nuitka-project: --product-name="VideOCR-GUI"
-#     nuitka-project: --product-version="1.3.2"
+#     nuitka-project: --product-version="1.3.3"
 #     nuitka-project: --copyright="timminator"
 #     nuitka-project: --windows-icon-from-ico=Installer/VideOCR.ico
 
@@ -166,7 +166,7 @@ def find_videocr_program():
 
 
 # --- Configuration ---
-PROGRAM_VERSION = "1.3.2"
+PROGRAM_VERSION = "1.3.3"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 LANGUAGES_DIR = os.path.join(APP_DIR, 'languages')
 VIDEOCR_PATH = find_videocr_program()
@@ -773,7 +773,7 @@ def load_settings(window):
 
 
 def generate_output_path(video_path, values, default_dir=DEFAULT_DOCUMENTS_DIR):
-    """Generates a unique output file path for the SRT file based on video path and settings."""
+    """Generates a unique output file path for the SRT file based on video path, settings and language."""
     video_file_path = pathlib.Path(video_path)
     video_filename_stem = video_file_path.stem
 
@@ -787,11 +787,14 @@ def generate_output_path(video_path, values, default_dir=DEFAULT_DOCUMENTS_DIR):
         else:
             output_dir = pathlib.Path(output_dir_str)
 
-    base_output_path = output_dir / f"{video_filename_stem}.srt"
+    selected_lang_name = values.get('-LANG_COMBO-', default_display_language)
+    lang_code = language_abbr_lookup.get(selected_lang_name, 'en')
+
+    base_output_path = output_dir / f"{video_filename_stem}.{lang_code}.srt"
     output_path = base_output_path
     counter = 1
     while output_path.exists():
-        output_path = output_dir / f"{video_filename_stem}({counter}).srt"
+        output_path = output_dir / f"{video_filename_stem}({counter}).{lang_code}.srt"
         counter += 1
 
     return output_path
@@ -1419,7 +1422,7 @@ while True:
             save_settings(window, values)
 
         # --- Handle possible output path change ---
-        if event == '--save_in_video_dir':
+        if event == '--save_in_video_dir' or event == '-LANG_COMBO-':
             if (values.get('--save_in_video_dir', True)):
                 window['-BTN-FOLDER_BROWSE-'].update(disabled=True)
             else:
