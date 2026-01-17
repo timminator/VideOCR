@@ -107,12 +107,24 @@ class Video:
                 'midpoint_y': zone['y'] + (zone['height'] / 2)
             })
 
-        TEMP_PREFIX = "videocr_temp_"
+        TEMP_PREFIX = f"videocr_temp_{os.getpid()}_"
         base_temp = tempfile.gettempdir()
+        current_pid = os.getpid()
+
         for name in os.listdir(base_temp):
-            if name.startswith(TEMP_PREFIX):
+            if name.startswith("videocr_temp_"):
+                temp_path = os.path.join(base_temp, name)
                 try:
-                    shutil.rmtree(os.path.join(base_temp, name), ignore_errors=True)
+                    match = re.match(r"videocr_temp_(\d+)_", name)
+                    if match:
+                        dir_pid = int(match.group(1))
+
+                        if dir_pid == current_pid:
+                            continue
+
+                        if os.path.isdir(temp_path):
+                            if not utils.is_process_running(dir_pid):
+                                shutil.rmtree(temp_path, ignore_errors=True)
                 except Exception as e:
                     print(f"Could not remove leftover temp dir '{name}': {e}", flush=True)
 
