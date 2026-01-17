@@ -1,4 +1,5 @@
 import av
+import cv2
 
 from . import utils
 
@@ -89,33 +90,12 @@ def get_video_properties(path: str, is_vfr: bool, time_end: str | None, initial_
 class Capture:
     def __init__(self, video_path):
         self.path = video_path
-        self.container = None
-        self.stream = None
-        self.frame_iterator = None
 
     def __enter__(self):
-        try:
-            self.container = av.open(self.path)
-            self.stream = self.container.streams.video[0]
-            self.frame_iterator = self.container.decode(self.stream)
-            return self
-        except av.AVError as e:
-            raise OSError(f'Can not open video {self.path}.') from e
+        self.cap = cv2.VideoCapture(self.path)
+        if not self.cap.isOpened():
+            raise OSError(f'Can not open video {self.path}.')
+        return self.cap
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if self.container:
-            self.container.close()
-
-    def read(self):
-        try:
-            frame = next(self.frame_iterator)
-            return True, frame.to_ndarray(format='rgb24')
-        except StopIteration:
-            return False, None
-
-    def grab(self):
-        try:
-            next(self.frame_iterator)
-            return True
-        except StopIteration:
-            return False
+        self.cap.release()

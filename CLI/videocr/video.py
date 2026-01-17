@@ -9,16 +9,15 @@ import sys
 import tempfile
 import threading
 
+import cv2
 import fast_ssim
-import numpy as np
 import wordninja_enhanced as wordninja
-from PIL import Image
 from pymediainfo import MediaInfo
 
 from . import utils
 from .lang_dictionaries import ARABIC_LANGS
 from .models import PredictedFrames, PredictedSubtitle
-from .pyav_adapter import Capture, get_video_properties
+from .video_adapter import Capture, get_video_properties
 
 
 class Video:
@@ -133,7 +132,6 @@ class Video:
         # get frames from ocr_start to ocr_end
         frame_paths = []
         with Capture(self.path) as v:
-            # PyAV does not support accurate seeking and this was also error prone with OpenCV before
             if ocr_start > 0:
                 for i in range(ocr_start):
                     v.grab()
@@ -172,13 +170,12 @@ class Video:
                             original_height, original_width = img.shape[:2]
                             scale_ratio = ocr_image_max_width / original_width
                             new_height = int(original_height * scale_ratio)
-                            pil_img = Image.fromarray(img)
-                            resized_pil_img = pil_img.resize((ocr_image_max_width, new_height), Image.Resampling.LANCZOS)
-                            img = np.array(resized_pil_img)
+                            img = cv2.resize(img, (ocr_image_max_width, new_height), interpolation=cv2.INTER_AREA)
 
                         if brightness_threshold:
-                            mask = np.all(img >= brightness_threshold, axis=2)
-                            img[~mask] = 0
+                            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                            _, mask = cv2.threshold(gray, brightness_threshold, 255, cv2.THRESH_BINARY)
+                            img = cv2.bitwise_and(img, img, mask=mask)
 
                         if ssim_threshold < 1:
                             w = img.shape[1]
@@ -190,7 +187,7 @@ class Video:
                             elif subtitle_position == "right":
                                 sample = img[:, int(w * 0.7):]
                             elif subtitle_position == "any":
-                                sample = frame
+                                sample = img
                             else:
                                 raise ValueError(f"Invalid subtitle_position: {subtitle_position}")
 
@@ -205,7 +202,7 @@ class Video:
                         frame_filename = f"frame_{frame_index:0{padding}d}_zone{zone_idx}.jpg"
                         frame_path = os.path.join(temp_dir, frame_filename)
 
-                        Image.fromarray(img).save(frame_path, format="JPEG", quality=95)
+                        cv2.imwrite(frame_path, img)
                         frame_paths.append(frame_path)
                 else:
                     v.grab()

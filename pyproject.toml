@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "VideOCR"
-version = "1.3.2"
+version = "1.3.3"
 description = "Extract hardcoded subtitles from videos via a simple GUI using machine learning."
 readme = "README.md"
 license = "MIT"
@@ -37,7 +37,7 @@ dependencies = [
 dev = [
     "ruff",
     "pre-commit",
-    "nuitka @ git+https://github.com/timminator/nuitka.git@62815ad7278edb4b9fd07cac76c6f6b52229bd9c",
+    "nuitka",
     "requests"
 ]
 
