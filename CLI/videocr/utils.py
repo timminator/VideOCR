@@ -5,7 +5,7 @@ import re
 import subprocess
 import sys
 
-from cpuid import cpuid, xgetbv
+from cpuid import cpuid, cpuid_count, xgetbv
 
 from .lang_dictionaries import (
     ARABIC_LANGS,
@@ -229,7 +229,7 @@ def perform_hardware_check(paddleocr_path: str, use_gpu: bool) -> None:
                 ymm_supported = False
 
         # CPUID leaf 7: AVX2
-        _, ebx, _, _ = cpuid(7)
+        _, ebx, _, _ = cpuid_count(7, 0)
         avx2 = bool(ebx & (1 << 5))
 
         return osxsave and avx and avx2 and fma and ymm_supported
