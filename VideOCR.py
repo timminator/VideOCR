@@ -222,18 +222,35 @@ languages_list = [
     ('Lak', 'lbe'), ('Latin', 'la'), ('Latvian', 'lv'), ('Lezghian', 'lez'),
     ('Lithuanian', 'lt'), ('Magahi', 'mah'), ('Maithili', 'mai'), ('Malay', 'ms'),
     ('Maltese', 'mt'), ('Maori', 'mi'), ('Marathi', 'mr'), ('Mongolian', 'mn'),
-    ('Nagpur', 'sck'), ('Nepali', 'ne'), ('Newari', 'new'), ('Norwegian', 'no'),
+    ('Nagpuri', 'sck'), ('Nepali', 'ne'), ('Newari', 'new'), ('Norwegian', 'no'),
     ('Occitan', 'oc'), ('Pali', 'pi'), ('Persian', 'fa'), ('Polish', 'pl'),
     ('Portuguese', 'pt'), ('Romanian', 'ro'), ('Russian', 'ru'), ('Sanskrit', 'sa'),
     ('Serbian(cyrillic)', 'rs_cyrillic'), ('Serbian(latin)', 'rs_latin'),
     ('Slovak', 'sk'), ('Slovenian', 'sl'), ('Spanish', 'es'), ('Swahili', 'sw'),
     ('Swedish', 'sv'), ('Tabassaran', 'tab'), ('Tagalog', 'tl'), ('Tamil', 'ta'),
-    ('Telugu', 'te'), ('Thai', 'th'), ('Turkish', 'tr'), ('Ukranian', 'uk'), ('Urdu', 'ur'),
+    ('Telugu', 'te'), ('Thai', 'th'), ('Turkish', 'tr'), ('Ukrainian', 'uk'), ('Urdu', 'ur'),
     ('Uyghur', 'ug'), ('Uzbek', 'uz'), ('Vietnamese', 'vi'), ('Welsh', 'cy'),
 ]
 languages_list.sort(key=lambda x: x[0])
 language_display_names = [lang[0] for lang in languages_list]
 language_abbr_lookup = {name: abbr for name, abbr in languages_list}
+
+# Mapping from PaddleOCR internal codes to standard ISO 639 codes for deviating abbreviations
+PADDLE_TO_ISO_MAP = {
+    'ch': 'zh',
+    'chinese_cht': 'zh',
+    'german': 'de',
+    'japan': 'ja',
+    'korean': 'ko',
+    'rs_cyrillic': 'sr',
+    'rs_latin': 'sr',
+    'ang': 'anp',
+    'mah': 'mag',
+    # Prefer 2-Letter Codes
+    'ava': 'av',
+    'che': 'ce',
+}
+
 default_display_language = 'English'
 
 # --- Subtitle Position Data ---
@@ -788,13 +805,14 @@ def generate_output_path(video_path, values, default_dir=DEFAULT_DOCUMENTS_DIR):
             output_dir = pathlib.Path(output_dir_str)
 
     selected_lang_name = values.get('-LANG_COMBO-', default_display_language)
-    lang_code = language_abbr_lookup.get(selected_lang_name, 'en')
+    paddle_code = language_abbr_lookup.get(selected_lang_name, 'en')
+    iso_code = PADDLE_TO_ISO_MAP.get(paddle_code, paddle_code)
 
-    base_output_path = output_dir / f"{video_filename_stem}.{lang_code}.srt"
+    base_output_path = output_dir / f"{video_filename_stem}.{iso_code}.srt"
     output_path = base_output_path
     counter = 1
     while output_path.exists():
-        output_path = output_dir / f"{video_filename_stem}({counter}).{lang_code}.srt"
+        output_path = output_dir / f"{video_filename_stem}({counter}).{iso_code}.srt"
         counter += 1
 
     return output_path
