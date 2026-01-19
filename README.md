@@ -57,7 +57,7 @@ There is also a CLI version available. Unzip the archive to your desired locatio
 ### Linux:
 
 ```
-./videocr-cli.exe -h
+./videocr-cli.bin -h
 ```
 
 ### Example usage (Windows):
