@@ -53,7 +53,7 @@
 
 ### Linux:
 ```
-./videocr-cli -h
+./videocr-cli.bin -h
 ```
 
 ### 示例用法（Windows）:
