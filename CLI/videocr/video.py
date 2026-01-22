@@ -17,7 +17,7 @@ from pymediainfo import MediaInfo
 from . import utils
 from .lang_dictionaries import ARABIC_LANGS
 from .models import PredictedFrames, PredictedSubtitle
-from .video_adapter import Capture, get_video_properties
+from .pyav_adapter import Capture, get_video_properties
 
 
 class Video:
@@ -32,6 +32,7 @@ class Video:
     num_frames: int
     fps: float
     height: int
+    width: int
     pred_frames_zone1: list[PredictedFrames]
     pred_frames_zone2: list[PredictedFrames]
     pred_subs: list[PredictedSubtitle]
@@ -62,6 +63,7 @@ class Video:
 
         props = get_video_properties(self.path, self.is_vfr, time_end, initial_fps, initial_num_frames)
         self.height = props['height']
+        self.width = props['width']
         self.fps = props['fps']
         self.num_frames = props['num_frames']
         self.start_time_offset_ms = props['start_time_offset_ms']
@@ -98,6 +100,17 @@ class Video:
         num_ocr_frames = ocr_end - ocr_start
 
         for zone in crop_zones:
+            if zone['y'] >= self.height:
+                print(self.height)
+                raise ValueError(f"Crop Y position ({zone['y']}) is outside video height ({self.height}).")
+            if zone['x'] >= self.width:
+                raise ValueError(f"Crop X position ({zone['x']}) is outside video width ({self.width}).")
+
+            if zone['y'] + zone['height'] > self.height:
+                print(f"Warning: Crop area extends out of bounds (crop_y + crop_height > video height ({self.height})). The crop area will be clipped.", flush=True)
+            if zone['x'] + zone['width'] > self.width:
+                print(f"Warning: Crop area extends out of bounds (crop_x + crop_width > video width ({self.width})). The crop area will be clipped.", flush=True)
+
             self.validated_zones.append({
                 'x_start': zone['x'],
                 'y_start': zone['y'],
@@ -132,6 +145,7 @@ class Video:
         # get frames from ocr_start to ocr_end
         frame_paths = []
         with Capture(self.path) as v:
+            # PyAV does not support accurate seeking and this was also error prone with OpenCV before
             if ocr_start > 0:
                 for i in range(ocr_start):
                     v.grab()

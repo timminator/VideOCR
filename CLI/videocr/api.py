@@ -24,11 +24,15 @@ def save_subtitles_to_file(
     det_model_dir, rec_model_dir, cls_model_dir = utils.resolve_model_dirs(lang, use_server_model)
 
     v = Video(video_path, paddleocr_path, det_model_dir, rec_model_dir, cls_model_dir, time_end)
-    v.run_ocr(
-        use_gpu, lang, use_angle_cls, time_start, time_end, conf_threshold,
-        use_fullframe, brightness_threshold, ssim_threshold, subtitle_position,
-        frames_to_skip, crop_zones, ocr_image_max_width
-    )
+    try:
+        v.run_ocr(
+            use_gpu, lang, use_angle_cls, time_start, time_end, conf_threshold,
+            use_fullframe, brightness_threshold, ssim_threshold, subtitle_position,
+            frames_to_skip, crop_zones, ocr_image_max_width
+        )
+    except ValueError as e:
+        print(f"Error: {e}", flush=True)
+        sys.exit(1)
     subtitles = v.get_subtitles(sim_threshold, max_merge_gap_sec, lang, post_processing, min_subtitle_duration_sec)
 
     with open(file_path, 'w+', encoding='utf-8') as f:
