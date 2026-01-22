@@ -1,5 +1,4 @@
 import av
-import cv2
 
 from . import utils
 
@@ -9,6 +8,7 @@ VFR_TIMESTAMP_BUFFER_MS = 500.0
 def get_video_properties(path: str, is_vfr: bool, time_end: str | None, initial_fps: float, initial_num_frames: int) -> dict:
     properties = {
         'height': 0,
+        'width': 0,
         'fps': initial_fps,
         'num_frames': initial_num_frames,
         'start_time_offset_ms': 0.0,
@@ -17,7 +17,9 @@ def get_video_properties(path: str, is_vfr: bool, time_end: str | None, initial_
 
     with av.open(path) as container:
         stream = container.streams.video[0]
+        stream.thread_type = 'FRAME'
         properties['height'] = stream.height
+        properties['width'] = stream.width
 
         if not properties['fps'] or properties['fps'] <= 0:
             properties['fps'] = float(stream.average_rate)
@@ -90,12 +92,34 @@ def get_video_properties(path: str, is_vfr: bool, time_end: str | None, initial_
 class Capture:
     def __init__(self, video_path):
         self.path = video_path
+        self.container = None
+        self.stream = None
+        self.frame_iterator = None
 
     def __enter__(self):
-        self.cap = cv2.VideoCapture(self.path)
-        if not self.cap.isOpened():
-            raise OSError(f'Can not open video {self.path}.')
-        return self.cap
+        try:
+            self.container = av.open(self.path)
+            self.stream = self.container.streams.video[0]
+            self.stream.thread_type = 'FRAME'
+            self.frame_iterator = self.container.decode(self.stream)
+            return self
+        except av.AVError as e:
+            raise OSError(f'Can not open video {self.path}.') from e
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.cap.release()
+        if self.container:
+            self.container.close()
+
+    def read(self):
+        try:
+            frame = next(self.frame_iterator)
+            return True, frame.to_ndarray(format='rgb24')
+        except StopIteration:
+            return False, None
+
+    def grab(self):
+        try:
+            next(self.frame_iterator)
+            return True
+        except StopIteration:
+            return False
