@@ -119,6 +119,10 @@
     "unknown": "inconnu",
     "cli_map_gen_stopped": "Temps cible atteint. Génération de la carte arrêtée après l'image {frame_num}.",
 
+    "eta_map": "ETA Mappage",
+    "eta_seek": "ETA Nav.",
+    "eta_step": "ETA Étape",
+
     "fatal_error_header": "--- ERREUR FATALE ---",
     "fatal_error_reason_1": "Votre système ne répond pas aux exigences matérielles.",
     "fatal_error_reason_2": "Raison :",

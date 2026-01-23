@@ -119,6 +119,10 @@
     "unknown": "tidak diketahui",
     "cli_map_gen_stopped": "Mencapai waktu target. Menghentikan pembuatan peta setelah frame {frame_num}.",
 
+    "eta_map": "ETA Pemetaan",
+    "eta_seek": "ETA Lompat",
+    "eta_step": "ETA Langkah",
+
     "fatal_error_header": "--- ERROR FATAL ---",
     "fatal_error_reason_1": "Sistem Anda tidak memenuhi persyaratan perangkat keras.",
     "fatal_error_reason_2": "Alasan:",

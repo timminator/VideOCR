@@ -119,6 +119,10 @@
     "unknown": "알 수 없음",
     "cli_map_gen_stopped": "목표 시간에 도달했습니다. 프레임 {frame_num} 후 맵 생성을 중지했습니다.",
 
+    "eta_map": "ETA 매핑",
+    "eta_seek": "ETA 이동",
+    "eta_step": "ETA 단계",
+
     "fatal_error_header": "--- 치명적 오류 ---",
     "fatal_error_reason_1": "시스템이 하드웨어 요구사항을 충족하지 않습니다.",
     "fatal_error_reason_2": "이유:",

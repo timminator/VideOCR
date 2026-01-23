@@ -119,6 +119,10 @@
     "unknown": "unknown",
     "cli_map_gen_stopped": "Reached target time. Stopped map generation after frame {frame_num}.",
 
+    "eta_map": "ETA Mapping",
+    "eta_seek": "ETA Seeking",
+    "eta_step": "ETA Step",
+
     "fatal_error_header": "--- FATAL ERROR ---",
     "fatal_error_reason_1": "Your system does not meet the hardware requirements.",
     "fatal_error_reason_2": "Reason:",

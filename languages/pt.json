@@ -119,6 +119,10 @@
     "unknown": "desconhecido",
     "cli_map_gen_stopped": "Tempo-alvo atingido. Geração de mapa interrompida após o quadro {frame_num}.",
 
+    "eta_map": "ETA Mapeamento",
+    "eta_seek": "ETA Posic.",
+    "eta_step": "ETA Etapa",
+
     "fatal_error_header": "--- ERRO FATAL ---",
     "fatal_error_reason_1": "Seu sistema não atende aos requisitos de hardware.",
     "fatal_error_reason_2": "Motivo:",

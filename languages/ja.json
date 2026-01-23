@@ -119,6 +119,10 @@
     "unknown": "不明",
     "cli_map_gen_stopped": "目標時間に到達しました。フレーム {frame_num} 後にマップ生成を停止しました。",
 
+    "eta_map": "ETA マッピング",
+    "eta_seek": "ETA シーク",
+    "eta_step": "ETA ステップ",
+
     "fatal_error_header": "--- 致命的エラー ---",
     "fatal_error_reason_1": "お使いのシステムはハードウェア要件を満たしていません。",
     "fatal_error_reason_2": "理由:",

@@ -119,6 +119,10 @@
     "unknown": "sconosciuto",
     "cli_map_gen_stopped": "Tempo obiettivo raggiunto. Mappa interrotta dopo il fotogramma {frame_num}.",
 
+    "eta_map": "ETA Mappatura",
+    "eta_seek": "ETA Avanz.",
+    "eta_step": "ETA Fase",
+
     "fatal_error_header": "--- ERRORE FATALE ---",
     "fatal_error_reason_1": "Il tuo sistema non soddisfa i requisiti hardware.",
     "fatal_error_reason_2": "Motivo:",

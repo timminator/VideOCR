@@ -119,6 +119,10 @@
     "unknown": "unbekannt",
     "cli_map_gen_stopped": "Zielzeit erreicht. Zuordnungserstellung nach Frame {frame_num} gestoppt.",
 
+    "eta_map": "ETA Zuordnung",
+    "eta_seek": "ETA Vorspulen",
+    "eta_step": "ETA Schritt",
+
     "fatal_error_header": "--- FATALER FEHLER ---",
     "fatal_error_reason_1": "Ihr System erfüllt nicht die Hardwareanforderungen.",
     "fatal_error_reason_2": "Grund:",

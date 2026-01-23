@@ -119,6 +119,10 @@
     "unknown": "غير معروف",
     "cli_map_gen_stopped": "تم الوصول للوقت المستهدف. توقف إنشاء الخريطة بعد الإطار {frame_num}.",
 
+    "eta_map": "ETA تعيين",
+    "eta_seek": "ETA انتقال",
+    "eta_step": "ETA الخطوة",
+
     "fatal_error_header": "--- خطأ فادح ---",
     "fatal_error_reason_1": "نظامك لا يلبي متطلبات الأجهزة.",
     "fatal_error_reason_2": "السبب:",

@@ -31,6 +31,7 @@ import platform
 import re
 import subprocess
 import threading
+import time
 import tkinter.font as tkFont
 import urllib.request
 import webbrowser
@@ -450,6 +451,17 @@ def format_time(seconds):
         return f"{h:02d}:{m:02d}:{s:02d}"
     else:
         return f"{m:02d}:{s:02d}"
+
+
+def format_seconds(seconds):
+    """Converts seconds to '1h 05m' or '05m 30s' format."""
+    if seconds is None or seconds < 0:
+        return "--:--"
+    m, s = divmod(int(seconds), 60)
+    h, m = divmod(m, 60)
+    if h > 0:
+        return f"{h}h {m:02d}m"
+    return f"{m:02d}m {s:02d}s"
 
 
 def update_frame_and_time_display(window, current_frame, total_frames, fps):
@@ -889,7 +901,13 @@ def get_video_frame(video_path, frame_number, display_size):
 
 
 def handle_progress(match, label_format_key, last_percentage, log_threshold, taskbar_base=0, show_taskbar_progress=True):
-    """Handles progress parsing and updating GUI."""
+    """Handles progress parsing, ETA calculation, and GUI updates."""
+
+    if not hasattr(handle_progress, "last_key"):
+        handle_progress.last_key = None
+    if not hasattr(handle_progress, "start_time"):
+        handle_progress.start_time = None
+
     current_item = int(match.group(1))
     total_str = match.group(2)
 
@@ -908,6 +926,36 @@ def handle_progress(match, label_format_key, last_percentage, log_threshold, tas
 
     if current_item == 1 or current_percent >= last_percentage + smooth_threshold or current_percent >= 100:
 
+        current_time = time.time()
+
+        if handle_progress.last_key != label_format_key or current_item == 1:
+            handle_progress.last_key = label_format_key
+            handle_progress.start_time = current_time
+            eta_time_str = "--:--"
+        else:
+            elapsed = current_time - handle_progress.start_time
+            if elapsed > 1 and current_item > 0 and total_items > 0:
+                rate = current_item / elapsed
+                remaining = total_items - current_item
+                eta_time_str = format_seconds(remaining / rate)
+            else:
+                eta_time_str = "--:--"
+
+        if 'vfr' in label_format_key:
+            prefix = LANG.get('eta_map', "ETA Mapping")
+        elif 'seek' in label_format_key:
+            prefix = LANG.get('eta_seek', "ETA Seeking")
+        else:
+            base = LANG.get('eta_step', "ETA Step")
+            if 'step1' in label_format_key:
+                prefix = f"{base} 1/2"
+            elif 'step2' in label_format_key:
+                prefix = f"{base} 2/2"
+            else:
+                prefix = base
+
+        final_eta_str = f"{prefix}: {eta_time_str}"
+
         label_format = LANG.get(label_format_key, "Processing {current}/{total} ({percent}%)")
 
         smooth_percent_str = f"{current_percent:.1f}"
@@ -916,7 +964,11 @@ def handle_progress(match, label_format_key, last_percentage, log_threshold, tas
         log_percent_str = f"{int(current_percent)}"
         status_message_log = label_format.format(current=current_item, total=display_total, percent=log_percent_str)
 
-        window.write_event_value('-PROGRESS-SMOOTH-', {'text': status_message_smooth, 'percent': current_percent})
+        window.write_event_value('-PROGRESS-SMOOTH-', {
+            'text': status_message_smooth,
+            'percent': current_percent,
+            'eta': final_eta_str
+        })
 
         prev_step = int(last_percentage / log_threshold)
         curr_step = int(current_percent / log_threshold)
@@ -1182,7 +1234,10 @@ tab1_content = [
      sg.Button("Cancel", key="-BTN-CANCEL-", disabled=True),
      sg.Button("Clear Crop", key="-BTN-CLEAR_CROP-", disabled=True)],
     [sg.Text("Progress Info:", key='-LBL-PROGRESS-')],
-    [sg.Text("", key="-STATUS-LINE-", size=(50, 1), expand_x=True)],
+    [
+        sg.Text("", key="-STATUS-LINE-", size=(None, 1), expand_x=True),
+        sg.Text("", key="-ETA-LINE-", size=(25, 1), justification='right')
+    ],
     [sg.ProgressBar(100, orientation='h', size=(1, 20), key="-PROGRESS-BAR-", expand_x=True)],
     [sg.Text("Log:", key='-LBL-LOG-')],
     [sg.Multiline(key="-OUTPUT-", size=(None, 7), expand_x=True, autoscroll=True, reroute_stdout=False, reroute_stderr=False, write_only=True, disabled=True)]
@@ -1591,8 +1646,12 @@ while True:
 
     elif event == '-PROGRESS-SMOOTH-':
         data = values[event]
-        window['-STATUS-LINE-'].update(data['text'])
-        window['-PROGRESS-BAR-'].update(data['percent'])
+        if data.get('text'):
+            window['-STATUS-LINE-'].update(data['text'])
+        if data.get('eta'):
+            window['-ETA-LINE-'].update(data['eta'])
+        if data.get('percent') is not None:
+            window['-PROGRESS-BAR-'].update(data['percent'])
         window.refresh()
 
     elif event == '-VIDEOCR_OUTPUT-':
@@ -1629,6 +1688,7 @@ while True:
         window['-BTN-CANCEL-'].update(disabled=True)
         window['-PROGRESS-BAR-'].update(0)
         window['-STATUS-LINE-'].update("")
+        window['-ETA-LINE-'].update("")
         enable_graph_interaction(window)
         if taskbar_progress_supported:
             prog.setState('normal')

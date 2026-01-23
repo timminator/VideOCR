@@ -119,6 +119,10 @@
     "unknown": "không xác định",
     "cli_map_gen_stopped": "Đã đạt thời gian mục tiêu. Dừng tạo bản đồ sau khung hình {frame_num}.",
 
+    "eta_map": "ETA Ánh xạ",
+    "eta_seek": "ETA Tua",
+    "eta_step": "ETA Bước",
+
     "fatal_error_header": "--- LỖI NGHIÊM TRỌNG ---",
     "fatal_error_reason_1": "Hệ thống của bạn không đáp ứng yêu cầu phần cứng.",
     "fatal_error_reason_2": "Lý do:",

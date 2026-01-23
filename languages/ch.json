@@ -119,6 +119,10 @@
     "unknown": "未知",
     "cli_map_gen_stopped": "已达到目标时间，在第 {frame_num} 帧停止生成映射。",
 
+    "eta_map": "ETA 映射",
+    "eta_seek": "ETA 跳转",
+    "eta_step": "ETA 步骤",
+
     "fatal_error_header": "--- 致命错误 ---",
     "fatal_error_reason_1": "您的系统不满足硬件要求。",
     "fatal_error_reason_2": "原因：",

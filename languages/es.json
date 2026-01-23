@@ -119,6 +119,10 @@
     "unknown": "desconocido",
     "cli_map_gen_stopped": "Se alcanzó el tiempo objetivo. Generación de mapa detenida después del fotograma {frame_num}.",
 
+    "eta_map": "ETA Mapeo",
+    "eta_seek": "ETA Desplaz.",
+    "eta_step": "ETA Paso",
+
     "fatal_error_header": "--- ERROR FATAL ---",
     "fatal_error_reason_1": "Tu sistema no cumple con los requisitos de hardware.",
     "fatal_error_reason_2": "Razón:",

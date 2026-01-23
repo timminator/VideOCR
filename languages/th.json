@@ -119,6 +119,10 @@
     "unknown": "ไม่ทราบ",
     "cli_map_gen_stopped": "ถึงเวลาเป้าหมายแล้ว หยุดการสร้างแผนที่หลังเฟรม {frame_num}",
 
+    "eta_map": "ETA การจับคู่",
+    "eta_seek": "ETA การเลื่อน",
+    "eta_step": "ETA ขั้นตอน",
+
     "fatal_error_header": "--- ข้อผิดพลาดร้ายแรง ---",
     "fatal_error_reason_1": "ระบบของคุณไม่ตรงตามข้อกำหนดฮาร์ดแวร์",
     "fatal_error_reason_2": "เหตุผล:",
