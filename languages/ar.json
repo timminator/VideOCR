@@ -25,6 +25,7 @@
     "btn_cancel": "إلغاء",
     "btn_clear_crop": "مسح القطع",
     "lbl_progress": "معلومات التقدم:",
+    "lbl_log": "السجل:",
     "video_file_types": "ملفات الفيديو",
     "all_file_types": "جميع الملفات",
 
@@ -102,7 +103,7 @@
     "save_as_all_files": "جميع الملفات",
 
     "status_starting": "بدء استخراج الترجمة...\n",
-    "status_success": "\nتم إنشاء ملف الترجمة بنجاح!\n",
+    "status_success": "تم إنشاء ملف الترجمة بنجاح!\n",
     "status_cancelling": "\nإلغاء العملية...\n",
     "status_cancelled": "\nتم إلغاء العملية بواسطة المستخدم.\n",
     "notification_title": "إنشاء الترجمة اكتمل!",

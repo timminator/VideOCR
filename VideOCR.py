@@ -346,6 +346,7 @@ def update_gui_text(window):
         '-BTN-CANCEL-': {'text': 'btn_cancel'},
         '-BTN-CLEAR_CROP-': {'text': 'btn_clear_crop'},
         '-LBL-PROGRESS-': {'text': 'lbl_progress'},
+        '-LBL-LOG-': {'text': 'lbl_log'},
 
         # Tab 2
         '-TAB-ADVANCED-': {'text': 'tab_advanced'},
@@ -887,7 +888,7 @@ def get_video_frame(video_path, frame_number, display_size):
     return io.BytesIO(buffer), original_width, original_height, total_frames, cv_fps, new_w, new_h, offset_x, offset_y
 
 
-def handle_progress(match, label_format_key, last_percentage, threshold, taskbar_base=0, show_taskbar_progress=True):
+def handle_progress(match, label_format_key, last_percentage, log_threshold, taskbar_base=0, show_taskbar_progress=True):
     """Handles progress parsing and updating GUI."""
     current_item = int(match.group(1))
     total_str = match.group(2)
@@ -902,22 +903,34 @@ def handle_progress(match, label_format_key, last_percentage, threshold, taskbar
         total_items = int(total_str)
         display_total = str(total_items)
 
-    percentage = int((current_item / total_items) * 100) if total_items > 0 else 0
+    current_percent = (current_item / total_items) * 100 if total_items > 0 else 0
+    smooth_threshold = 0.1
 
-    label_format = LANG.get(label_format_key, "Processing {current}/{total} ({percent}%)")
+    if current_item == 1 or current_percent >= last_percentage + smooth_threshold or current_percent >= 100:
 
-    if current_item == 1 or percentage >= last_percentage + threshold or percentage == 100:
-        message = f"{label_format.format(current=current_item, total=display_total, percent=percentage)}\n"
-        window.write_event_value('-VIDEOCR_OUTPUT-', message)
+        label_format = LANG.get(label_format_key, "Processing {current}/{total} ({percent}%)")
+
+        smooth_percent_str = f"{current_percent:.1f}"
+        status_message_smooth = label_format.format(current=current_item, total=display_total, percent=smooth_percent_str)
+
+        log_percent_str = f"{int(current_percent)}"
+        status_message_log = label_format.format(current=current_item, total=display_total, percent=log_percent_str)
+
+        window.write_event_value('-PROGRESS-SMOOTH-', {'text': status_message_smooth, 'percent': current_percent})
+
+        prev_step = int(last_percentage / log_threshold)
+        curr_step = int(current_percent / log_threshold)
+
+        if current_item == 1 or curr_step > prev_step or current_percent >= 100:
+            window.write_event_value('-VIDEOCR_OUTPUT-', status_message_log + "\n")
 
         if taskbar_progress_supported and show_taskbar_progress and taskbar_base is not None:
-            progress_value = taskbar_base + int(percentage * 0.5)
+            progress_value = taskbar_base + int(current_percent * 0.5)
             if current_item == 1 and progress_value <= taskbar_base:
                 progress_value = taskbar_base + 1
-
             window.write_event_value('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': progress_value})
 
-        return percentage
+        return current_percent
     return last_percentage
 
 
@@ -957,10 +970,10 @@ def run_videocr(args_dict, window):
     SEEK_PROGRESS_PATTERN = re.compile(r"Advancing to frame (\d+)/(\d+)")
     MAP_GENERATION_STOP_PATTERN = re.compile(r"Reached target time. Stopped map generation after frame (\d+)\.")
 
-    last_reported_percentage_step1 = -1
-    last_reported_percentage_step2 = -1
-    last_reported_percentage_vfr = -1
-    last_reported_percentage_seek = -1
+    last_reported_percentage_step1 = -1.0
+    last_reported_percentage_step2 = -1.0
+    last_reported_percentage_vfr = -1.0
+    last_reported_percentage_seek = -1.0
 
     expecting_log_path = False
     paddle_error_message = ""
@@ -968,6 +981,7 @@ def run_videocr(args_dict, window):
     taskbar_progress_started = False
 
     window.write_event_value('-VIDEOCR_OUTPUT-', LANG.get('status_starting', "Starting subtitle extraction...\n"))
+    window.write_event_value('-PROGRESS-SMOOTH-', {'text': LANG.get('status_starting', "Starting subtitle extraction..."), 'percent': None})
 
     process = None
 
@@ -1051,7 +1065,7 @@ def run_videocr(args_dict, window):
 
                     last_reported_percentage_vfr = handle_progress(
                         match3, "progress_vfr",
-                        last_reported_percentage_vfr, 20, show_taskbar_progress=False)
+                        last_reported_percentage_vfr, 5, show_taskbar_progress=False)
                     continue
 
                 match4 = SEEK_PROGRESS_PATTERN.search(line)
@@ -1067,21 +1081,26 @@ def run_videocr(args_dict, window):
 
                 if STARTING_OCR_PATTERN.search(line):
                     window.write_event_value('-VIDEOCR_OUTPUT-', LANG.get('cli_starting_ocr', line) + '\n')
+                    window.write_event_value('-PROGRESS-SMOOTH-', {'text': LANG.get('cli_starting_ocr', line), 'percent': None})
                     continue
                 elif GENERATING_SUBTITLES_PATTERN.search(line):
                     window.write_event_value('-VIDEOCR_OUTPUT-', LANG.get('cli_generating_subs', line) + '\n')
+                    window.write_event_value('-PROGRESS-SMOOTH-', {'text': LANG.get('cli_generating_subs', line), 'percent': None})
                     continue
                 elif VFR_ESTIMATING_PATTERN.search(line):
                     window.write_event_value('-VIDEOCR_OUTPUT-', LANG.get('cli_vfr_estimating', line) + '\n')
+                    window.write_event_value('-PROGRESS-SMOOTH-', {'text': LANG.get('cli_vfr_estimating', line), 'percent': None})
                     continue
                 elif VFR_PATTERN.search(line):
                     window.write_event_value('-VIDEOCR_OUTPUT-', LANG.get('cli_vfr_detected', line) + '\n')
+                    window.write_event_value('-PROGRESS-SMOOTH-', {'text': LANG.get('cli_vfr_detected', line), 'percent': None})
                     continue
                 elif map_gen_match := MAP_GENERATION_STOP_PATTERN.search(line):
                     frame_num = map_gen_match.group(1)
                     template = LANG.get('cli_map_gen_stopped', line)
                     output = template.format(frame_num=frame_num)
                     window.write_event_value('-VIDEOCR_OUTPUT-', output + '\n')
+                    window.write_event_value('-PROGRESS-SMOOTH-', {'text': output, 'percent': None})
                     continue
 
         exit_code = process.wait()
@@ -1125,7 +1144,8 @@ def run_ocr_thread(args, window):
     """Thread target for running the OCR process."""
     success = run_videocr(args, window)
     if success:
-        window.write_event_value('-VIDEOCR_OUTPUT-', LANG.get('status_success', "\nSuccessfully generated subtitle file!\n"))
+        window.write_event_value('-VIDEOCR_OUTPUT-', '\n')
+        window.write_event_value('-VIDEOCR_OUTPUT-', LANG.get('status_success', "Successfully generated subtitle file!\n"))
         if args.get('send_notification', True):
             notification_title = LANG.get('notification_title', "Your Subtitle generation is done!")
             window.write_event_value('-NOTIFICATION_EVENT-', {'title': notification_title, 'message': f"{os.path.basename(args['output'])}"})
@@ -1162,6 +1182,9 @@ tab1_content = [
      sg.Button("Cancel", key="-BTN-CANCEL-", disabled=True),
      sg.Button("Clear Crop", key="-BTN-CLEAR_CROP-", disabled=True)],
     [sg.Text("Progress Info:", key='-LBL-PROGRESS-')],
+    [sg.Text("", key="-STATUS-LINE-", size=(50, 1), expand_x=True)],
+    [sg.ProgressBar(100, orientation='h', size=(1, 20), key="-PROGRESS-BAR-", expand_x=True)],
+    [sg.Text("Log:", key='-LBL-LOG-')],
     [sg.Multiline(key="-OUTPUT-", size=(None, 7), expand_x=True, autoscroll=True, reroute_stdout=False, reroute_stderr=False, write_only=True, disabled=True)]
 ]
 tab1_layout = [[sg.Column(tab1_content,
@@ -1319,6 +1342,37 @@ def redraw_canvas_and_boxes():
 
         rect_id = graph.draw_rectangle(start_graph, end_graph, line_color='red')
         window.drawn_rect_ids.append(rect_id)
+
+
+def disable_graph_interaction(window):
+    """Disables mouse interaction on the graph."""
+    if '-GRAPH-' not in window.AllKeysDict:
+        return
+
+    widget = window['-GRAPH-'].Widget
+    window.saved_b1 = widget.bind('<Button-1>')
+    window.saved_b1_motion = widget.bind('<B1-Motion>')
+    window.saved_b1_release = widget.bind('<ButtonRelease-1>')
+
+    def blocker(event):
+        return "break"
+
+    widget.bind('<Button-1>', blocker)
+    widget.bind('<B1-Motion>', blocker)
+    widget.bind('<ButtonRelease-1>', blocker)
+
+
+def enable_graph_interaction(window):
+    """Restores mouse interaction."""
+    if '-GRAPH-' not in window.AllKeysDict:
+        return
+
+    if hasattr(window, 'saved_b1'):
+        widget = window['-GRAPH-'].Widget
+        widget.bind('<Button-1>', window.saved_b1)
+        widget.bind('<B1-Motion>', window.saved_b1_motion)
+        widget.bind('<ButtonRelease-1>', window.saved_b1_release)
+        del window.saved_b1, window.saved_b1_motion, window.saved_b1_release
 
 
 # --- Bind keyboard events to the graph element ---
@@ -1535,9 +1589,22 @@ while True:
         window['-BTN-RUN-'].update(disabled=True)
         window['-BTN-CANCEL-'].update(disabled=False)
 
+    elif event == '-PROGRESS-SMOOTH-':
+        data = values[event]
+        window['-STATUS-LINE-'].update(data['text'])
+        window['-PROGRESS-BAR-'].update(data['percent'])
+        window.refresh()
+
     elif event == '-VIDEOCR_OUTPUT-':
-        output_line = values[event]
-        window['-OUTPUT-'].update(output_line, append=True)
+        text_to_log = values[event]
+
+        if text_to_log.strip():
+            timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+            final_text = f"[{timestamp}] {text_to_log}"
+        else:
+            final_text = text_to_log
+
+        window['-OUTPUT-'].update(final_text, append=True)
         window.refresh()
 
     elif event == '-TASKBAR_STATE_UPDATE-':
@@ -1560,6 +1627,9 @@ while True:
         window['--output'].update(disabled=not video_path)
         window['-SAVE_AS_BTN-'].update(disabled=not video_path)
         window['-BTN-CANCEL-'].update(disabled=True)
+        window['-PROGRESS-BAR-'].update(0)
+        window['-STATUS-LINE-'].update("")
+        enable_graph_interaction(window)
         if taskbar_progress_supported:
             prog.setState('normal')
             prog.setProgress(0)
@@ -1808,6 +1878,7 @@ while True:
             window['-OUTPUT-'].update(LANG.get('error_already_running', "Process is already running.\n"), append=True)
             continue
 
+        disable_graph_interaction(window)
         window.cancelled_by_user = False
         window['-OUTPUT-'].update("")
 

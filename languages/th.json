@@ -25,6 +25,7 @@
     "btn_cancel": "ยกเลิก",
     "btn_clear_crop": "ล้างครอป",
     "lbl_progress": "ข้อมูลความคืบหน้า:",
+    "lbl_log": "บันทึก:",
     "video_file_types": "ไฟล์วิดีโอ",
     "all_file_types": "ไฟล์ทั้งหมด",
 
@@ -102,7 +103,7 @@
     "save_as_all_files": "ไฟล์ทั้งหมด",
 
     "status_starting": "เริ่มการแยกคำบรรยาย...\n",
-    "status_success": "\nสร้างไฟล์คำบรรยายสำเร็จ!\n",
+    "status_success": "สร้างไฟล์คำบรรยายสำเร็จ!\n",
     "status_cancelling": "\nกำลังยกเลิกกระบวนการ...\n",
     "status_cancelled": "\nกระบวนการถูกยกเลิกโดยผู้ใช้\n",
     "notification_title": "การสร้างคำบรรยายของคุณเสร็จสิ้นแล้ว!",

@@ -25,6 +25,7 @@
     "btn_cancel": "Hủy",
     "btn_clear_crop": "Xóa Vùng Cắt",
     "lbl_progress": "Thông Tin Tiến Trình:",
+    "lbl_log": "Nhật ký:",
     "video_file_types": "Tệp Video",
     "all_file_types": "Tất Cả Tệp",
 
@@ -102,7 +103,7 @@
     "save_as_all_files": "Tất Cả Tệp",
 
     "status_starting": "Bắt đầu trích xuất phụ đề...\n",
-    "status_success": "\nTạo tệp phụ đề thành công!\n",
+    "status_success": "Tạo tệp phụ đề thành công!\n",
     "status_cancelling": "\nĐang hủy quá trình...\n",
     "status_cancelled": "\nQuá trình đã bị hủy bởi người dùng.\n",
     "notification_title": "Tạo phụ đề của bạn đã hoàn tất!",

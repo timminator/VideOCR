@@ -25,6 +25,7 @@
     "btn_cancel": "Cancel",
     "btn_clear_crop": "Clear Crop",
     "lbl_progress": "Progress Info:",
+    "lbl_log": "Log:",
     "video_file_types": "Video Files",
     "all_file_types": "All Files",
 
@@ -102,7 +103,7 @@
     "save_as_all_files": "All Files",
 
     "status_starting": "Starting subtitle extraction...\n",
-    "status_success": "\nSuccessfully generated subtitle file!\n",
+    "status_success": "Successfully generated subtitle file!\n",
     "status_cancelling": "\nCancelling process...\n",
     "status_cancelled": "\nProcess cancelled by user.\n",
     "notification_title": "Your Subtitle generation is done!",

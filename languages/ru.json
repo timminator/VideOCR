@@ -25,6 +25,7 @@
     "btn_cancel": "Отмена",
     "btn_clear_crop": "Очистить Обрезку",
     "lbl_progress": "Информация о Прогрессе:",
+    "lbl_log": "Журнал:",
     "video_file_types": "Видео Файлы",
     "all_file_types": "Все Файлы",
 
@@ -102,7 +103,7 @@
     "save_as_all_files": "Все Файлы",
 
     "status_starting": "Начинаем извлечение субтитров...\n",
-    "status_success": "\nУспешно создан файл субтитров!\n",
+    "status_success": "Успешно создан файл субтитров!\n",
     "status_cancelling": "\nОтменяем процесс...\n",
     "status_cancelled": "\nПроцесс отменен пользователем.\n",
     "notification_title": "Создание субтитров завершено!",

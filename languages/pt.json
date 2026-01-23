@@ -25,6 +25,7 @@
     "btn_cancel": "Cancelar",
     "btn_clear_crop": "Limpar corte",
     "lbl_progress": "Informações de progresso:",
+    "lbl_log": "Registro:",
     "video_file_types": "Arquivos de vídeo",
     "all_file_types": "Todos os arquivos",
 
@@ -102,7 +103,7 @@
     "save_as_all_files": "Todos os arquivos",
 
     "status_starting": "Iniciando extração de legendas...\n",
-    "status_success": "\nArquivo de legendas gerado com sucesso!\n",
+    "status_success": "Arquivo de legendas gerado com sucesso!\n",
     "status_cancelling": "\nCancelando processo...\n",
     "status_cancelled": "\nProcesso cancelado pelo usuário.\n",
     "notification_title": "Geração de legendas concluída!",

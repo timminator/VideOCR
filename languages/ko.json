@@ -25,6 +25,7 @@
     "btn_cancel": "취소",
     "btn_clear_crop": "자르기 지우기",
     "lbl_progress": "진행 정보:",
+    "lbl_log": "로그:",
     "video_file_types": "비디오 파일",
     "all_file_types": "모든 파일",
 
@@ -102,7 +103,7 @@
     "save_as_all_files": "모든 파일",
 
     "status_starting": "자막 추출을 시작합니다...\n",
-    "status_success": "\n자막 파일 생성에 성공했습니다!\n",
+    "status_success": "자막 파일 생성에 성공했습니다!\n",
     "status_cancelling": "\n프로세스를 취소하고 있습니다...\n",
     "status_cancelled": "\n프로세스가 사용자에 의해 취소되었습니다.\n",
     "notification_title": "자막 생성이 완료되었습니다!",

@@ -25,6 +25,7 @@
     "btn_cancel": "Batal",
     "btn_clear_crop": "Hapus Crop",
     "lbl_progress": "Info Kemajuan:",
+    "lbl_log": "Log:",
     "video_file_types": "File Video",
     "all_file_types": "Semua File",
 
@@ -102,7 +103,7 @@
     "save_as_all_files": "Semua File",
 
     "status_starting": "Memulai ekstraksi subtitle...\n",
-    "status_success": "\nBerhasil membuat file subtitle!\n",
+    "status_success": "Berhasil membuat file subtitle!\n",
     "status_cancelling": "\nMembatalkan proses...\n",
     "status_cancelled": "\nProses dibatalkan oleh pengguna.\n",
     "notification_title": "Pembuatan subtitle Anda selesai!",

@@ -25,6 +25,7 @@
     "btn_cancel": "Annulla",
     "btn_clear_crop": "Cancella ritaglio",
     "lbl_progress": "Informazioni di avanzamento:",
+    "lbl_log": "Registro:",
     "video_file_types": "File video",
     "all_file_types": "Tutti i file",
 
@@ -102,7 +103,7 @@
     "save_as_all_files": "Tutti i file",
 
     "status_starting": "Avvio estrazione sottotitoli...\n",
-    "status_success": "\nFile sottotitoli generato con successo!\n",
+    "status_success": "File sottotitoli generato con successo!\n",
     "status_cancelling": "\nAnnullamento processo in corso...\n",
     "status_cancelled": "\nProcesso annullato dall'utente.\n",
     "notification_title": "Generazione sottotitoli completata!",

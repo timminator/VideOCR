@@ -25,6 +25,7 @@
     "btn_cancel": "キャンセル",
     "btn_clear_crop": "クロップをクリア",
     "lbl_progress": "進行状況:",
+    "lbl_log": "ログ:",
     "video_file_types": "ビデオファイル",
     "all_file_types": "すべてのファイル",
 
@@ -102,7 +103,7 @@
     "save_as_all_files": "すべてのファイル",
 
     "status_starting": "字幕抽出を開始しています...\n",
-    "status_success": "\n字幕ファイルの生成に成功しました！\n",
+    "status_success": "字幕ファイルの生成に成功しました！\n",
     "status_cancelling": "\nプロセスをキャンセルしています...\n",
     "status_cancelled": "\nプロセスがユーザーによってキャンセルされました。\n",
     "notification_title": "字幕生成が完了しました！",

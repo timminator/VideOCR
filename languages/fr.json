@@ -25,6 +25,7 @@
     "btn_cancel": "Annuler",
     "btn_clear_crop": "Effacer la découpe",
     "lbl_progress": "Informations de progression :",
+    "lbl_log": "Journal:",
     "video_file_types": "Fichiers vidéo",
     "all_file_types": "Tous les fichiers",
 
@@ -102,7 +103,7 @@
     "save_as_all_files": "Tous les fichiers",
 
     "status_starting": "Démarrage de l'extraction des sous-titres...\n",
-    "status_success": "\nFichier de sous-titres généré avec succès !\n",
+    "status_success": "Fichier de sous-titres généré avec succès !\n",
     "status_cancelling": "\nAnnulation du processus...\n",
     "status_cancelled": "\nProcessus annulé par l'utilisateur.\n",
     "notification_title": "La génération des sous-titres est terminée !",

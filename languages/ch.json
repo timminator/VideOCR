@@ -25,6 +25,7 @@
     "btn_cancel": "取消",
     "btn_clear_crop": "清除选区",
     "lbl_progress": "进度信息：",
+    "lbl_log": "日志:",
     "video_file_types": "视频文件",
     "all_file_types": "所有文件",
 
@@ -102,7 +103,7 @@
     "save_as_all_files": "所有文件",
 
     "status_starting": "正在开始字幕提取...\n",
-    "status_success": "\n字幕文件生成成功！\n",
+    "status_success": "字幕文件生成成功！\n",
     "status_cancelling": "\n正在取消进程...\n",
     "status_cancelled": "\n进程已被用户取消。\n",
     "notification_title": "字幕生成完成！",

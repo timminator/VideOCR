@@ -25,6 +25,7 @@
     "btn_cancel": "Abbrechen",
     "btn_clear_crop": "Bereich löschen",
     "lbl_progress": "Fortschritt:",
+    "lbl_log": "Protokoll:",
     "video_file_types": "Videodateien",
     "all_file_types": "Alle Dateien",
 
@@ -102,7 +103,7 @@
     "save_as_all_files": "Alle Dateien",
 
     "status_starting": "Untertitel-Extraktion wird gestartet...\n",
-    "status_success": "\nUntertiteldatei erfolgreich erstellt!\n",
+    "status_success": "Untertiteldatei erfolgreich erstellt!\n",
     "status_cancelling": "\nVorgang wird abgebrochen...\n",
     "status_cancelled": "\nVorgang vom Benutzer abgebrochen.\n",
     "notification_title": "Die Erstellung Ihrer Untertitel ist abgeschlossen!",
