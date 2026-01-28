@@ -1,9 +1,10 @@
 {
     "tab_video": "ビデオ処理",
+    "tab_batch": "キュー",
     "tab_advanced": "詳細設定",
     "tab_about": "について",
 
-    "lbl_video_path": "ビデオファイル:",
+    "lbl_source": "ソース:",
     "lbl_output_srt": "SRT出力:",
     "lbl_sub_lang": "字幕言語:",
     "lbl_sub_pos": "字幕位置:",
@@ -76,11 +77,35 @@
     "tip_send_notification": "プロセスが完了したときに通知を送信します。",
     "chk_check_updates": "起動時に更新をチェック",
     "tip_check_updates": "アプリケーション起動時にVideOCRの新しいバージョンを自動的にチェックします。",
-    "btn_browse": "参照...",
+    
+    "btn_browse": "ファイルを開く...",
+    "btn_browse_folder": "フォルダを開く...",
     "btn_save_as": "名前を付けて保存...",
     "btn_check_now": "今すぐチェック",
     "btn_ok": "OK",
     "btn_dismiss": "閉じる",
+    "btn_add_to_queue": "キューに追加",
+    "btn_add_all_to_queue": "すべてキューに追加",
+    "btn_pause": "一時停止",
+    "btn_resume": "再開",
+
+    "lbl_queue_title": "キュー",
+    "col_video_file": "ビデオファイル",
+    "col_output_file": "出力ファイル",
+    "col_status": "ステータス",
+    "btn_start_queue": "キューを開始",
+    "btn_stop_queue": "キューを停止",
+    "btn_reset": "リセット",
+    "btn_edit": "編集",
+    "btn_remove": "削除",
+    "btn_clear_queue": "キューをクリア",
+
+    "tip_batch_up": "選択したジョブを上に移動",
+    "tip_batch_down": "選択したジョブを下に移動",
+    "tip_batch_reset": "キャンセルされたジョブをリセット",
+    "tip_batch_edit": "編集のためにメインウィンドウに戻す",
+    "tip_batch_remove": "選択したジョブをキューから削除",
+    "tip_batch_clear": "現在のキューをクリア",
 
     "lbl_about_version": "バージョン: {version}",
     "lbl_get_newest": "最新バージョンはこちらから入手:",
@@ -106,7 +131,11 @@
     "status_success": "字幕ファイルの生成に成功しました！\n",
     "status_cancelling": "\nプロセスをキャンセルしています...\n",
     "status_cancelled": "\nプロセスがユーザーによってキャンセルされました。\n",
+    "status_resuming": "\nプロセスを再開しています...\n",
+    "status_pausing": "\nプロセスを一時停止しています...\n",
     "notification_title": "字幕生成が完了しました！",
+    "batch_processing_file": "処理中",
+    "batch_finished_count": "バッチ完了: {} ファイルを処理しました。",
     
     "progress_step1": "ステップ1: 画像 {current} / {total} を処理しました ({percent}%)",
     "progress_step2": "ステップ2: 画像 {current} / {total} でOCRを実行しました ({percent}%)",
@@ -139,7 +168,8 @@
     "error_already_running": "プロセスは既に実行中です。\n",
     "error_cancel": "\nプロセスのキャンセル試行中にエラー: {}\n",
     "error_no_process_to_cancel": "\nキャンセルする実行中のプロセスがありません。\n",
-    
+    "title_error": "エラー",
+
     "val_err_header": "検証エラー:\n",
     "val_err_start_time": "無効な開始時間形式。MM:SSまたはHH:MM:SSを使用してください。",
     "val_err_end_time": "無効な終了時間形式。MM:SSまたはHH:MM:SSを使用してください。",
@@ -147,5 +177,25 @@
     "val_err_end_exceeds": "終了時間 ({}) がビデオの長さ ({}) を超えています。",
     "val_err_start_after_end": "開始時間は終了時間より後にできません。",
     "val_err_numeric": "{} の値が無効です。{} {} {} である必要があります。",
-    "val_err_dual_zone": "デュアルゾーンOCRが有効ですが、2つのクロップボックスが選択されていません。\n"
+    "val_err_dual_zone": "デュアルゾーンOCRが有効ですが、2つのクロップボックスが選択されていません。\n",
+    "err_crop_x_out": "{} X ({}) はビデオ幅 ({}) の外側です。",
+    "err_crop_y_out": "{} Y ({}) はビデオ高さ ({}) の外側です。",
+    "err_crop_w_out": "{} が範囲外です (X+W > 幅)。",
+    "err_crop_h_out": "{} が範囲外です (Y+H > 高さ)。",
+
+    "title_duplicate": "重複",
+    "msg_duplicate_queue": "'{}' のジョブは既にキューにあります。\n\n出力パスを変更するか、キューからジョブを削除してください。",
+    "title_duplicate_job": "ジョブの重複",
+    "popup_duplicate_msg": "この出力ファイルのジョブは既に存在します (ステータス: {})。\n\n現在の設定で再開しますか？",
+    "popup_cannot_remove_running": "実行中または一時停止中のジョブは削除できません。\n先にプロセスを停止またはキャンセルしてください。",
+
+    "title_progress": "進行状況",
+    "msg_scanning_init": "スキャンを初期化中...",
+    "msg_scanning_progress": "ファイル {} / {} をスキャン中...",
+    "reason_dup_path": "出力パスの重複",
+    "reason_no_track": "ビデオトラックなし",
+    "reason_metadata": "メタデータエラー",
+    "title_batch_report": "バッチレポート",
+    "msg_batch_report_summary": "{} 個のビデオを追加しました。\n\n{} 個のビデオをスキップしました:\n",
+    "msg_and_others": "...他"
 }

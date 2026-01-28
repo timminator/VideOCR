@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "VideOCR"
-version = "1.3.3"
+version = "1.4.0"
 description = "Extract hardcoded subtitles from videos via a simple GUI using machine learning."
 readme = "README.md"
 license = "MIT"

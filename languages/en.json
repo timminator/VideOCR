@@ -1,9 +1,10 @@
 {
     "tab_video": "Process Video",
+    "tab_batch": "Queue",
     "tab_advanced": "Advanced Settings",
     "tab_about": "About",
 
-    "lbl_video_path": "Video File:",
+    "lbl_source": "Source:",
     "lbl_output_srt": "Output SRT:",
     "lbl_sub_lang": "Subtitle Language:",
     "lbl_sub_pos": "Subtitle Position:",
@@ -76,11 +77,35 @@
     "tip_send_notification": "Send notification when the process is complete.",
     "chk_check_updates": "Check for Updates On Startup",
     "tip_check_updates": "Automatically check for new versions of VideOCR when the application starts.",
-    "btn_browse": "Browse...",
+
+    "btn_browse": "Open File...",
+    "btn_browse_folder": "Open Folder...",
     "btn_save_as": "Save As...",
     "btn_check_now": "Check Now",
     "btn_ok": "OK",
     "btn_dismiss": "Dismiss",
+    "btn_add_to_queue": "Add to Queue",
+    "btn_add_all_to_queue": "Add All to Queue",
+    "btn_pause": "Pause",
+    "btn_resume": "Resume",
+
+    "lbl_queue_title": "Queue",
+    "col_video_file": "Video File",
+    "col_output_file": "Output File",
+    "col_status": "Status",
+    "btn_start_queue": "Start Queue",
+    "btn_stop_queue": "Stop Queue",
+    "btn_reset": "Reset",
+    "btn_edit": "Edit",
+    "btn_remove": "Remove",
+    "btn_clear_queue": "Clear Queue",
+
+    "tip_batch_up": "Move the selected job up in the current queue",
+    "tip_batch_down": "Move the selected job down in the current queue",
+    "tip_batch_reset": "Reset a cancelled job",
+    "tip_batch_edit": "Send the job back to the main window for editing",
+    "tip_batch_remove": "Remove selected job from queue",
+    "tip_batch_clear": "Clear the current queue",
 
     "lbl_about_version": "Version: {version}",
     "lbl_get_newest": "Get the newest version here:",
@@ -88,7 +113,7 @@
 
     "help_title": "Cropping Info",
     "help_message": "Draw a crop box over the subtitle region in the video.\nUse click+drag to select.\nIn 'Dual Zone' mode, you can draw two crop boxes.\nIf no crop box is selected, the bottom third of the video\nwill be used for OCR by default.",
-    
+
     "update_title": "Update Available",
     "update_available_1": "A new version of VideOCR ({}) is available!",
     "update_available_2": "You are currently using version {}.",
@@ -106,8 +131,12 @@
     "status_success": "Successfully generated subtitle file!\n",
     "status_cancelling": "\nCancelling process...\n",
     "status_cancelled": "\nProcess cancelled by user.\n",
+    "status_resuming": "\nResuming process...\n",
+    "status_pausing": "\nPausing process...\n",
     "notification_title": "Your Subtitle generation is done!",
-    
+    "batch_processing_file": "Processing",
+    "batch_finished_count": "Batch finished: {} files processed.",
+
     "progress_step1": "Step 1: Processed image {current} of {total} ({percent}%)",
     "progress_step2": "Step 2: Performed OCR on image {current} of {total} ({percent}%)",
     "progress_vfr": "Mapped frame {current} of {total} ({percent}%)",
@@ -139,7 +168,8 @@
     "error_already_running": "Process is already running.\n",
     "error_cancel": "\nError attempting to cancel process: {}\n",
     "error_no_process_to_cancel": "\nNo process is currently running to cancel.\n",
-    
+    "title_error": "Error",
+
     "val_err_header": "Validation Errors:\n",
     "val_err_start_time": "Invalid Start Time format. Use MM:SS or HH:MM:SS.",
     "val_err_end_time": "Invalid End Time format. Use MM:SS or HH:MM:SS.",
@@ -147,5 +177,25 @@
     "val_err_end_exceeds": "End Time ({}) exceeds video duration ({}).",
     "val_err_start_after_end": "Start Time cannot be after End Time.",
     "val_err_numeric": "Invalid value for {}. Must be {} {} {}.",
-    "val_err_dual_zone": "Dual Zone OCR is enabled, but 2 crop boxes have not been selected.\n"
+    "val_err_dual_zone": "Dual Zone OCR is enabled, but 2 crop boxes have not been selected.\n",
+    "err_crop_x_out": "{} X ({}) is outside video width ({}).",
+    "err_crop_y_out": "{} Y ({}) is outside video height ({}).",
+    "err_crop_w_out": "{} extends out of bounds (X+W > Width).",
+    "err_crop_h_out": "{} extends out of bounds (Y+H > Height).",
+
+    "title_duplicate": "Duplicate",
+    "msg_duplicate_queue": "A job for '{}' is already in the queue.\n\nPlease change the output path or delete the job from the Queue.",
+    "title_duplicate_job": "Duplicate Job",
+    "popup_duplicate_msg": "A job for this output file already exists (Status: {}).\n\nDo you want to restart it with current settings?",
+    "popup_cannot_remove_running": "The currently running or paused job cannot be removed.\nPlease stop or cancel the process first.",
+
+    "title_progress": "Progress",
+    "msg_scanning_init": "Initializing scan...",
+    "msg_scanning_progress": "Scanning file {} of {}...",
+    "reason_dup_path": "Duplicate Output path",
+    "reason_no_track": "No video track",
+    "reason_metadata": "Metadata Error",
+    "title_batch_report": "Batch Report",
+    "msg_batch_report_summary": "Added {} videos.\n\nSkipped {} video(s):\n",
+    "msg_and_others": "...and others."
 }

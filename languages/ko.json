@@ -1,9 +1,10 @@
 {
     "tab_video": "비디오 처리",
+    "tab_batch": "대기열",
     "tab_advanced": "고급 설정",
     "tab_about": "정보",
 
-    "lbl_video_path": "비디오 파일:",
+    "lbl_source": "소스:",
     "lbl_output_srt": "SRT 출력:",
     "lbl_sub_lang": "자막 언어:",
     "lbl_sub_pos": "자막 위치:",
@@ -76,11 +77,35 @@
     "tip_send_notification": "프로세스가 완료되면 알림을 보냅니다.",
     "chk_check_updates": "시작 시 업데이트 확인",
     "tip_check_updates": "애플리케이션 시작 시 VideOCR의 새 버전을 자동으로 확인합니다.",
-    "btn_browse": "찾아보기...",
+    
+    "btn_browse": "파일 열기...",
+    "btn_browse_folder": "폴더 열기...",
     "btn_save_as": "다른 이름으로 저장...",
     "btn_check_now": "지금 확인",
     "btn_ok": "확인",
     "btn_dismiss": "닫기",
+    "btn_add_to_queue": "대기열에 추가",
+    "btn_add_all_to_queue": "대기열에 모두 추가",
+    "btn_pause": "일시 정지",
+    "btn_resume": "재개",
+
+    "lbl_queue_title": "대기열",
+    "col_video_file": "비디오 파일",
+    "col_output_file": "출력 파일",
+    "col_status": "상태",
+    "btn_start_queue": "대기열 시작",
+    "btn_stop_queue": "대기열 중지",
+    "btn_reset": "초기화",
+    "btn_edit": "편집",
+    "btn_remove": "삭제",
+    "btn_clear_queue": "대기열 비우기",
+
+    "tip_batch_up": "선택한 작업을 대기열 위로 이동",
+    "tip_batch_down": "선택한 작업을 대기열 아래로 이동",
+    "tip_batch_reset": "취소된 작업 초기화",
+    "tip_batch_edit": "편집을 위해 작업을 메인 창으로 보냄",
+    "tip_batch_remove": "대기열에서 선택한 작업 삭제",
+    "tip_batch_clear": "현재 대기열 비우기",
 
     "lbl_about_version": "버전: {version}",
     "lbl_get_newest": "최신 버전을 여기서 받으세요:",
@@ -106,7 +131,11 @@
     "status_success": "자막 파일 생성에 성공했습니다!\n",
     "status_cancelling": "\n프로세스를 취소하고 있습니다...\n",
     "status_cancelled": "\n프로세스가 사용자에 의해 취소되었습니다.\n",
+    "status_resuming": "\n프로세스 재개 중...\n",
+    "status_pausing": "\n프로세스 일시 정지 중...\n",
     "notification_title": "자막 생성이 완료되었습니다!",
+    "batch_processing_file": "처리 중",
+    "batch_finished_count": "일괄 처리 완료: {}개 파일 처리됨.",
     
     "progress_step1": "1단계: 이미지 {current} / {total} 처리됨 ({percent}%)",
     "progress_step2": "2단계: 이미지 {current} / {total}에서 OCR 수행됨 ({percent}%)",
@@ -139,7 +168,8 @@
     "error_already_running": "프로세스가 이미 실행 중입니다.\n",
     "error_cancel": "\n프로세스 취소 시도 중 오류: {}\n",
     "error_no_process_to_cancel": "\n취소할 실행 중인 프로세스가 없습니다.\n",
-    
+    "title_error": "오류",
+
     "val_err_header": "검증 오류:\n",
     "val_err_start_time": "유효하지 않은 시작 시간 형식입니다. MM:SS 또는 HH:MM:SS를 사용하세요.",
     "val_err_end_time": "유효하지 않은 종료 시간 형식입니다. MM:SS 또는 HH:MM:SS를 사용하세요.",
@@ -147,5 +177,25 @@
     "val_err_end_exceeds": "종료 시간 ({})이 비디오 길이 ({})를 초과합니다.",
     "val_err_start_after_end": "시작 시간은 종료 시간 이후일 수 없습니다.",
     "val_err_numeric": "{} 값이 유효하지 않습니다. {} {} {}이어야 합니다.",
-    "val_err_dual_zone": "이중 영역 OCR이 활성화되었지만 2개의 자르기 상자가 선택되지 않았습니다.\n"
+    "val_err_dual_zone": "이중 영역 OCR이 활성화되었지만 2개의 자르기 상자가 선택되지 않았습니다.\n",
+    "err_crop_x_out": "{} X ({})가 비디오 너비 ({})를 벗어났습니다.",
+    "err_crop_y_out": "{} Y ({})가 비디오 높이 ({})를 벗어났습니다.",
+    "err_crop_w_out": "{}가 범위를 벗어났습니다 (X+W > 너비).",
+    "err_crop_h_out": "{}가 범위를 벗어났습니다 (Y+H > 높이).",
+
+    "title_duplicate": "중복",
+    "msg_duplicate_queue": "'{}'에 대한 작업이 이미 대기열에 있습니다.\n\n출력 경로를 변경하거나 대기열에서 작업을 삭제하세요.",
+    "title_duplicate_job": "중복된 작업",
+    "popup_duplicate_msg": "이 출력 파일에 대한 작업이 이미 존재합니다 (상태: {}).\n\n현재 설정으로 다시 시작하시겠습니까?",
+    "popup_cannot_remove_running": "현재 실행 중이거나 일시 정지된 작업은 삭제할 수 없습니다.\n먼저 프로세스를 중지하거나 취소하세요.",
+
+    "title_progress": "진행 상황",
+    "msg_scanning_init": "스캔 초기화 중...",
+    "msg_scanning_progress": "파일 {} / {} 스캔 중...",
+    "reason_dup_path": "중복된 출력 경로",
+    "reason_no_track": "비디오 트랙 없음",
+    "reason_metadata": "메타데이터 오류",
+    "title_batch_report": "일괄 처리 보고서",
+    "msg_batch_report_summary": "{}개 비디오 추가됨.\n\n{}개 비디오 건너뜀:\n",
+    "msg_and_others": "...및 기타."
 }

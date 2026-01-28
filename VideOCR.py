@@ -12,9 +12,9 @@
 # Windows-specific metadata for the executable
 # nuitka-project-if: {OS} == "Windows":
 #     nuitka-project: --file-description="VideOCR"
-#     nuitka-project: --file-version="1.3.3"
+#     nuitka-project: --file-version="1.4.0"
 #     nuitka-project: --product-name="VideOCR-GUI"
-#     nuitka-project: --product-version="1.3.3"
+#     nuitka-project: --product-version="1.4.0"
 #     nuitka-project: --copyright="timminator"
 #     nuitka-project: --windows-icon-from-ico=Installer/VideOCR.ico
 
@@ -28,6 +28,7 @@ import math
 import os
 import pathlib
 import platform
+import queue
 import re
 import subprocess
 import threading
@@ -37,6 +38,7 @@ import urllib.request
 import webbrowser
 
 import cv2
+import psutil
 import PySimpleGUI as sg
 from pymediainfo import MediaInfo
 
@@ -167,7 +169,7 @@ def find_videocr_program():
 
 
 # --- Configuration ---
-PROGRAM_VERSION = "1.3.3"
+PROGRAM_VERSION = "1.4.0"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 LANGUAGES_DIR = os.path.join(APP_DIR, 'languages')
 VIDEOCR_PATH = find_videocr_program()
@@ -278,6 +280,8 @@ graph_size = (int(640 * dpi_scale), int(360 * dpi_scale))
 current_image_bytes = None
 previous_taskbar_state = None
 LANG = {}
+batch_queue = []
+gui_queue = queue.Queue()
 
 
 # --- i18n Language Functions ---
@@ -329,10 +333,10 @@ def update_gui_text(window):
     key_map = {
         # Tab 1
         '-SAVE_AS_BTN-': {'text': 'btn_save_as'},
-        '-BTN-VIDEO_BROWSE-': {'text': 'btn_browse'},
-        '-BTN-FOLDER_BROWSE-': {'text': 'btn_browse'},
+        '-BTN-OPEN-FILE-': {'text': 'btn_browse'},
+        '-BTN-OPEN-FOLDER-': {'text': 'btn_browse_folder'},
         '-TAB-VIDEO-': {'text': 'tab_video'},
-        '-LBL-VIDEO_PATH-': {'text': 'lbl_video_path'},
+        '-LBL-SOURCE-': {'text': 'lbl_source'},
         '-LBL-OUTPUT_SRT-': {'text': 'lbl_output_srt'},
         '-LBL-SUB_LANG-': {'text': 'lbl_sub_lang'},
         '-LBL-SUB_POS-': {'text': 'lbl_sub_pos', 'tooltip': 'tip_sub_pos'},
@@ -348,6 +352,22 @@ def update_gui_text(window):
         '-BTN-CLEAR_CROP-': {'text': 'btn_clear_crop'},
         '-LBL-PROGRESS-': {'text': 'lbl_progress'},
         '-LBL-LOG-': {'text': 'lbl_log'},
+        '-BTN-ADD-BATCH-': {'text': 'btn_add_to_queue'},
+        '-BTN-BATCH-ADD-ALL-': {'text': 'btn_add_all_to_queue'},
+        '-BTN-PAUSE-': {'text': 'btn_pause'},
+
+        # Queue Tab
+        '-TAB-BATCH-': {'text': 'tab_batch'},
+        '-LBL-QUEUE-TITLE-': {'text': 'lbl_queue_title'},
+        '-BTN-BATCH-START-': {'text': 'btn_start_queue'},
+        '-BTN-BATCH-STOP-': {'text': 'btn_stop_queue'},
+        '-BTN-BATCH-PAUSE-': {'text': 'btn_pause'},
+        '-BTN-BATCH-UP-': {'tooltip': 'tip_batch_up'},
+        '-BTN-BATCH-DOWN-': {'tooltip': 'tip_batch_down'},
+        '-BTN-BATCH-RESET-': {'text': 'btn_reset', 'tooltip': 'tip_batch_reset'},
+        '-BTN-BATCH-EDIT-': {'text': 'btn_edit', 'tooltip': 'tip_batch_edit'},
+        '-BTN-BATCH-REMOVE-': {'text': 'btn_remove', 'tooltip': 'tip_batch_remove'},
+        '-BTN-BATCH-CLEAR-': {'text': 'btn_clear_queue', 'tooltip': 'tip_batch_clear'},
 
         # Tab 2
         '-TAB-ADVANCED-': {'text': 'tab_advanced'},
@@ -382,6 +402,7 @@ def update_gui_text(window):
         '--save_crop_box': {'text': 'chk_save_crop_box', 'tooltip': 'tip_save_crop_box'},
         '--save_in_video_dir': {'text': 'chk_save_in_video_dir', 'tooltip': 'tip_save_in_video_dir'},
         '-LBL-OUTPUT_DIR-': {'text': 'lbl_output_dir', 'tooltip': 'tip_output_dir'},
+        '-BTN-FOLDER_BROWSE-': {'text': 'btn_browse_folder'},
         '-LBL-SEEK_STEP-': {'text': 'lbl_seek_step', 'tooltip': 'tip_seek_step'},
         '--send_notification': {'text': 'chk_send_notification', 'tooltip': 'tip_send_notification'},
         '--check_for_updates': {'text': 'chk_check_updates', 'tooltip': 'tip_check_updates'},
@@ -418,6 +439,15 @@ def update_gui_text(window):
 
             if 'tooltip' in lang_keys and lang_keys['tooltip'] in LANG:
                 element.SetTooltip(LANG[lang_keys['tooltip']])
+
+    if '-BATCH-TABLE-' in window.AllKeysDict:
+        try:
+            table_widget = window['-BATCH-TABLE-'].Widget
+            table_widget.heading('#1', text=LANG.get('col_video_file', 'Video File'))
+            table_widget.heading('#2', text=LANG.get('col_output_file', 'Output File'))
+            table_widget.heading('#3', text=LANG.get('col_status', 'Status'))
+        except Exception as e:
+            log_error(f"Failed to update table headings: {e}")
 
 
 # --- Helper Functions ---
@@ -964,23 +994,24 @@ def handle_progress(match, label_format_key, last_percentage, log_threshold, tas
         log_percent_str = f"{int(current_percent)}"
         status_message_log = label_format.format(current=current_item, total=display_total, percent=log_percent_str)
 
-        window.write_event_value('-PROGRESS-SMOOTH-', {
-            'text': status_message_smooth,
-            'percent': current_percent,
-            'eta': final_eta_str
-        })
+        progress_data = {
+                'text': status_message_smooth,
+                'percent': current_percent,
+                'eta': final_eta_str
+        }
+        gui_queue.put(('-PROGRESS-SMOOTH-', progress_data))
 
         prev_step = int(last_percentage / log_threshold)
         curr_step = int(current_percent / log_threshold)
 
         if current_item == 1 or curr_step > prev_step or current_percent >= 100:
-            window.write_event_value('-VIDEOCR_OUTPUT-', status_message_log + "\n")
+            gui_queue.put(('-VIDEOCR_OUTPUT-', status_message_log + "\n"))
 
         if taskbar_progress_supported and show_taskbar_progress and taskbar_base is not None:
             progress_value = taskbar_base + int(current_percent * 0.5)
             if current_item == 1 and progress_value <= taskbar_base:
                 progress_value = taskbar_base + 1
-            window.write_event_value('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': progress_value})
+            gui_queue.put(('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': progress_value}))
 
         return current_percent
     return last_percentage
@@ -993,6 +1024,147 @@ def read_pipe(pipe, output_list):
             output_list.append(line)
     finally:
         pipe.close()
+
+
+def scan_video_folder(folder_path):
+    """Scans a folder for common video files and returns a sorted list of full paths."""
+    video_extensions = {'.mp4', '.avi', '.mkv', '.mov', '.webm', '.flv', '.wmv', '.ts', '.m2ts'}
+    video_files = []
+    if not os.path.isdir(folder_path):
+        return []
+    for entry in os.listdir(folder_path):
+        full_path = os.path.join(folder_path, entry)
+        if os.path.isfile(full_path):
+            if os.path.splitext(entry)[1].lower() in video_extensions:
+                video_files.append(full_path)
+    return sorted(video_files)
+
+
+# --- Argument Extraction and Validation ---
+def get_processing_args(values, window):
+    """
+    Validates inputs and generates the argument dictionary for the CLI.
+    Returns (args_dict, None) if successful, or (None, errors_list) if validation fails.
+    """
+    errors = []
+
+    time_start = values.get('--time_start', '').strip()
+    time_end = values.get('--time_end', '').strip()
+
+    if not is_valid_time_format(time_start):
+        errors.append(LANG.get('val_err_start_time', "Invalid Start Time format."))
+    if not is_valid_time_format(time_end):
+        errors.append(LANG.get('val_err_end_time', "Invalid End Time format."))
+
+    time_start_seconds = time_string_to_seconds(time_start)
+    time_end_seconds = time_string_to_seconds(time_end)
+
+    video_duration_seconds = 0
+    if total_frames > 0 and video_fps > 0:
+        video_duration_seconds = total_frames / video_fps
+
+    if time_start_seconds is not None:
+        if time_start_seconds > video_duration_seconds:
+            errors.append(LANG.get('val_err_start_exceeds', "Start Time ({}) exceeds video duration ({}).").format(format_time(time_start_seconds), format_time(video_duration_seconds)))
+
+    if time_end and time_end_seconds is not None:
+        if time_end_seconds > video_duration_seconds:
+            errors.append(LANG.get('val_err_end_exceeds', "End Time ({}) exceeds video duration ({}).").format(format_time(time_end_seconds), format_time(video_duration_seconds)))
+
+    if time_start_seconds is not None and time_end_seconds is not None:
+        if time_start_seconds > time_end_seconds:
+            errors.append(LANG.get('val_err_start_after_end', "Start Time cannot be after End Time."))
+
+    use_dual_zone = values.get('--use_dual_zone', False)
+    if use_dual_zone and len(window.crop_boxes) != 2:
+        errors.append(LANG.get('val_err_dual_zone', "Dual Zone OCR is enabled, but 2 crop boxes have not been selected."))
+
+    numeric_params = {
+        '--conf_threshold': (int, 0, 100, "Confidence Threshold"),
+        '--sim_threshold': (int, 0, 100, "Similarity Threshold"),
+        '--brightness_threshold': (int, 0, 255, "Brightness Threshold"),
+        '--ssim_threshold': (int, 0, 100, "SSIM Threshold"),
+        '--ocr_image_max_width': (int, 0, None, "Max OCR Image Width"),
+        '--frames_to_skip': (int, 0, None, "Frames to Skip"),
+        '--max_merge_gap': (float, 0.0, None, "Max Merge Gap"),
+        '--min_subtitle_duration': (float, 0.0, None, "Minimum Subtitle Duration"),
+    }
+
+    for key, (cast_type, min_val, max_val, name) in numeric_params.items():
+        value_str = values.get(key, '').strip()
+
+        if not value_str:
+            continue
+
+        range_str_parts = []
+        if min_val is not None:
+            range_str_parts.append(f">={min_val}")
+        if max_val is not None:
+            range_str_parts.append(f"<={max_val}")
+        range_str = " and ".join(range_str_parts)
+
+        type_name = cast_type.__name__
+        article = "an" if type_name.startswith(("i", "I")) else "a"
+
+        error_format = LANG.get('val_err_numeric', "Invalid value for {}. Must be {} {} {}.")
+
+        try:
+            value = cast_type(value_str)
+            if (min_val is not None and value < min_val) or (max_val is not None and value > max_val):
+                raise ValueError
+        except ValueError:
+            errors.append(error_format.format(name, article, type_name, range_str))
+
+    if errors:
+        return None, errors
+
+    args = {}
+    args['video_path'] = video_path
+
+    selected_lang_name = values.get('-LANG_COMBO-', default_display_language)
+    lang_abbr = language_abbr_lookup.get(selected_lang_name)
+    if lang_abbr:
+        args['lang'] = lang_abbr
+
+    selected_display_name = values.get('-SUBTITLE_POS_COMBO-')
+    display_name_to_internal_map = {LANG.get(lang_key, lang_key): internal_val for lang_key, internal_val in subtitle_positions_list}
+    pos_value = display_name_to_internal_map.get(selected_display_name)
+    if pos_value:
+        args['subtitle_position'] = pos_value
+
+    for key in values:
+        if key.startswith('--') and key not in ['--keyboard_seek_step', '--default_output_dir', '--save_in_video_dir', '--send_notification', '--save_crop_box', '--check_for_updates', '--language']:
+            stripped_key = key.lstrip('-')
+            value = values.get(key)
+            if isinstance(value, bool):
+                args[stripped_key] = value
+            elif value is not None and str(value).strip() != '':
+                args[stripped_key] = str(value).strip()
+
+    # Handle send_notification specifically to store it as a boolean and not a string
+    args['send_notification'] = values.get('--send_notification', True)
+
+    # Add crop coordinates based on mode
+    use_fullframe = values.get('--use_fullframe', False)
+
+    if use_dual_zone:
+        box1_coords = window.crop_boxes[0]['coords']
+        args.update(box1_coords)
+
+        box2_coords = window.crop_boxes[1]['coords']
+        args.update({f"{k}2": v for k, v in box2_coords.items()})
+
+    elif not use_fullframe:
+        if window.crop_boxes:
+            args.update(window.crop_boxes[0]['coords'])
+
+    # Explicit Output Path (needed for batch snapshots)
+    out_path = values.get('--output')
+    if not out_path and video_path:
+        out_path = generate_output_path(video_path, values)
+    args['output'] = str(out_path)
+
+    return args, None
 
 
 def run_videocr(args_dict, window):
@@ -1032,8 +1204,8 @@ def run_videocr(args_dict, window):
 
     taskbar_progress_started = False
 
-    window.write_event_value('-VIDEOCR_OUTPUT-', LANG.get('status_starting', "Starting subtitle extraction...\n"))
-    window.write_event_value('-PROGRESS-SMOOTH-', {'text': LANG.get('status_starting', "Starting subtitle extraction..."), 'percent': None})
+    gui_queue.put(('-VIDEOCR_OUTPUT-', LANG.get('status_starting', "Starting subtitle extraction...\n")))
+    gui_queue.put(('-PROGRESS-SMOOTH-', {'text': LANG.get('status_starting', "Starting subtitle extraction..."), 'percent': None}))
 
     process = None
 
@@ -1052,7 +1224,7 @@ def run_videocr(args_dict, window):
                                    start_new_session=(os.name != 'nt')
                                    )
 
-        window.write_event_value('-PROCESS_STARTED-', process.pid)
+        gui_queue.put(('-PROCESS_STARTED-', process.pid))
 
         stderr_thread = threading.Thread(target=read_pipe, args=(process.stderr, stderr_lines))
         stderr_thread.start()
@@ -1068,7 +1240,7 @@ def run_videocr(args_dict, window):
                 if expecting_log_path:
                     log_path = line.strip()
                     full_error_output = f"\n{paddle_error_message}\n{log_path}\n"
-                    window.write_event_value('-VIDEOCR_OUTPUT-', full_error_output)
+                    gui_queue.put(('-VIDEOCR_OUTPUT-', full_error_output))
                     expecting_log_path = False
                     paddle_error_message = ""
                     continue
@@ -1085,14 +1257,14 @@ def run_videocr(args_dict, window):
                     output = (f"\n{LANG.get('fatal_error_header', '--- FATAL ERROR ---')}\n"
                             f"{LANG.get('fatal_error_reason_1', 'Your system does not meet the hardware requirements.')}\n\n"
                             f"{LANG.get('fatal_error_reason_2', 'Reason:')} {error_message}\n")
-                    window.write_event_value('-VIDEOCR_OUTPUT-', output)
+                    gui_queue.put(('-VIDEOCR_OUTPUT-', output))
                     continue
 
                 warning_match = WARNING_HARDWARE_PATTERN.search(line)
                 if warning_match:
                     warning_message = warning_match.group(1)
                     output = (f"\n{LANG.get('warning_header', 'WARNING:')} {warning_message}\n")
-                    window.write_event_value('-VIDEOCR_OUTPUT-', output)
+                    gui_queue.put(('-VIDEOCR_OUTPUT-', output))
                     continue
 
                 match1 = STEP1_PROGRESS_PATTERN.search(line)
@@ -1112,7 +1284,7 @@ def run_videocr(args_dict, window):
                 match3 = VFR_PROGRESS_PATTERN.search(line)
                 if match3:
                     if taskbar_progress_supported and not taskbar_progress_started:
-                        window.write_event_value('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': 1})
+                        gui_queue.put(('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': 1}))
                         taskbar_progress_started = True
 
                     last_reported_percentage_vfr = handle_progress(
@@ -1123,7 +1295,7 @@ def run_videocr(args_dict, window):
                 match4 = SEEK_PROGRESS_PATTERN.search(line)
                 if match4:
                     if taskbar_progress_supported and not taskbar_progress_started:
-                        window.write_event_value('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': 1})
+                        gui_queue.put(('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': 1}))
                         taskbar_progress_started = True
 
                     last_reported_percentage_seek = handle_progress(
@@ -1132,27 +1304,27 @@ def run_videocr(args_dict, window):
                     continue
 
                 if STARTING_OCR_PATTERN.search(line):
-                    window.write_event_value('-VIDEOCR_OUTPUT-', LANG.get('cli_starting_ocr', line) + '\n')
-                    window.write_event_value('-PROGRESS-SMOOTH-', {'text': LANG.get('cli_starting_ocr', line), 'percent': None})
+                    gui_queue.put(('-VIDEOCR_OUTPUT-', LANG.get('cli_starting_ocr', line) + '\n'))
+                    gui_queue.put(('-PROGRESS-SMOOTH-', {'text': LANG.get('cli_starting_ocr', line), 'percent': None}))
                     continue
                 elif GENERATING_SUBTITLES_PATTERN.search(line):
-                    window.write_event_value('-VIDEOCR_OUTPUT-', LANG.get('cli_generating_subs', line) + '\n')
-                    window.write_event_value('-PROGRESS-SMOOTH-', {'text': LANG.get('cli_generating_subs', line), 'percent': None})
+                    gui_queue.put(('-VIDEOCR_OUTPUT-', LANG.get('cli_generating_subs', line) + '\n'))
+                    gui_queue.put(('-PROGRESS-SMOOTH-', {'text': LANG.get('cli_generating_subs', line), 'percent': None}))
                     continue
                 elif VFR_ESTIMATING_PATTERN.search(line):
-                    window.write_event_value('-VIDEOCR_OUTPUT-', LANG.get('cli_vfr_estimating', line) + '\n')
-                    window.write_event_value('-PROGRESS-SMOOTH-', {'text': LANG.get('cli_vfr_estimating', line), 'percent': None})
+                    gui_queue.put(('-VIDEOCR_OUTPUT-', LANG.get('cli_vfr_estimating', line) + '\n'))
+                    gui_queue.put(('-PROGRESS-SMOOTH-', {'text': LANG.get('cli_vfr_estimating', line), 'percent': None}))
                     continue
                 elif VFR_PATTERN.search(line):
-                    window.write_event_value('-VIDEOCR_OUTPUT-', LANG.get('cli_vfr_detected', line) + '\n')
-                    window.write_event_value('-PROGRESS-SMOOTH-', {'text': LANG.get('cli_vfr_detected', line), 'percent': None})
+                    gui_queue.put(('-VIDEOCR_OUTPUT-', LANG.get('cli_vfr_detected', line) + '\n'))
+                    gui_queue.put(('-PROGRESS-SMOOTH-', {'text': LANG.get('cli_vfr_detected', line), 'percent': None}))
                     continue
                 elif map_gen_match := MAP_GENERATION_STOP_PATTERN.search(line):
                     frame_num = map_gen_match.group(1)
                     template = LANG.get('cli_map_gen_stopped', line)
                     output = template.format(frame_num=frame_num)
-                    window.write_event_value('-VIDEOCR_OUTPUT-', output + '\n')
-                    window.write_event_value('-PROGRESS-SMOOTH-', {'text': output, 'percent': None})
+                    gui_queue.put(('-VIDEOCR_OUTPUT-', output + '\n'))
+                    gui_queue.put(('-PROGRESS-SMOOTH-', {'text': output, 'percent': None}))
                     continue
 
         exit_code = process.wait()
@@ -1178,50 +1350,150 @@ def run_videocr(args_dict, window):
                     f"{LANG.get('unexpected_error_1', 'The subtitle extraction process failed unexpectedly.')}\n"
                     f"{LANG.get('unexpected_error_2', 'A detailed crash report has been saved to:')}\n{log_file_path}\n"
                 )
-                window.write_event_value('-VIDEOCR_OUTPUT-', error_display_message)
+                gui_queue.put(('-VIDEOCR_OUTPUT-', error_display_message))
 
         return exit_code == 0
 
     except FileNotFoundError:
         error_msg = LANG.get('error_cli_not_found', "\nError: '{}' not found. Please check the path.\n")
-        window.write_event_value('-VIDEOCR_OUTPUT-', error_msg.format(VIDEOCR_PATH))
+        gui_queue.put(('-VIDEOCR_OUTPUT-', error_msg.format(VIDEOCR_PATH)))
         return False
     except Exception as e:
         error_msg = LANG.get('error_generic_exception', "\nAn error occurred: {}\n")
-        window.write_event_value('-VIDEOCR_OUTPUT-', error_msg.format(e))
+        gui_queue.put(('-VIDEOCR_OUTPUT-', error_msg.format(e)))
         return False
 
 
-def run_ocr_thread(args, window):
-    """Thread target for running the OCR process."""
-    success = run_videocr(args, window)
-    if success:
-        window.write_event_value('-VIDEOCR_OUTPUT-', '\n')
-        window.write_event_value('-VIDEOCR_OUTPUT-', LANG.get('status_success', "Successfully generated subtitle file!\n"))
-        if args.get('send_notification', True):
+def start_queue(window, queue_data):
+    """Common logic to start the batch processor."""
+    window.is_processing = True
+
+    pending_items = [j for j in queue_data if j['status'] == 'Pending']
+
+    if not pending_items:
+        return
+
+    for btn in ['-BTN-BATCH-START-', '-BTN-RUN-', '-SAVE_AS_BTN-']:
+        window[btn].update(disabled=True)
+    window['-BTN-CANCEL-'].update(disabled=False)
+    window['-BTN-BATCH-STOP-'].update(disabled=False)
+    window['-BTN-BATCH-PAUSE-'].update(disabled=False, text="Pause")
+    window['-BTN-PAUSE-'].update(disabled=False, text="Pause")
+
+    window.cancelled_by_user = False
+    threading.Thread(target=run_batch_thread, args=(window, queue_data), daemon=True).start()
+
+
+def run_batch_thread(window, queue_data):
+    """Worker thread that dynamically pulls the next 'Pending' job from the queue."""
+    success_count = 0
+    last_processed_args = None
+
+    while True:
+        if getattr(window, 'cancelled_by_user', False):
+            break
+
+        current_job = next((j for j in queue_data if j['status'] == 'Pending'), None)
+
+        if not current_job:
+            break
+
+        current_job['status'] = 'Processing'
+        gui_queue.put(('-BATCH-REFRESH-', None))
+
+        args = current_job['args']
+        last_processed_args = args
+        processing_text = LANG.get('batch_processing_file', 'Processing')
+        header = f"{'=' * 10} {processing_text}: {os.path.basename(args['video_path'])} {'=' * 10}\n"
+        gui_queue.put(('-VIDEOCR_OUTPUT-', '\n'))
+        gui_queue.put(('-VIDEOCR_OUTPUT-', header))
+
+        success = run_videocr(args, window)
+
+        if getattr(window, 'cancelled_by_user', False):
+            current_job['status'] = 'Cancelled'
+        else:
+            if success:
+                current_job['status'] = 'Completed'
+                success_count += 1
+
+                gui_queue.put(('-VIDEOCR_OUTPUT-', '\n'))
+                gui_queue.put(('-VIDEOCR_OUTPUT-', LANG.get('status_success', "Successfully generated subtitle file!\n")))
+            else:
+                current_job['status'] = 'Error'
+
+        gui_queue.put(('-BATCH-REFRESH-', None))
+        time.sleep(0.1)
+
+    if not getattr(window, 'cancelled_by_user', False) and last_processed_args and success_count > 0:
+        if last_processed_args.get('send_notification', True):
             notification_title = LANG.get('notification_title', "Your Subtitle generation is done!")
-            window.write_event_value('-NOTIFICATION_EVENT-', {'title': notification_title, 'message': f"{os.path.basename(args['output'])}"})
-    window.write_event_value('-PROCESS_FINISHED-', None)
+            if success_count == 1:
+                msg = f"{os.path.basename(last_processed_args['output'])}"
+            else:
+                msg = LANG.get('batch_finished_count', "Batch finished: {} files processed.").format(success_count)
+            gui_queue.put(('-NOTIFICATION_EVENT-', {'title': notification_title, 'message': msg}))
+
+    gui_queue.put(('-BATCH-FINISHED-', None))
+
+
+def set_process_pause_state(pid, pause=True):
+    """Pauses (suspends) or Resumes the process with the given PID."""
+    try:
+        proc = psutil.Process(pid)
+        if pause:
+            proc.suspend()
+        else:
+            proc.resume()
+        return True
+    except (psutil.NoSuchProcess, psutil.AccessDenied, Exception) as e:
+        log_error(f"Failed to change pause state: {e}")
+        return False
 
 
 available_languages = get_available_languages()
 ui_language_display_names = sorted(list(available_languages.keys()))
 
 
+def GhostButton():
+    """
+    Creates an invisible button that takes up vertical space
+    to force the row height to match rows with real buttons.
+    """
+    return sg.Button(
+        "",
+        size=(0, 1),
+        button_color=(sg.theme_background_color(), sg.theme_background_color()),
+        border_width=0,
+        disabled=True,
+        focus=False,
+        # Default padding is (5,3) + border width of the button we set to 0 to compensate for it
+        pad=((0, 0), (3 + sg.theme_border_width(), 3 + sg.theme_border_width()))
+    )
+
+
 # --- GUI Layout ---
 sg.theme("Darkgrey13")
 
 tab1_content = [
-    [sg.Text("Video File:", size=(15, 1), key='-LBL-VIDEO_PATH-'), sg.Input(key="-VIDEO_PATH-", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, enable_events=True, size=(40, 1)),
-     sg.Button("Browse...", key="-BTN-VIDEO_BROWSE-")],
-    [sg.Text("Output SRT:", size=(15, 1), key='-LBL-OUTPUT_SRT-'), sg.Input(key="--output", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, disabled=True, size=(40, 1)),
-     sg.Button('Save As...', key="-SAVE_AS_BTN-", disabled=True)],
-    [sg.Text("Subtitle Language:", size=(15, 1), key='-LBL-SUB_LANG-'),
-     sg.Combo(language_display_names, default_value=default_display_language, key="-LANG_COMBO-", size=(38, 1), readonly=True, enable_events=True)],
-    [sg.Text("Subtitle Position:", size=(15, 1), key='-LBL-SUB_POS-'),
-     sg.Combo([], key="-SUBTITLE_POS_COMBO-", size=(38, 4), readonly=True, enable_events=True),
-     sg.Push(),
-     sg.Button("How to Use", key="-BTN-HELP-")],
+    [
+        sg.Column([
+            [sg.Text("Source:", size=(15, 1), key='-LBL-SOURCE-'),
+            sg.Combo([], key="-VIDEO-LIST-", size=(38, 1), enable_events=True, readonly=True, disabled=True, expand_x=True), GhostButton()],
+            [sg.Text("Output SRT:", size=(15, 1), key='-LBL-OUTPUT_SRT-'),
+            sg.Input(key="--output", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, disabled=True, size=(40, 1)), GhostButton()],
+            [sg.Text("Subtitle Language:", size=(15, 1), key='-LBL-SUB_LANG-'),
+            sg.Combo(language_display_names, default_value=default_display_language, key="-LANG_COMBO-", size=(38, 1), readonly=True, enable_events=True, expand_x=True), GhostButton()],
+            [sg.Text("Subtitle Position:", size=(15, 1), key='-LBL-SUB_POS-'),
+            sg.Combo([], key="-SUBTITLE_POS_COMBO-", size=(38, 4), readonly=True, enable_events=True, expand_x=True), GhostButton()],
+        ], pad=(0, None)),
+        sg.Column([
+            [sg.Button("Open File...", key="-BTN-OPEN-FILE-"), sg.Button("Open Folder...", key="-BTN-OPEN-FOLDER-")],
+            [sg.Button('Save As...', key="-SAVE_AS_BTN-", disabled=True)],
+            [sg.Text(''), GhostButton()],
+            [sg.Push(), sg.Button("How to Use", key="-BTN-HELP-")],
+        ], pad=(0, None), expand_x=True)
+    ],
     [sg.Graph(canvas_size=graph_size, graph_bottom_left=(0, graph_size[1]), graph_top_right=(graph_size[0], 0),
               key="-GRAPH-", change_submits=True, drag_submits=True, enable_events=True, background_color='black')],
     [sg.Text("Seek:", key='-LBL-SEEK-'), sg.Slider(range=(0, 0), key="-SLIDER-", orientation='h', size=(45, 15), expand_x=True, enable_events=True, disable_number_display=True, disabled=True)],
@@ -1231,8 +1503,11 @@ tab1_content = [
     ],
     [sg.Text("Crop Box (X, Y, W, H):", key='-LBL-CROP_BOX-'), sg.Text("Not Set", key="-CROP_COORDS-", size=(45, 1), expand_x=True)],
     [sg.Button("Run", key="-BTN-RUN-"),
+     sg.Button("Pause", key="-BTN-PAUSE-", disabled=True),
      sg.Button("Cancel", key="-BTN-CANCEL-", disabled=True),
      sg.Button("Clear Crop", key="-BTN-CLEAR_CROP-", disabled=True)],
+    [sg.Button("Add to Queue", key="-BTN-ADD-BATCH-"),
+     sg.Button("Add All to Queue", key="-BTN-BATCH-ADD-ALL-")],
     [sg.Text("Progress Info:", key='-LBL-PROGRESS-')],
     [
         sg.Text("", key="-STATUS-LINE-", size=(None, 1), expand_x=True),
@@ -1248,6 +1523,26 @@ tab1_layout = [[sg.Column(tab1_content,
                            vertical_scroll_only=True,
                            expand_x=True,
                            expand_y=True)]]
+
+# -- Tab Batch: Queue Management --
+tab_batch_content = [
+    [sg.Text("Queue", font=('Arial', 12, 'bold'), key='-LBL-QUEUE-TITLE-')],
+    [sg.Table(values=[], headings=['Video File', 'Output File', 'Status'], key='-BATCH-TABLE-',
+              col_widths=[25, 25, 15], auto_size_columns=False, justification='left',
+              expand_x=True, expand_y=True, enable_events=True, select_mode=sg.TABLE_SELECT_MODE_BROWSE)],
+
+    [sg.Button("Start Queue", key="-BTN-BATCH-START-"),
+     sg.Button("Stop Queue", key="-BTN-BATCH-STOP-", disabled=True),
+     sg.Button("Pause", key="-BTN-BATCH-PAUSE-", disabled=True)],
+    [sg.Button("▲", key="-BTN-BATCH-UP-", tooltip="Move the selected job up in the current queue", size=(3, 1)),
+     sg.Button("▼", key="-BTN-BATCH-DOWN-", tooltip="Move the selected job down in the current queue", size=(3, 1)),
+     sg.VerticalSeparator(),
+     sg.Button("Reset", key="-BTN-BATCH-RESET-", tooltip="Reset a cancelled job"),
+     sg.Button("Edit", key="-BTN-BATCH-EDIT-", tooltip="Send the job back to the main window for editing"),
+     sg.Button("Remove", key="-BTN-BATCH-REMOVE-", tooltip="Remove selected job from queue"),
+     sg.Button("Clear Queue", key="-BTN-BATCH-CLEAR-", tooltip="Clear the current queue")]
+]
+tab_batch_layout = [[sg.Column(tab_batch_content, expand_x=True, expand_y=True)]]
 
 tab2_content = [
     [sg.Text("OCR Settings:", font=('Arial', 10, 'bold'), key='-LBL-OCR_SETTINGS-')],
@@ -1281,24 +1576,32 @@ tab2_content = [
     [sg.Text("VideOCR Settings:", font=('Arial', 10, 'bold'), key='-LBL-VIDEOCR_SETTINGS-')],
     [
         sg.Column([
-            [sg.Text("UI Language:", size=(30, 1), key='-LBL-UI_LANG-')],
-            [sg.Checkbox("Save Crop Box Selection", default=True, key="--save_crop_box", enable_events=True)],
-            [sg.Checkbox("Save SRT in Video Directory", default=True, key="--save_in_video_dir", enable_events=True)],
-            [sg.Text("Output Directory:", size=(30, 1), key='-LBL-OUTPUT_DIR-')],
-            [sg.Text("Keyboard Seek Step (frames):", size=(30, 1), key='-LBL-SEEK_STEP-')],
-            [sg.Checkbox("Send Notification", default=True, key="--send_notification", enable_events=True)],
-            [sg.Checkbox("Check for Updates On Startup", default=True, key="--check_for_updates", enable_events=True)],
-        ]),
+            [sg.Text("UI Language:", size=(30, 1), key='-LBL-UI_LANG-'), GhostButton()],
+            [sg.Checkbox("Save Crop Box Selection", default=True, key="--save_crop_box", enable_events=True), GhostButton()],
+            [sg.Checkbox("Save SRT in Video Directory", default=True, key="--save_in_video_dir", enable_events=True), GhostButton()],
+            [sg.Text("Output Directory:", size=(30, 1), key='-LBL-OUTPUT_DIR-'), GhostButton()],
+            [sg.Text("Keyboard Seek Step (frames):", size=(30, 1), key='-LBL-SEEK_STEP-'), GhostButton()],
+            [sg.Checkbox("Send Notification", default=True, key="--send_notification", enable_events=True), GhostButton()],
+            [sg.Checkbox("Check for Updates On Startup", default=True, key="--check_for_updates", enable_events=True), GhostButton()],
+        ], pad=(0, None)),
         sg.Column([
-            [sg.Combo(ui_language_display_names, key='-UI_LANG_COMBO-', size=(32, 1), readonly=True, enable_events=True)],
-            [sg.Text('')],
-            [sg.Text('')],
-            [sg.Input(DEFAULT_DOCUMENTS_DIR, key="--default_output_dir", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, size=(34, 1), enable_events=True),
-             sg.Button("Browse...", key="-BTN-FOLDER_BROWSE-", disabled=True)],
-            [sg.Input(KEY_SEEK_STEP, key="--keyboard_seek_step", size=(10, 1), enable_events=True)],
-            [sg.Text('')],
+            [sg.Combo(ui_language_display_names, key='-UI_LANG_COMBO-', size=(32, 1), readonly=True, enable_events=True), GhostButton()],
+            [sg.Text(''), GhostButton()],
+            [sg.Text(''), GhostButton()],
+            [sg.Input(DEFAULT_DOCUMENTS_DIR, key="--default_output_dir", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, size=(34, 1), enable_events=True), GhostButton()],
+            [sg.Input(KEY_SEEK_STEP, key="--keyboard_seek_step", size=(10, 1), enable_events=True), GhostButton()],
+            [sg.Text(''), GhostButton()],
             [sg.Button("Check Now", key="-BTN-CHECK_UPDATE_MANUAL-")],
-        ])
+        ], pad=(0, None), expand_x=True),
+        sg.Column([
+            [GhostButton()],
+            [GhostButton()],
+            [GhostButton()],
+            [sg.Button("Open Folder...", key="-BTN-FOLDER_BROWSE-", disabled=True)],
+            [GhostButton()],
+            [GhostButton()],
+            [GhostButton()],
+        ], pad=(0, None)),
     ]
 ]
 tab2_layout = [[sg.Column(tab2_content,
@@ -1327,6 +1630,7 @@ tab3_layout = [
 layout = [
     [sg.TabGroup([
         [sg.Tab('Process Video', tab1_layout, key='-TAB-VIDEO-'),
+         sg.Tab('Queue', tab_batch_layout, key='-TAB-BATCH-'),
          sg.Tab('Advanced Settings', tab2_layout, key='-TAB-ADVANCED-'),
          sg.Tab('About', tab3_layout, key='-TAB-ABOUT-')]
     ], key='-TABGROUP-', enable_events=True, expand_x=True, expand_y=True)]
@@ -1399,37 +1703,6 @@ def redraw_canvas_and_boxes():
         window.drawn_rect_ids.append(rect_id)
 
 
-def disable_graph_interaction(window):
-    """Disables mouse interaction on the graph."""
-    if '-GRAPH-' not in window.AllKeysDict:
-        return
-
-    widget = window['-GRAPH-'].Widget
-    window.saved_b1 = widget.bind('<Button-1>')
-    window.saved_b1_motion = widget.bind('<B1-Motion>')
-    window.saved_b1_release = widget.bind('<ButtonRelease-1>')
-
-    def blocker(event):
-        return "break"
-
-    widget.bind('<Button-1>', blocker)
-    widget.bind('<B1-Motion>', blocker)
-    widget.bind('<ButtonRelease-1>', blocker)
-
-
-def enable_graph_interaction(window):
-    """Restores mouse interaction."""
-    if '-GRAPH-' not in window.AllKeysDict:
-        return
-
-    if hasattr(window, 'saved_b1'):
-        widget = window['-GRAPH-'].Widget
-        widget.bind('<Button-1>', window.saved_b1)
-        widget.bind('<B1-Motion>', window.saved_b1_motion)
-        widget.bind('<ButtonRelease-1>', window.saved_b1_release)
-        del window.saved_b1, window.saved_b1_motion, window.saved_b1_release
-
-
 # --- Bind keyboard events to the graph element ---
 window.bind('<Left>', '-GRAPH-<Left>')
 window.bind('<Right>', '-GRAPH-<Right>')
@@ -1479,6 +1752,86 @@ save_in_video_dir_checked_at_start = window.find_element('--save_in_video_dir').
 if not save_in_video_dir_checked_at_start:
     window['-BTN-FOLDER_BROWSE-'].update(disabled=False)
 
+
+def update_run_and_cancel_button_state(window, queue):
+    """Updates the Run and Cancel button text based on whether there are PENDING items."""
+    has_pending = any(item['status'] == 'Pending' for item in queue)
+
+    if has_pending:
+        window['-BTN-RUN-'].update(text=LANG.get('btn_start_queue', "Start Queue"))
+        window['-BTN-CANCEL-'].update(text=LANG.get('btn_stop_queue', "Stop Queue"))
+    else:
+        window['-BTN-RUN-'].update(text=LANG.get('btn_run', 'Run'))
+        window['-BTN-CANCEL-'].update(text=LANG.get('btn_cancel', "Cancel"))
+
+
+def update_queue_tab_count(window, queue):
+    """Updates the Queue tab title. Counts Pending, Processing, Cancelled, Paused."""
+    active_count = len([j for j in queue if j['status'] in ('Pending', 'Processing', 'Cancelled', 'Paused')])
+
+    base_title = LANG.get('tab_batch', 'Queue')
+    if active_count > 0:
+        new_title = f"{base_title} ({active_count})"
+    else:
+        new_title = base_title
+
+    try:
+        window['-TABGROUP-'].Widget.tab(window['-TAB-BATCH-'].Widget, text=new_title)
+    except Exception as e:
+        log_error(f"Failed to update tab title: {e}")
+
+
+def get_video_dimensions(file_path):
+    """
+    Returns (width, height) of the video file.
+    Returns (0, 0) if dimensions cannot be found.
+    """
+    try:
+        media_info = MediaInfo.parse(file_path)
+        for track in media_info.tracks:
+            if track.track_type == "Video":
+                return int(track.width), int(track.height)
+    except Exception:
+        pass
+    return 0, 0
+
+
+def check_crop_validity(video_path, args):
+    """
+    Checks if the crop coordinates in 'args' fit within the video dimensions.
+    Returns: (True, None) if valid.
+    Returns: (False, ErrorMessage) if invalid.
+    """
+    width, height = get_video_dimensions(video_path)
+    if width == 0 or height == 0:
+        return False, "Could not determine video dimensions."
+
+    def check_zone(x, y, w, h, zone_name=""):
+        if x >= width:
+            return LANG.get('err_crop_x_out', "{} X ({}) is outside video width ({}).").format(zone_name, x, width)
+        if y >= height:
+            return LANG.get('err_crop_y_out', "{} Y ({}) is outside video height ({}).").format(zone_name, y, height)
+        if x + w > width:
+            return LANG.get('err_crop_w_out', "{} extends out of bounds (X+W > Width).").format(zone_name)
+        if y + h > height:
+            return LANG.get('err_crop_h_out', "{} extends out of bounds (Y+H > Height).").format(zone_name)
+        return None
+
+    if 'crop_x' in args:
+        err = check_zone(int(args['crop_x']), int(args['crop_y']),
+                         int(args['crop_width']), int(args['crop_height']), "Zone 1")
+        if err:
+            return False, err
+
+    if 'crop_x2' in args:
+        err = check_zone(int(args['crop_x2']), int(args['crop_y2']),
+                         int(args['crop_width2']), int(args['crop_height2']), "Zone 2")
+        if err:
+            return False, err
+
+    return True, None
+
+
 # --- Define the list of keys that, when changed, should trigger a settings save ---
 KEYS_TO_AUTOSAVE = [
     '-UI_LANG_COMBO-',
@@ -1508,35 +1861,94 @@ KEYS_TO_AUTOSAVE = [
     '--check_for_updates',
 ]
 
+window.is_drawing = False
+
 # --- Event Loop ---
 while True:
-    event, values = window.read(timeout=100)
+    event, values = window.read(timeout=50)
 
-    if event == sg.WIN_CLOSED:
-        process_to_kill = getattr(window, '_videocr_process_pid', None)
-        if process_to_kill:
-            try:
-                kill_process_tree(process_to_kill)
-            except Exception as e:
-                log_error(f"Exception during final process kill: {e}")
-        break
+    # --- POLL QUEUE ---
+    # window.write_event_value is causing crashes while drawing graph elements. See https://github.com/PySimpleGUI/PySimpleGUI/issues/5750
+    if not window.is_drawing:
+        try:
+            while True:
+                msg_event, msg_data = gui_queue.get_nowait()
 
-    # --- Handle UI language change ---
-    if event == '-UI_LANG_COMBO-':
-        selected_native_name = values['-UI_LANG_COMBO-']
-        lang_code = available_languages.get(selected_native_name)
+                if msg_event == '-PROCESS_STARTED-':
+                    window._videocr_process_pid = msg_data
+                    window['-BTN-RUN-'].update(disabled=True)
+                    window['-BTN-CANCEL-'].update(disabled=False)
+                    window['-BTN-BATCH-STOP-'].update(disabled=False)
 
-        if lang_code:
-            selected_pos_display_name = values['-SUBTITLE_POS_COMBO-']
-            pos_display_to_internal_map = {LANG.get(lang_key, lang_key): internal_val for lang_key, internal_val in subtitle_positions_list}
-            saved_internal_pos = pos_display_to_internal_map.get(selected_pos_display_name, default_internal_subtitle_position)
+                elif msg_event == '-PROGRESS-SMOOTH-':
+                    if msg_data.get('text'):
+                        window['-STATUS-LINE-'].update(msg_data['text'])
+                    if msg_data.get('eta'):
+                        window['-ETA-LINE-'].update(msg_data['eta'])
+                    if msg_data.get('percent') is not None:
+                        window['-PROGRESS-BAR-'].update(msg_data['percent'])
 
-            load_language(lang_code)
-            update_gui_text(window)
+                elif msg_event == '-VIDEOCR_OUTPUT-':
+                    text_to_log = msg_data
+                    if text_to_log.strip():
+                        timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+                        final_text = f"[{timestamp}] {text_to_log}"
+                    else:
+                        final_text = text_to_log
+                    window['-OUTPUT-'].update(final_text, append=True)
 
-            update_subtitle_pos_combo(window, saved_internal_pos)
+                elif msg_event == '-TASKBAR_STATE_UPDATE-':
+                    if taskbar_progress_supported:
+                        state = msg_data.get('state')
+                        progress = msg_data.get('progress')
+                        if state and state is not previous_taskbar_state:
+                            previous_taskbar_state = state
+                            prog.setState(state)
+                        if progress is not None:
+                            prog.setProgress(progress)
 
-    # --- Handle events sent from the worker thread ---
+                elif msg_event == '-NOTIFICATION_EVENT-':
+                    send_notification(msg_data['title'], msg_data['message'])
+
+                elif msg_event == '-BATCH-REFRESH-':
+                    window['-BATCH-TABLE-'].update(values=[[i['filename'], i['output'], i['status']] for i in batch_queue])
+                    update_queue_tab_count(window, batch_queue)
+
+                elif msg_event == '-BATCH-FINISHED-':
+                    window.is_processing = False
+
+                    for btn in ['-BTN-BATCH-START-', '-BTN-RUN-']:
+                        window[btn].update(disabled=False)
+
+                    window['-BTN-BATCH-PAUSE-'].update(disabled=True, text="Pause")
+                    window['-BTN-PAUSE-'].update(disabled=True, text="Pause")
+                    window['-BTN-CANCEL-'].update(disabled=True)
+                    window['-BTN-BATCH-STOP-'].update(disabled=True)
+                    window['-SAVE_AS_BTN-'].update(disabled=not video_path)
+                    window['--output'].update(disabled=not video_path)
+                    window['-PROGRESS-BAR-'].update(0)
+                    window['-STATUS-LINE-'].update("")
+                    window['-ETA-LINE-'].update("")
+                    msg = "Queue Cancelled" if getattr(window, 'cancelled_by_user', False) else "Queue Finished"
+                    window['-OUTPUT-'].update('\n', append=True)
+                    timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+                    window['-OUTPUT-'].update(f"[{timestamp}] {msg}\n", append=True)
+
+                    if hasattr(window, '_videocr_process_pid'):
+                        del window._videocr_process_pid
+                    if hasattr(window, 'cancelled_by_user'):
+                        del window.cancelled_by_user
+
+                    if taskbar_progress_supported:
+                        prog.setState('normal')
+                        prog.setProgress(0)
+
+                    update_run_and_cancel_button_state(window, batch_queue)
+
+        except queue.Empty:
+            pass
+
+    # --- Save settings ---
     if event in KEYS_TO_AUTOSAVE:
         if values is not None:
             save_settings(window, values)
@@ -1559,7 +1971,32 @@ while True:
                 output_path = generate_output_path(video_path, values)
                 window['--output'].update(str(output_path))
 
-    elif event == '-BTN-VIDEO_BROWSE-':
+    if event == sg.WIN_CLOSED:
+        process_to_kill = getattr(window, '_videocr_process_pid', None)
+        if process_to_kill:
+            try:
+                kill_process_tree(process_to_kill)
+            except Exception as e:
+                log_error(f"Exception during final process kill: {e}")
+        break
+
+    # --- Handle UI language change ---
+    elif event == '-UI_LANG_COMBO-':
+        selected_native_name = values['-UI_LANG_COMBO-']
+        lang_code = available_languages.get(selected_native_name)
+
+        if lang_code:
+            selected_pos_display_name = values['-SUBTITLE_POS_COMBO-']
+            pos_display_to_internal_map = {LANG.get(lang_key, lang_key): internal_val for lang_key, internal_val in subtitle_positions_list}
+            saved_internal_pos = pos_display_to_internal_map.get(selected_pos_display_name, default_internal_subtitle_position)
+
+            load_language(lang_code)
+            update_gui_text(window)
+
+            update_subtitle_pos_combo(window, saved_internal_pos)
+
+    # --- File/Folder Handling ---
+    elif event == '-BTN-OPEN-FILE-':
         video_file_types = LANG.get('video_file_types', "Video Files")
         all_file_types = LANG.get('all_file_types', "All Files")
         filename = sg.tk.filedialog.askopenfilename(
@@ -1567,9 +2004,18 @@ while True:
             parent=window.TKroot
         )
         if filename:
-            window['-VIDEO_PATH-'].update(filename)
-            # Manually trigger the event for the input element to load the video
-            window.write_event_value('-VIDEO_PATH-', filename)
+            window['-VIDEO-LIST-'].update(value=filename, values=[filename], size=(38, None), disabled=False)
+            window.write_event_value('-VIDEO-LIST-', filename)
+
+    elif event == '-BTN-OPEN-FOLDER-':
+        folder = sg.tk.filedialog.askdirectory(parent=window.TKroot)
+        if folder:
+            videos = scan_video_folder(folder)
+            if videos:
+                window['-VIDEO-LIST-'].update(value=videos[0], values=videos, size=(38, None), disabled=False)
+                window.write_event_value('-VIDEO-LIST-', videos[0])
+            else:
+                custom_popup(window, "No Videos", "No supported videos found in folder.", icon=ICON_PATH)
 
     elif event == '-BTN-FOLDER_BROWSE-':
         folder = sg.tk.filedialog.askdirectory()
@@ -1638,72 +2084,9 @@ while True:
         if '-GRAPH-' in window.AllKeysDict:
             window['-GRAPH-'].set_focus()
 
-    elif event == '-PROCESS_STARTED-':
-        pid = values[event]
-        window._videocr_process_pid = pid
-        window['-BTN-RUN-'].update(disabled=True)
-        window['-BTN-CANCEL-'].update(disabled=False)
-
-    elif event == '-PROGRESS-SMOOTH-':
-        data = values[event]
-        if data.get('text'):
-            window['-STATUS-LINE-'].update(data['text'])
-        if data.get('eta'):
-            window['-ETA-LINE-'].update(data['eta'])
-        if data.get('percent') is not None:
-            window['-PROGRESS-BAR-'].update(data['percent'])
-        window.refresh()
-
-    elif event == '-VIDEOCR_OUTPUT-':
-        text_to_log = values[event]
-
-        if text_to_log.strip():
-            timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-            final_text = f"[{timestamp}] {text_to_log}"
-        else:
-            final_text = text_to_log
-
-        window['-OUTPUT-'].update(final_text, append=True)
-        window.refresh()
-
-    elif event == '-TASKBAR_STATE_UPDATE-':
-        state_info = values[event]
-        state = state_info.get('state')
-        progress = state_info.get('progress')
-
-        if state and state is not previous_taskbar_state:
-            previous_taskbar_state = state
-            prog.setState(state)
-        if progress is not None:
-            prog.setProgress(progress)
-
-    elif event == '-PROCESS_FINISHED-':
-        if hasattr(window, '_videocr_process_pid'):
-            del window._videocr_process_pid
-        if hasattr(window, 'cancelled_by_user'):
-            del window.cancelled_by_user
-        window['-BTN-RUN-'].update(disabled=not video_path)
-        window['--output'].update(disabled=not video_path)
-        window['-SAVE_AS_BTN-'].update(disabled=not video_path)
-        window['-BTN-CANCEL-'].update(disabled=True)
-        window['-PROGRESS-BAR-'].update(0)
-        window['-STATUS-LINE-'].update("")
-        window['-ETA-LINE-'].update("")
-        enable_graph_interaction(window)
-        if taskbar_progress_supported:
-            prog.setState('normal')
-            prog.setProgress(0)
-
-    if event == '-NOTIFICATION_EVENT-':
-        notification_info = values[event]
-        send_notification(
-            notification_info['title'],
-            notification_info['message'],
-        )
-
-    # --- Video File Selected ---
-    elif event == "-VIDEO_PATH-" and values["-VIDEO_PATH-"]:
-        video_path = values["-VIDEO_PATH-"]
+    # --- Load Video Logic ---
+    elif event == "-VIDEO-LIST-":
+        video_path = values["-VIDEO-LIST-"]
         window['-BTN-RUN-'].update(disabled=True)
         window["-SLIDER-"].update(disabled=True)
 
@@ -1741,8 +2124,9 @@ while True:
                 output_path = generate_output_path(video_path, values)
 
                 window['--output'].update(str(output_path))
-                window['-BTN-RUN-'].update(disabled=False)
-                window['-SAVE_AS_BTN-'].update(disabled=False)
+                if not getattr(window, 'is_processing', False):
+                    window['-BTN-RUN-'].update(disabled=False)
+                    window['-SAVE_AS_BTN-'].update(disabled=False)
 
                 if '-GRAPH-' in window.AllKeysDict:
                     window['-GRAPH-'].set_focus()
@@ -1812,7 +2196,6 @@ while True:
             video_path = None
             total_frames = 0
             video_fps = 0
-            window["-VIDEO_PATH-"].update("")
 
     # --- Slider Moved ---
     elif event == "-SLIDER-" and video_path and total_frames > 0:
@@ -1849,6 +2232,8 @@ while True:
 
     # --- Graph Interaction ---
     elif event == "-GRAPH-":
+        window.is_drawing = True
+
         if not video_path or resized_frame_width == 0:
             continue
 
@@ -1881,6 +2266,8 @@ while True:
 
     # --- Graph Interaction ---
     elif event == "-GRAPH-+UP":
+        window.is_drawing = False
+
         if window.start_point_img and window.end_point_img:
 
             rect_x1_img = max(0, min(window.start_point_img[0], window.end_point_img[0]))
@@ -1924,6 +2311,369 @@ while True:
 
             save_settings(window, values)
 
+    elif event == "-BTN-ADD-BATCH-":
+        if not video_path:
+            continue
+
+        args, errors = get_processing_args(values, window)
+        if errors:
+            custom_popup(window, "Validation Error", "\n".join(errors), icon=ICON_PATH)
+            continue
+
+        new_output_full = args['output']
+
+        if any(j['args']['output'] == new_output_full for j in batch_queue):
+            msg = LANG.get('msg_duplicate_queue', "A job for '{}' is already in the queue.\n\nPlease change the output path or delete the job from the Queue.").format(os.path.basename(new_output_full))
+            custom_popup(window, LANG.get('title_duplicate', "Duplicate"), msg, icon=ICON_PATH)
+            continue
+
+        batch_queue.append({
+            'filename': os.path.basename(args['video_path']),
+            'output': os.path.basename(new_output_full),
+            'status': 'Pending',
+            'args': args
+        })
+
+        window['-BATCH-TABLE-'].update(values=[[i['filename'], i['output'], i['status']] for i in batch_queue])
+        update_run_and_cancel_button_state(window, batch_queue)
+        update_queue_tab_count(window, batch_queue)
+
+    elif event == "-BTN-BATCH-ADD-ALL-":
+        all_videos = window['-VIDEO-LIST-'].Values
+        if not all_videos:
+            continue
+
+        original_frames = total_frames
+        original_fps = video_fps
+
+        added_count = 0
+        skipped_videos = []
+
+        current_queue_outputs = {j['args']['output'] for j in batch_queue}
+
+        init_text = LANG.get('msg_scanning_init', "Initializing scan...")
+        prog_layout = [[sg.Text(init_text, key='-TXT-', text_color='white', background_color='#2d2d2d', font=('Arial', 12), pad=(20, 20))]]
+        progress_window = sg.Window(LANG.get('title_progress', "Progress"), prog_layout, no_titlebar=True, keep_on_top=True, background_color='#2d2d2d', finalize=True, modal=True)
+        center_popup(window, progress_window)
+
+        for index, v_path in enumerate(all_videos):
+            progress_window['-TXT-'].update(LANG.get('msg_scanning_file', "Scanning file {} of {}...").format(index + 1, len(all_videos)))
+            progress_window.refresh()
+
+            potential_output = generate_output_path(v_path, values)
+            potential_output_str = str(potential_output)
+
+            if potential_output_str in current_queue_outputs:
+                skipped_videos.append(f"{os.path.basename(v_path)} ({LANG.get('reason_dup_path', 'Duplicate Output path')})")
+                continue
+
+            try:
+                media_info = MediaInfo.parse(v_path)
+                track = next((t for t in media_info.tracks if t.track_type == "Video"), None)
+                if not track or not track.duration:
+                    skipped_videos.append(f"{os.path.basename(v_path)} ({LANG.get('reason_no_track', 'No video track')})")
+                    continue
+                f_dur = float(track.duration) / 1000.0
+                video_fps = 30.0
+                total_frames = int(f_dur * video_fps)
+            except Exception:
+                skipped_videos.append(f"{os.path.basename(v_path)} ({LANG.get('reason_metadata', 'Metadata Error')})")
+                continue
+
+            args, errors = get_processing_args(values, window)
+            if errors:
+                skipped_videos.append(f"{os.path.basename(v_path)}: {errors[0]}")
+                continue
+
+            is_valid, err_msg = check_crop_validity(v_path, args)
+            if not is_valid:
+                skipped_videos.append(f"{os.path.basename(v_path)}: {err_msg}")
+                continue
+
+            args['video_path'] = v_path
+            args['output'] = potential_output_str
+
+            batch_queue.append({
+                'filename': os.path.basename(v_path),
+                'output': os.path.basename(potential_output_str),
+                'status': 'Pending',
+                'args': args
+            })
+
+            current_queue_outputs.add(potential_output_str)
+            added_count += 1
+
+        progress_window.close()
+
+        # Restore Globals
+        total_frames = original_frames
+        video_fps = original_fps
+
+        window['-BATCH-TABLE-'].update(values=[[i['filename'], i['output'], i['status']] for i in batch_queue])
+        update_run_and_cancel_button_state(window, batch_queue)
+        update_queue_tab_count(window, batch_queue)
+
+        if skipped_videos:
+            msg = LANG.get('msg_batch_report_summary', "Added {} videos.\n\nSkipped {} video(s):\n").format(added_count, len(skipped_videos))
+            msg += "\n".join(skipped_videos[:10])
+            if len(skipped_videos) > 10:
+                msg += "\n" + LANG.get('msg_and_others', "...and others.")
+            custom_popup(window, LANG.get('title_batch_report', "Batch Report"), msg, icon=ICON_PATH)
+
+    elif event == "-BTN-BATCH-START-":
+        start_queue(window, batch_queue)
+
+    elif event == "-BTN-RUN-":
+        is_batch_start = window['-BTN-RUN-'].get_text() == LANG.get('btn_start_queue', "Start Queue")
+
+        if is_batch_start:
+            start_queue(window, batch_queue)
+
+        else:
+            if not video_path:
+                continue
+
+            if hasattr(window, '_videocr_process_pid') and window._videocr_process_pid:
+                window['-OUTPUT-'].update(LANG.get('error_already_running', "Process is already running.\n"), append=True)
+                continue
+
+            args, errors = get_processing_args(values, window)
+            if errors:
+                window['-OUTPUT-'].update(LANG.get('val_err_header', "Validation Errors:\n"), append=True)
+                for error in errors:
+                    window['-OUTPUT-'].update(f"- {error}\n", append=True)
+                window.refresh()
+                continue
+
+            target_output_full = args['output']
+            existing_job_index = -1
+
+            for idx, job in enumerate(batch_queue):
+                if job['args']['output'] == target_output_full:
+                    existing_job_index = idx
+                    break
+
+            should_create_new = True
+
+            if existing_job_index != -1:
+                existing_status = batch_queue[existing_job_index]['status']
+
+                if existing_status in ('Cancelled', 'Error', 'Completed'):
+                    msg = LANG.get('popup_duplicate_msg', "A job for this output file already exists (Status: {}).\n\nDo you want to restart it with current settings?").format(existing_status)
+                    choice = sg.popup_yes_no(msg, title=LANG.get('title_duplicate_job', "Duplicate Job"), icon=ICON_PATH)
+
+                    if choice == 'Yes':
+                        batch_queue[existing_job_index]['args'] = args
+                        batch_queue[existing_job_index]['status'] = 'Pending'
+                        should_create_new = False
+                    else:
+                        continue
+
+            if should_create_new:
+                batch_queue.append({
+                    'filename': os.path.basename(args['video_path']),
+                    'output': os.path.basename(args['output']),
+                    'status': 'Pending',
+                    'args': args
+                })
+
+            window['-BATCH-TABLE-'].update(values=[[i['filename'], i['output'], i['status']] for i in batch_queue])
+            update_queue_tab_count(window, batch_queue)
+
+            start_queue(window, batch_queue)
+
+    elif event == "-BTN-BATCH-PAUSE-":
+        pid = getattr(window, '_videocr_process_pid', None)
+
+        if not pid:
+            continue
+
+        is_currently_paused = window['-BTN-BATCH-PAUSE-'].get_text() == LANG.get('btn_resume', "Resume")
+
+        if is_currently_paused:
+            if set_process_pause_state(pid, pause=False):
+                window['-BTN-BATCH-PAUSE-'].update(LANG.get('btn_pause', "Pause"))
+                window['-BTN-PAUSE-'].update(LANG.get('btn_pause', "Pause"))
+                window['-OUTPUT-'].update(LANG.get('status_resuming', "\nResuming process...\n"), append=True)
+
+                for job in batch_queue:
+                    if job['status'] == 'Paused':
+                        job['status'] = 'Processing'
+                        break
+        else:
+            if set_process_pause_state(pid, pause=True):
+                window['-BTN-BATCH-PAUSE-'].update(LANG.get('btn_resume', "Resume"))
+                window['-BTN-PAUSE-'].update(LANG.get('btn_resume', "Resume"))
+                window['-OUTPUT-'].update(LANG.get('status_pausing', "\nPausing process...\n"), append=True)
+
+                for job in batch_queue:
+                    if job['status'] == 'Processing':
+                        job['status'] = 'Paused'
+                        break
+
+        window['-BATCH-TABLE-'].update(values=[[i['filename'], i['output'], i['status']] for i in batch_queue])
+
+    elif event == "-BTN-BATCH-CLEAR-":
+        active_jobs = [j for j in batch_queue if j['status'] in ('Processing', 'Paused')]
+        if active_jobs:
+            batch_queue[:] = active_jobs
+        else:
+            batch_queue.clear()
+
+        window['-BATCH-TABLE-'].update(values=[[i['filename'], i['output'], i['status']] for i in batch_queue])
+        update_run_and_cancel_button_state(window, batch_queue)
+        update_queue_tab_count(window, batch_queue)
+
+    elif event == "-BTN-BATCH-REMOVE-":
+        rows = values['-BATCH-TABLE-']
+        if rows:
+            selected_jobs = [batch_queue[i] for i in rows]
+
+            if any(job['status'] in ('Processing', 'Paused') for job in selected_jobs):
+                custom_popup(window, LANG.get('title_error', "Error"), LANG.get('popup_cannot_remove_running', "The currently running or paused job cannot be removed.\nPlease stop or cancel the process first."), icon=ICON_PATH)
+                continue
+
+            for i in sorted(rows, reverse=True):
+                del batch_queue[i]
+
+            window['-BATCH-TABLE-'].update(values=[[i['filename'], i['output'], i['status']] for i in batch_queue])
+            update_run_and_cancel_button_state(window, batch_queue)
+            update_queue_tab_count(window, batch_queue)
+
+    elif event == "-BTN-BATCH-UP-":
+        rows = values['-BATCH-TABLE-']
+        if rows and len(rows) == 1:
+            idx = rows[0]
+            if idx > 0:
+                batch_queue[idx], batch_queue[idx - 1] = batch_queue[idx - 1], batch_queue[idx]
+                window['-BATCH-TABLE-'].update(values=[[i['filename'], i['output'], i['status']] for i in batch_queue])
+                window['-BATCH-TABLE-'].update(select_rows=[idx - 1])
+
+    elif event == "-BTN-BATCH-DOWN-":
+        rows = values['-BATCH-TABLE-']
+        if rows and len(rows) == 1:
+            idx = rows[0]
+            if idx < len(batch_queue) - 1:
+                batch_queue[idx], batch_queue[idx + 1] = batch_queue[idx + 1], batch_queue[idx]
+                window['-BATCH-TABLE-'].update(values=[[i['filename'], i['output'], i['status']] for i in batch_queue])
+                window['-BATCH-TABLE-'].update(select_rows=[idx + 1])
+
+    elif event == "-BTN-BATCH-RESET-":
+        rows = values['-BATCH-TABLE-']
+        if rows and len(rows) == 1:
+            idx = rows[0]
+            status = batch_queue[idx]['status']
+
+            if status in ('Cancelled', 'Error', 'Completed'):
+                batch_queue[idx]['status'] = 'Pending'
+
+                window['-BATCH-TABLE-'].update(values=[[i['filename'], i['output'], i['status']] for i in batch_queue])
+                update_run_and_cancel_button_state(window, batch_queue)
+                update_queue_tab_count(window, batch_queue)
+
+    elif event == "-BTN-BATCH-EDIT-":
+        rows = values['-BATCH-TABLE-']
+        if rows and len(rows) == 1:
+            idx = rows[0]
+            job = batch_queue[idx]
+            args = job['args']
+            v_path = args['video_path']
+
+            if not os.path.exists(v_path):
+                sg.popup_error(f"Video file not found:\n{v_path}", icon=ICON_PATH)
+                continue
+
+            window['-TABGROUP-'].Widget.select(0)
+            window['-VIDEO-LIST-'].update(value=v_path)
+
+            reset_crop_state()
+            graph.erase()
+
+            img_bytes, orig_w, orig_h, total_f, fps, res_w, res_h, off_x, off_y = get_video_frame(v_path, 0, graph_size)
+
+            if img_bytes:
+                # Update Globals
+                video_path = v_path
+                original_frame_width = orig_w
+                original_frame_height = orig_h
+                total_frames = total_f
+                video_fps = fps
+                current_frame_num = 0
+                resized_frame_width = res_w
+                resized_frame_height = res_h
+                image_offset_x = off_x
+                image_offset_y = off_y
+                current_image_bytes = img_bytes.getvalue()
+
+                graph.draw_image(data=current_image_bytes, location=(image_offset_x, image_offset_y))
+
+                window["-SLIDER-"].update(range=(0, total_frames - 1), value=0, disabled=False)
+                update_frame_and_time_display(window, 0, total_frames, fps)
+                window['-BTN-RUN-'].update(disabled=False)
+                window['-SAVE_AS_BTN-'].update(disabled=False)
+
+                # --- RESTORE SETTINGS ---
+                window['--output'].update(args.get('output', ''))
+
+                saved_lang_abbr = args.get('lang', 'en')
+                disp_name = next((k for k, v in language_abbr_lookup.items() if v == saved_lang_abbr), 'English')
+                window['-LANG_COMBO-'].update(disp_name)
+
+                for arg_key, arg_val in args.items():
+                    gui_key = f"--{arg_key}"
+                    if gui_key in window.AllKeysDict:
+                        window[gui_key].update(arg_val)
+
+                new_boxes = []
+
+                def restore_box(cx, cy, cw, ch, orig_w, orig_h, res_w, res_h):
+                    sx = res_w / orig_w if orig_w > 0 else 0
+                    sy = res_h / orig_h if orig_h > 0 else 0
+
+                    rx1 = cx * sx
+                    ry1 = cy * sy
+                    rx2 = (cx + cw) * sx
+                    ry2 = (cy + ch) * sy
+
+                    return {
+                        'coords': {'crop_x': int(cx), 'crop_y': int(cy), 'crop_width': int(cw), 'crop_height': int(ch)},
+                        'img_points': ((rx1, ry1), (rx2, ry2))
+                    }
+
+                if 'crop_x' in args:
+                    new_boxes.append(restore_box(
+                        args['crop_x'], args['crop_y'], args['crop_width'], args['crop_height'],
+                        original_frame_width, original_frame_height, resized_frame_width, resized_frame_height
+                    ))
+
+                if args.get('use_dual_zone') and 'crop_x2' in args:
+                    new_boxes.append(restore_box(
+                        args['crop_x2'], args['crop_y2'], args['crop_width2'], args['crop_height2'],
+                        original_frame_width, original_frame_height, resized_frame_width, resized_frame_height
+                    ))
+
+                window.crop_boxes = new_boxes
+                redraw_canvas_and_boxes()
+
+                if not new_boxes:
+                    window['-CROP_COORDS-'].update("Not Set")
+                    window["-BTN-CLEAR_CROP-"].update(disabled=True)
+                elif len(new_boxes) == 1:
+                    b = new_boxes[0]
+                    window['-CROP_COORDS-'].update(f"({b['coords']['crop_x']}, {b['coords']['crop_y']}, {b['coords']['crop_width']}, {b['coords']['crop_height']})")
+                    window["-BTN-CLEAR_CROP-"].update(disabled=False)
+                else:
+                    coords_str_parts = []
+                    for i, b in enumerate(new_boxes):
+                        coords_str_parts.append(f"Zone {i + 1}: ({b['coords']['crop_x']}, {b['coords']['crop_y']}, ...)")
+                    window['-CROP_COORDS-'].update("  |  ".join(coords_str_parts))
+                    window["-BTN-CLEAR_CROP-"].update(disabled=False)
+
+                del batch_queue[idx]
+                window['-BATCH-TABLE-'].update(values=[[i['filename'], i['output'], i['status']] for i in batch_queue])
+                update_run_and_cancel_button_state(window, batch_queue)
+                update_queue_tab_count(window, batch_queue)
+
     # --- Clear Crop Button ---
     elif event == "-BTN-CLEAR_CROP-":
         reset_crop_state()
@@ -1932,149 +2682,47 @@ while True:
             graph.draw_image(data=current_image_bytes, location=(image_offset_x, image_offset_y))
         save_settings(window, values)
 
-    # --- Run Button Clicked ---
-    elif event == "-BTN-RUN-" and video_path:
-        if hasattr(window, '_videocr_process_pid') and window._videocr_process_pid:
-            window['-OUTPUT-'].update(LANG.get('error_already_running', "Process is already running.\n"), append=True)
+    elif event == "-BTN-PAUSE-":
+        pid = getattr(window, '_videocr_process_pid', None)
+        if not pid:
             continue
 
-        disable_graph_interaction(window)
-        window.cancelled_by_user = False
-        window['-OUTPUT-'].update("")
+        is_currently_paused = window['-BTN-PAUSE-'].get_text() == LANG.get('btn_resume', "Resume")
 
-        # --- Input Validation ---
-        errors = []
+        if is_currently_paused:
+            if set_process_pause_state(pid, pause=False):
+                window['-BTN-BATCH-PAUSE-'].update(LANG.get('btn_pause', "Pause"))
+                window['-BTN-PAUSE-'].update(LANG.get('btn_pause', "Pause"))
+                window['-OUTPUT-'].update(LANG.get('status_resuming', "\nResuming process...\n"), append=True)
 
-        time_start = values.get('--time_start', '').strip()
-        time_end = values.get('--time_end', '').strip()
+                for job in batch_queue:
+                    if job['status'] == 'Paused':
+                        job['status'] = 'Processing'
+                        break
+        else:
+            if set_process_pause_state(pid, pause=True):
+                window['-BTN-BATCH-PAUSE-'].update(LANG.get('btn_resume', "Resume"))
+                window['-BTN-PAUSE-'].update(LANG.get('btn_resume', "Resume"))
+                window['-OUTPUT-'].update(LANG.get('status_pausing', "\nPausing process...\n"), append=True)
 
-        if not is_valid_time_format(time_start):
-            errors.append(LANG.get('val_err_start_time', "Invalid Start Time format. Use MM:SS or HH:MM:SS."))
-        if not is_valid_time_format(time_end):
-            errors.append(LANG.get('val_err_end_time', "Invalid End Time format. Use MM:SS or HH:MM:SS."))
+                for job in batch_queue:
+                    if job['status'] == 'Processing':
+                        job['status'] = 'Paused'
+                        break
 
-        time_start_seconds = time_string_to_seconds(time_start)
-        time_end_seconds = time_string_to_seconds(time_end)
-
-        video_duration_seconds = 0
-        if total_frames > 0 and video_fps > 0:
-            video_duration_seconds = total_frames / video_fps
-
-        if time_start_seconds is not None:
-            if time_start_seconds > video_duration_seconds:
-                errors.append(LANG.get('val_err_start_exceeds', "Start Time ({}) exceeds video duration ({}).").format(format_time(time_start_seconds), format_time(video_duration_seconds)))
-
-        if time_end and time_end_seconds is not None:
-            if time_end_seconds > video_duration_seconds:
-                errors.append(LANG.get('val_err_end_exceeds', "End Time ({}) exceeds video duration ({}).").format(format_time(time_end_seconds), format_time(video_duration_seconds)))
-
-        if time_start_seconds is not None and time_end_seconds is not None:
-            if time_start_seconds > time_end_seconds:
-                errors.append(LANG.get('val_err_start_after_end', "Start Time cannot be after End Time."))
-
-        numeric_params = {
-            '--conf_threshold': (int, 0, 100, "Confidence Threshold"),
-            '--sim_threshold': (int, 0, 100, "Similarity Threshold"),
-            '--brightness_threshold': (int, 0, 255, "Brightness Threshold"),
-            '--ssim_threshold': (int, 0, 100, "SSIM Threshold"),
-            '--ocr_image_max_width': (int, 0, None, "Max OCR Image Width"),
-            '--frames_to_skip': (int, 0, None, "Frames to Skip"),
-            '--max_merge_gap': (float, 0.0, None, "Max Merge Gap"),
-            '--min_subtitle_duration': (float, 0.0, None, "Minimum Subtitle Duration"),
-        }
-
-        for key, (cast_type, min_val, max_val, name) in numeric_params.items():
-            value_str = values.get(key, '').strip()
-
-            if not value_str:
-                continue
-
-            range_str_parts = []
-            if min_val is not None:
-                range_str_parts.append(f">={min_val}")
-            if max_val is not None:
-                range_str_parts.append(f"<={max_val}")
-            range_str = " and ".join(range_str_parts)
-
-            type_name = cast_type.__name__
-            article = "an" if type_name.startswith(("i", "I")) else "a"
-
-            error_format = LANG.get('val_err_numeric', "Invalid value for {}. Must be {} {} {}.")
-
-            try:
-                value = cast_type(value_str)
-                if (min_val is not None and value < min_val) or (max_val is not None and value > max_val):
-                    raise ValueError
-            except ValueError:
-                errors.append(error_format.format(name, article, type_name, range_str))
-
-        if errors:
-            window['-OUTPUT-'].update(LANG.get('val_err_header', "Validation Errors:\n"), append=True)
-            for error in errors:
-                window['-OUTPUT-'].update(f"- {error}\n", append=True)
-            window.refresh()
-            continue
-
-        use_dual_zone = values.get('--use_dual_zone', False)
-
-        if use_dual_zone and len(window.crop_boxes) != 2:
-            window['-OUTPUT-'].update(LANG.get('val_err_dual_zone', "Dual Zone OCR is enabled, but 2 crop boxes have not been selected.\n"))
-            continue
-
-        args = {}
-        args['video_path'] = video_path
-
-        selected_lang_name = values.get('-LANG_COMBO-', default_display_language)
-        lang_abbr = language_abbr_lookup.get(selected_lang_name)
-        if lang_abbr:
-            args['lang'] = lang_abbr
-
-        selected_display_name = values.get('-SUBTITLE_POS_COMBO-')
-        display_name_to_internal_map = {LANG.get(lang_key, lang_key): internal_val for lang_key, internal_val in subtitle_positions_list}
-        pos_value = display_name_to_internal_map.get(selected_display_name)
-        if pos_value:
-            args['subtitle_position'] = pos_value
-
-        for key in values:
-            if key.startswith('--') and key not in ['--keyboard_seek_step', '--default_output_dir', '--save_in_video_dir', '--send_notification', '--save_crop_box', '--check_for_updates', '--language']:
-                stripped_key = key.lstrip('-')
-                value = values.get(key)
-                if isinstance(value, bool):
-                    args[stripped_key] = value
-                elif value is not None and str(value).strip() != '':
-                    args[stripped_key] = str(value).strip()
-
-        # Handle send_notification specifically to store it as a boolean and not a string
-        args['send_notification'] = values.get('--send_notification', True)
-
-        # Add crop coordinates based on mode
-        use_fullframe = values.get('--use_fullframe', False)
-
-        if use_dual_zone:
-            box1_coords = window.crop_boxes[0]['coords']
-            args.update(box1_coords)
-
-            box2_coords = window.crop_boxes[1]['coords']
-            args.update({f"{k}2": v for k, v in box2_coords.items()})
-
-        elif not use_fullframe:
-            if window.crop_boxes:
-                args.update(window.crop_boxes[0]['coords'])
-
-        window['-BTN-RUN-'].update(disabled=True)
-        window['-BTN-CANCEL-'].update(disabled=False)
-
-        ocr_thread = threading.Thread(target=run_ocr_thread, args=(args, window), daemon=True)
-        ocr_thread.start()
+        window['-BATCH-TABLE-'].update(values=[[i['filename'], i['output'], i['status']] for i in batch_queue])
 
     # --- Cancel Button Clicked ---
-    elif event == "-BTN-CANCEL-":
+    elif event in ("-BTN-CANCEL-", "-BTN-BATCH-STOP-"):
         pid_to_kill = getattr(window, '_videocr_process_pid', None)
         if pid_to_kill:
             window.cancelled_by_user = True
             window['-OUTPUT-'].update(LANG.get('status_cancelling', "\nCancelling process...\n"), append=True)
             window.refresh()
             try:
+                if window['-BTN-BATCH-PAUSE-'].get_text() == "Resume":
+                    set_process_pause_state(pid_to_kill, pause=False)
+
                 kill_process_tree(pid_to_kill)
                 window['-OUTPUT-'].update(LANG.get('status_cancelled', "\nProcess cancelled by user.\n"), append=True)
             except Exception as e:
@@ -2086,6 +2734,7 @@ while True:
         else:
             window['-OUTPUT-'].update(LANG.get('error_no_process_to_cancel', "\nNo process is currently running to cancel.\n"), append=True)
             window['-BTN-CANCEL-'].update(disabled=True)
+            window['-BTN-BATCH-STOP-'].update(disabled=True)
             window['-BTN-RUN-'].update(disabled=not video_path)
 
 # --- Cleanup ---

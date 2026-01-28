@@ -1,9 +1,10 @@
 {
     "tab_video": "معالجة الفيديو",
+    "tab_batch": "قائمة الانتظار",
     "tab_advanced": "الإعدادات المتقدمة",
     "tab_about": "حول",
 
-    "lbl_video_path": "ملف الفيديو:",
+    "lbl_source": "المصدر:",
     "lbl_output_srt": "إخراج SRT:",
     "lbl_sub_lang": "لغة الترجمة:",
     "lbl_sub_pos": "موضع الترجمة:",
@@ -76,11 +77,35 @@
     "tip_send_notification": "إرسال إشعار عند اكتمال العملية.",
     "chk_check_updates": "فحص التحديثات عند البدء",
     "tip_check_updates": "فحص تلقائي لإصدارات جديدة من VideOCR عند بدء التطبيق.",
-    "btn_browse": "تصفح...",
+
+    "btn_browse": "فتح ملف...",
+    "btn_browse_folder": "فتح مجلد...",
     "btn_save_as": "حفظ باسم...",
     "btn_check_now": "فحص الآن",
     "btn_ok": "موافق",
     "btn_dismiss": "إغلاق",
+    "btn_add_to_queue": "إضافة لقائمة الانتظار",
+    "btn_add_all_to_queue": "إضافة الكل للقائمة",
+    "btn_pause": "إيقاف مؤقت",
+    "btn_resume": "استئناف",
+
+    "lbl_queue_title": "قائمة الانتظار",
+    "col_video_file": "ملف الفيديو",
+    "col_output_file": "ملف الإخراج",
+    "col_status": "الحالة",
+    "btn_start_queue": "بدء القائمة",
+    "btn_stop_queue": "إيقاف القائمة",
+    "btn_reset": "إعادة ضبط",
+    "btn_edit": "تعديل",
+    "btn_remove": "إزالة",
+    "btn_clear_queue": "مسح القائمة",
+
+    "tip_batch_up": "تحريك المهمة المحددة للأعلى",
+    "tip_batch_down": "تحريك المهمة المحددة للأسفل",
+    "tip_batch_reset": "إعادة ضبط مهمة ملغاة",
+    "tip_batch_edit": "إرسال المهمة للنافذة الرئيسية للتعديل",
+    "tip_batch_remove": "إزالة المهمة المحددة من القائمة",
+    "tip_batch_clear": "مسح القائمة الحالية",
 
     "lbl_about_version": "الإصدار: {version}",
     "lbl_get_newest": "احصل على أحدث إصدار هنا:",
@@ -88,7 +113,7 @@
 
     "help_title": "معلومات القطع",
     "help_message": "ارسم صندوق قطع فوق منطقة الترجمة في الفيديو.\nاستخدم النقر+السحب للتحديد.\nفي وضع 'المنطقة المزدوجة'، يمكنك رسم صندوقي قطع.\nإذا لم يتم تحديد صندوق قطع، سيتم استخدام الثلث السفلي من الفيديو\nلـ OCR افتراضياً.",
-    
+
     "update_title": "تحديث متاح",
     "update_available_1": "إصدار جديد من VideOCR ({}) متاح!",
     "update_available_2": "أنت تستخدم حالياً الإصدار {}.",
@@ -106,8 +131,12 @@
     "status_success": "تم إنشاء ملف الترجمة بنجاح!\n",
     "status_cancelling": "\nإلغاء العملية...\n",
     "status_cancelled": "\nتم إلغاء العملية بواسطة المستخدم.\n",
+    "status_resuming": "\nاستئناف العملية...\n",
+    "status_pausing": "\nإيقاف العملية مؤقتاً...\n",
     "notification_title": "إنشاء الترجمة اكتمل!",
-    
+    "batch_processing_file": "جاري معالجة",
+    "batch_finished_count": "اكتملت الدفعة: تمت معالجة {} ملفات.",
+
     "progress_step1": "الخطوة 1: تمت معالجة الصورة {current} من {total} ({percent}%)",
     "progress_step2": "الخطوة 2: تم تنفيذ OCR على الصورة {current} من {total} ({percent}%)",
     "progress_vfr": "تم ربط الإطار {current} من {total} ({percent}%)",
@@ -139,7 +168,8 @@
     "error_already_running": "العملية تعمل بالفعل.\n",
     "error_cancel": "\nخطأ في محاولة إلغاء العملية: {}\n",
     "error_no_process_to_cancel": "\nلا توجد عملية قيد التشغيل للإلغاء.\n",
-    
+    "title_error": "خطأ",
+
     "val_err_header": "أخطاء التحقق:\n",
     "val_err_start_time": "تنسيق وقت البداية غير صالح. استخدم MM:SS أو HH:MM:SS.",
     "val_err_end_time": "تنسيق وقت النهاية غير صالح. استخدم MM:SS أو HH:MM:SS.",
@@ -147,5 +177,25 @@
     "val_err_end_exceeds": "وقت النهاية ({}) يتجاوز مدة الفيديو ({}).",
     "val_err_start_after_end": "وقت البداية لا يمكن أن يكون بعد وقت النهاية.",
     "val_err_numeric": "قيمة غير صالحة لـ {}. يجب أن تكون {} {} {}.",
-    "val_err_dual_zone": "OCR المنطقة المزدوجة مُفعل، لكن لم يتم تحديد صندوقي قطع.\n"
+    "val_err_dual_zone": "OCR المنطقة المزدوجة مُفعل، لكن لم يتم تحديد صندوقي قطع.\n",
+    "err_crop_x_out": "{} X ({}) خارج عرض الفيديو ({}).",
+    "err_crop_y_out": "{} Y ({}) خارج ارتفاع الفيديو ({}).",
+    "err_crop_w_out": "{} يمتد خارج الحدود (X+W > العرض).",
+    "err_crop_h_out": "{} يمتد خارج الحدود (Y+H > الارتفاع).",
+
+    "title_duplicate": "تكرار",
+    "msg_duplicate_queue": "توجد مهمة لـ '{}' بالفعل في القائمة.\n\nيرجى تغيير مسار الإخراج أو حذف المهمة من القائمة.",
+    "title_duplicate_job": "مهمة مكررة",
+    "popup_duplicate_msg": "توجد مهمة لملف الإخراج هذا بالفعل (الحالة: {}).\n\nهل تريد إعادة تشغيلها بالإعدادات الحالية؟",
+    "popup_cannot_remove_running": "لا يمكن إزالة المهمة الجاري تشغيلها أو المتوقفة مؤقتاً حالياً.\nيرجى إيقاف أو إلغاء العملية أولاً.",
+
+    "title_progress": "تقدم",
+    "msg_scanning_init": "جاري بدء المسح...",
+    "msg_scanning_progress": "جاري مسح الملف {} من {}...",
+    "reason_dup_path": "مسار إخراج مكرر",
+    "reason_no_track": "لا يوجد مسار فيديو",
+    "reason_metadata": "خطأ في البيانات الوصفية",
+    "title_batch_report": "تقرير الدفعة",
+    "msg_batch_report_summary": "تمت إضافة {} فيديو.\n\nتم تخطي {} فيديو:\n",
+    "msg_and_others": "...وغيرها."
 }

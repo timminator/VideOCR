@@ -1,9 +1,10 @@
 {
     "tab_video": "Xử Lý Video",
+    "tab_batch": "Hàng Đợi",
     "tab_advanced": "Cài Đặt Nâng Cao",
     "tab_about": "Giới Thiệu",
 
-    "lbl_video_path": "Tệp Video:",
+    "lbl_source": "Nguồn:",
     "lbl_output_srt": "Xuất SRT:",
     "lbl_sub_lang": "Ngôn Ngữ Phụ Đề:",
     "lbl_sub_pos": "Vị Trí Phụ Đề:",
@@ -76,11 +77,35 @@
     "tip_send_notification": "Gửi thông báo khi quá trình hoàn tất.",
     "chk_check_updates": "Kiểm Tra Cập Nhật Khi Khởi Động",
     "tip_check_updates": "Tự động kiểm tra phiên bản mới của VideOCR khi ứng dụng khởi động.",
-    "btn_browse": "Duyệt...",
+    
+    "btn_browse": "Mở Tệp...",
+    "btn_browse_folder": "Mở Thư Mục...",
     "btn_save_as": "Lưu Thành...",
     "btn_check_now": "Kiểm Tra Ngay",
     "btn_ok": "OK",
     "btn_dismiss": "Bỏ Qua",
+    "btn_add_to_queue": "Thêm vào Hàng Đợi",
+    "btn_add_all_to_queue": "Thêm Tất Cả vào Hàng Đợi",
+    "btn_pause": "Tạm Dừng",
+    "btn_resume": "Tiếp Tục",
+
+    "lbl_queue_title": "Hàng Đợi",
+    "col_video_file": "Tệp Video",
+    "col_output_file": "Tệp Đầu Ra",
+    "col_status": "Trạng Thái",
+    "btn_start_queue": "Bắt Đầu Hàng Đợi",
+    "btn_stop_queue": "Dừng Hàng Đợi",
+    "btn_reset": "Đặt Lại",
+    "btn_edit": "Chỉnh Sửa",
+    "btn_remove": "Xóa",
+    "btn_clear_queue": "Xóa Hàng Đợi",
+
+    "tip_batch_up": "Di chuyển công việc đã chọn lên trên trong hàng đợi hiện tại",
+    "tip_batch_down": "Di chuyển công việc đã chọn xuống dưới trong hàng đợi hiện tại",
+    "tip_batch_reset": "Đặt lại công việc đã hủy",
+    "tip_batch_edit": "Gửi công việc trở lại cửa sổ chính để chỉnh sửa",
+    "tip_batch_remove": "Xóa công việc đã chọn khỏi hàng đợi",
+    "tip_batch_clear": "Xóa hàng đợi hiện tại",
 
     "lbl_about_version": "Phiên Bản: {version}",
     "lbl_get_newest": "Tải phiên bản mới nhất tại đây:",
@@ -106,7 +131,11 @@
     "status_success": "Tạo tệp phụ đề thành công!\n",
     "status_cancelling": "\nĐang hủy quá trình...\n",
     "status_cancelled": "\nQuá trình đã bị hủy bởi người dùng.\n",
+    "status_resuming": "\nĐang tiếp tục quy trình...\n",
+    "status_pausing": "\nĐang tạm dừng quy trình...\n",
     "notification_title": "Tạo phụ đề của bạn đã hoàn tất!",
+    "batch_processing_file": "Đang xử lý",
+    "batch_finished_count": "Hàng đợi hoàn tất: đã xử lý {} tệp.",
     
     "progress_step1": "Bước 1: Đã xử lý hình ảnh {current} trên {total} ({percent}%)",
     "progress_step2": "Bước 2: Đã thực hiện OCR trên hình ảnh {current} trên {total} ({percent}%)",
@@ -139,7 +168,8 @@
     "error_already_running": "Quá trình đã đang chạy.\n",
     "error_cancel": "\nLỗi khi cố gắng hủy quá trình: {}\n",
     "error_no_process_to_cancel": "\nKhông có quá trình nào đang chạy để hủy.\n",
-    
+    "title_error": "Lỗi",
+
     "val_err_header": "Lỗi Xác Thực:\n",
     "val_err_start_time": "Định dạng Thời Gian Bắt Đầu không hợp lệ. Sử dụng MM:SS hoặc HH:MM:SS.",
     "val_err_end_time": "Định dạng Thời Gian Kết Thúc không hợp lệ. Sử dụng MM:SS hoặc HH:MM:SS.",
@@ -147,5 +177,25 @@
     "val_err_end_exceeds": "Thời Gian Kết Thúc ({}) vượt quá thời lượng video ({}).",
     "val_err_start_after_end": "Thời Gian Bắt Đầu không thể sau Thời Gian Kết Thúc.",
     "val_err_numeric": "Giá trị không hợp lệ cho {}. Phải là {} {} {}.",
-    "val_err_dual_zone": "OCR Hai Vùng được bật, nhưng chưa chọn 2 vùng cắt.\n"
+    "val_err_dual_zone": "OCR Hai Vùng được bật, nhưng chưa chọn 2 vùng cắt.\n",
+    "err_crop_x_out": "{} X ({}) nằm ngoài chiều rộng video ({}).",
+    "err_crop_y_out": "{} Y ({}) nằm ngoài chiều cao video ({})." ,
+    "err_crop_w_out": "{} mở rộng ra ngoài giới hạn (X+W > Chiều rộng).",
+    "err_crop_h_out": "{} mở rộng ra ngoài giới hạn (Y+H > Chiều cao).",
+
+    "title_duplicate": "Trùng Lặp",
+    "msg_duplicate_queue": "Công việc cho '{}' đã có trong hàng đợi.\n\nVui lòng thay đổi đường dẫn đầu ra hoặc xóa công việc khỏi Hàng Đợi.",
+    "title_duplicate_job": "Công Việc Trùng Lặp",
+    "popup_duplicate_msg": "Một công việc cho tệp đầu ra này đã tồn tại (Trạng thái: {}).\n\nBạn có muốn khởi động lại nó với các cài đặt hiện tại không?",
+    "popup_cannot_remove_running": "Không thể xóa công việc đang chạy hoặc tạm dừng.\nVui lòng dừng hoặc hủy quy trình trước.",
+
+    "title_progress": "Tiến Trình",
+    "msg_scanning_init": "Đang khởi tạo quét...",
+    "msg_scanning_progress": "Đang quét tệp {} trên {}...",
+    "reason_dup_path": "Đường dẫn đầu ra trùng lặp",
+    "reason_no_track": "Không có bản video",
+    "reason_metadata": "Lỗi siêu dữ liệu",
+    "title_batch_report": "Báo Cáo Hàng Đợi",
+    "msg_batch_report_summary": "Đã thêm {} video.\n\nĐã bỏ qua {} video:\n",
+    "msg_and_others": "...và những cái khác."
 }

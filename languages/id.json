@@ -1,9 +1,10 @@
 {
     "tab_video": "Proses Video",
+    "tab_batch": "Antrean",
     "tab_advanced": "Pengaturan Lanjutan",
     "tab_about": "Tentang",
 
-    "lbl_video_path": "File Video:",
+    "lbl_source": "Sumber:",
     "lbl_output_srt": "Output SRT:",
     "lbl_sub_lang": "Bahasa Subtitle:",
     "lbl_sub_pos": "Posisi Subtitle:",
@@ -76,11 +77,35 @@
     "tip_send_notification": "Kirim notifikasi saat proses selesai.",
     "chk_check_updates": "Periksa Pembaruan Saat Startup",
     "tip_check_updates": "Otomatis memeriksa versi baru VideOCR saat aplikasi dimulai.",
-    "btn_browse": "Jelajahi...",
+    
+    "btn_browse": "Buka File...",
+    "btn_browse_folder": "Buka Folder...",
     "btn_save_as": "Simpan Sebagai...",
     "btn_check_now": "Periksa Sekarang",
     "btn_ok": "OK",
     "btn_dismiss": "Tutup",
+    "btn_add_to_queue": "Tambahkan ke Antrean",
+    "btn_add_all_to_queue": "Tambahkan Semua ke Antrean",
+    "btn_pause": "Jeda",
+    "btn_resume": "Lanjutkan",
+
+    "lbl_queue_title": "Antrean",
+    "col_video_file": "File Video",
+    "col_output_file": "File Output",
+    "col_status": "Status",
+    "btn_start_queue": "Mulai Antrean",
+    "btn_stop_queue": "Hentikan Antrean",
+    "btn_reset": "Reset",
+    "btn_edit": "Edit",
+    "btn_remove": "Hapus",
+    "btn_clear_queue": "Bersihkan Antrean",
+
+    "tip_batch_up": "Pindahkan tugas yang dipilih ke atas dalam antrean saat ini",
+    "tip_batch_down": "Pindahkan tugas yang dipilih ke bawah dalam antrean saat ini",
+    "tip_batch_reset": "Reset tugas yang dibatalkan",
+    "tip_batch_edit": "Kirim tugas kembali ke jendela utama untuk diedit",
+    "tip_batch_remove": "Hapus tugas yang dipilih dari antrean",
+    "tip_batch_clear": "Bersihkan antrean saat ini",
 
     "lbl_about_version": "Versi: {version}",
     "lbl_get_newest": "Dapatkan versi terbaru di sini:",
@@ -106,7 +131,11 @@
     "status_success": "Berhasil membuat file subtitle!\n",
     "status_cancelling": "\nMembatalkan proses...\n",
     "status_cancelled": "\nProses dibatalkan oleh pengguna.\n",
+    "status_resuming": "\nMelanjutkan proses...\n",
+    "status_pausing": "\nMenjeda proses...\n",
     "notification_title": "Pembuatan subtitle Anda selesai!",
+    "batch_processing_file": "Memproses",
+    "batch_finished_count": "Batch selesai: {} file diproses.",
     
     "progress_step1": "Langkah 1: Memproses gambar {current} dari {total} ({percent}%)",
     "progress_step2": "Langkah 2: Melakukan OCR pada gambar {current} dari {total} ({percent}%)",
@@ -139,7 +168,8 @@
     "error_already_running": "Proses sudah berjalan.\n",
     "error_cancel": "\nError saat mencoba membatalkan proses: {}\n",
     "error_no_process_to_cancel": "\nTidak ada proses yang berjalan untuk dibatalkan.\n",
-    
+    "title_error": "Error",
+
     "val_err_header": "Error Validasi:\n",
     "val_err_start_time": "Format Waktu Mulai tidak valid. Gunakan MM:SS atau HH:MM:SS.",
     "val_err_end_time": "Format Waktu Selesai tidak valid. Gunakan MM:SS atau HH:MM:SS.",
@@ -147,5 +177,25 @@
     "val_err_end_exceeds": "Waktu Selesai ({}) melebihi durasi video ({}).",
     "val_err_start_after_end": "Waktu Mulai tidak boleh setelah Waktu Selesai.",
     "val_err_numeric": "Nilai tidak valid untuk {}. Harus {} {} {}.",
-    "val_err_dual_zone": "OCR Zona Ganda diaktifkan, tetapi 2 kotak crop belum dipilih.\n"
+    "val_err_dual_zone": "OCR Zona Ganda diaktifkan, tetapi 2 kotak crop belum dipilih.\n",
+    "err_crop_x_out": "{} X ({}) berada di luar lebar video ({}).",
+    "err_crop_y_out": "{} Y ({}) berada di luar tinggi video ({}).",
+    "err_crop_w_out": "{} meluas keluar batas (X+L > Lebar).",
+    "err_crop_h_out": "{} meluas keluar batas (Y+T > Tinggi).",
+
+    "title_duplicate": "Duplikat",
+    "msg_duplicate_queue": "Tugas untuk '{}' sudah ada dalam antrean.\n\nSilakan ubah path output atau hapus tugas dari Antrean.",
+    "title_duplicate_job": "Tugas Duplikat",
+    "popup_duplicate_msg": "Tugas untuk file output ini sudah ada (Status: {}).\n\nApakah Anda ingin memulainya ulang dengan pengaturan saat ini?",
+    "popup_cannot_remove_running": "Tugas yang sedang berjalan atau dijeda tidak dapat dihapus.\nSilakan hentikan atau batalkan proses terlebih dahulu.",
+
+    "title_progress": "Kemajuan",
+    "msg_scanning_init": "Menginisialisasi pemindaian...",
+    "msg_scanning_progress": "Memindai file {} dari {}...",
+    "reason_dup_path": "Path Output Duplikat",
+    "reason_no_track": "Tidak ada track video",
+    "reason_metadata": "Error Metadata",
+    "title_batch_report": "Laporan Batch",
+    "msg_batch_report_summary": "Ditambahkan {} video.\n\nDilewati {} video:\n",
+    "msg_and_others": "...dan lain-lain."
 }

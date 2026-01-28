@@ -1,9 +1,10 @@
 {
     "tab_video": "ประมวลผลวิดีโอ",
+    "tab_batch": "คิว",
     "tab_advanced": "การตั้งค่าขั้นสูง",
     "tab_about": "เกี่ยวกับ",
 
-    "lbl_video_path": "ไฟล์วิดีโอ:",
+    "lbl_source": "แหล่งที่มา:",
     "lbl_output_srt": "ส่งออก SRT:",
     "lbl_sub_lang": "ภาษาคำบรรยาย:",
     "lbl_sub_pos": "ตำแหน่งคำบรรยาย:",
@@ -76,11 +77,35 @@
     "tip_send_notification": "ส่งการแจ้งเตือนเมื่อกระบวนการเสร็จสิ้น",
     "chk_check_updates": "ตรวจสอบการอัปเดตเมื่อเริ่มต้น",
     "tip_check_updates": "ตรวจสอบเวอร์ชันใหม่ของ VideOCR โดยอัตโนมัติเมื่อแอปพลิเคชันเริ่มต้น",
-    "btn_browse": "เรียกดู...",
+    
+    "btn_browse": "เปิดไฟล์...",
+    "btn_browse_folder": "เปิดโฟลเดอร์...",
     "btn_save_as": "บันทึกเป็น...",
     "btn_check_now": "ตรวจสอบตอนนี้",
     "btn_ok": "ตกลง",
     "btn_dismiss": "ปิด",
+    "btn_add_to_queue": "เพิ่มลงในคิว",
+    "btn_add_all_to_queue": "เพิ่มทั้งหมดลงในคิว",
+    "btn_pause": "หยุดชั่วคราว",
+    "btn_resume": "ทำต่อ",
+
+    "lbl_queue_title": "คิว",
+    "col_video_file": "ไฟล์วิดีโอ",
+    "col_output_file": "ไฟล์เอาต์พุต",
+    "col_status": "สถานะ",
+    "btn_start_queue": "เริ่มคิว",
+    "btn_stop_queue": "หยุดคิว",
+    "btn_reset": "รีเซ็ต",
+    "btn_edit": "แก้ไข",
+    "btn_remove": "ลบ",
+    "btn_clear_queue": "ล้างคิว",
+
+    "tip_batch_up": "ย้ายงานที่เลือกขึ้น",
+    "tip_batch_down": "ย้ายงานที่เลือกลง",
+    "tip_batch_reset": "รีเซ็ตงานที่ยกเลิก",
+    "tip_batch_edit": "ส่งงานกลับไปที่หน้าต่างหลักเพื่อแก้ไข",
+    "tip_batch_remove": "ลบงานที่เลือกออกจากคิว",
+    "tip_batch_clear": "ล้างคิวปัจจุบัน",
 
     "lbl_about_version": "เวอร์ชัน: {version}",
     "lbl_get_newest": "รับเวอร์ชันใหม่ล่าสุดที่นี่:",
@@ -106,7 +131,11 @@
     "status_success": "สร้างไฟล์คำบรรยายสำเร็จ!\n",
     "status_cancelling": "\nกำลังยกเลิกกระบวนการ...\n",
     "status_cancelled": "\nกระบวนการถูกยกเลิกโดยผู้ใช้\n",
+    "status_resuming": "\nกำลังทำกระบวนการต่อ...\n",
+    "status_pausing": "\nกำลังหยุดกระบวนการชั่วคราว...\n",
     "notification_title": "การสร้างคำบรรยายของคุณเสร็จสิ้นแล้ว!",
+    "batch_processing_file": "กำลังประมวลผล",
+    "batch_finished_count": "การทำงานแบบกลุ่มเสร็จสิ้น: ประมวลผลแล้ว {} ไฟล์",
     
     "progress_step1": "ขั้นตอนที่ 1: ประมวลผลภาพ {current} จาก {total} ({percent}%)",
     "progress_step2": "ขั้นตอนที่ 2: ทำ OCR บนภาพ {current} จาก {total} ({percent}%)",
@@ -139,7 +168,8 @@
     "error_already_running": "กระบวนการกำลังทำงานอยู่แล้ว\n",
     "error_cancel": "\nข้อผิดพลาดในการพยายามยกเลิกกระบวนการ: {}\n",
     "error_no_process_to_cancel": "\nไม่มีกระบวนการที่กำลังทำงานให้ยกเลิก\n",
-    
+    "title_error": "ข้อผิดพลาด",
+
     "val_err_header": "ข้อผิดพลาดการตรวจสอบ:\n",
     "val_err_start_time": "รูปแบบเวลาเริ่มต้นไม่ถูกต้อง ใช้ MM:SS หรือ HH:MM:SS",
     "val_err_end_time": "รูปแบบเวลาสิ้นสุดไม่ถูกต้อง ใช้ MM:SS หรือ HH:MM:SS",
@@ -147,5 +177,25 @@
     "val_err_end_exceeds": "เวลาสิ้นสุด ({}) เกินระยะเวลาวิดีโอ ({})",
     "val_err_start_after_end": "เวลาเริ่มต้นไม่สามารถหลังเวลาสิ้นสุด",
     "val_err_numeric": "ค่าไม่ถูกต้องสำหรับ {} ต้องเป็น {} {} {}",
-    "val_err_dual_zone": "OCR สองโซนเปิดใช้งานแล้ว แต่ยังไม่ได้เลือกกล่องครอป 2 กล่อง\n"
+    "val_err_dual_zone": "OCR สองโซนเปิดใช้งานแล้ว แต่ยังไม่ได้เลือกกล่องครอป 2 กล่อง\n",
+    "err_crop_x_out": "{} X ({}) อยู่นอกความกว้างของวิดีโอ ({})",
+    "err_crop_y_out": "{} Y ({}) อยู่นอกความสูงของวิดีโอ ({})",
+    "err_crop_w_out": "{} ยื่นออกนอกขอบเขต (X+W > ความกว้าง)",
+    "err_crop_h_out": "{} ยื่นออกนอกขอบเขต (Y+H > ความสูง)",
+
+    "title_duplicate": "ซ้ำ",
+    "msg_duplicate_queue": "งานสำหรับ '{}' อยู่ในคิวแล้ว\n\nโปรดเปลี่ยนเส้นทางเอาต์พุตหรือลบงานออกจากคิว",
+    "title_duplicate_job": "งานซ้ำ",
+    "popup_duplicate_msg": "มีงานสำหรับไฟล์เอาต์พุตนี้อยู่แล้ว (สถานะ: {})\n\nคุณต้องการเริ่มใหม่ด้วยการตั้งค่าปัจจุบันหรือไม่?",
+    "popup_cannot_remove_running": "ไม่สามารถลบงานที่กำลังทำงานหรือหยุดชั่วคราวได้\nโปรดหยุดหรือยกเลิกกระบวนการก่อน",
+
+    "title_progress": "ความคืบหน้า",
+    "msg_scanning_init": "กำลังเริ่มการสแกน...",
+    "msg_scanning_progress": "กำลังสแกนไฟล์ {} จาก {}...",
+    "reason_dup_path": "เส้นทางเอาต์พุตซ้ำ",
+    "reason_no_track": "ไม่มีแทร็กวิดีโอ",
+    "reason_metadata": "ข้อผิดพลาดข้อมูลเมตา",
+    "title_batch_report": "รายงานกลุ่ม",
+    "msg_batch_report_summary": "เพิ่ม {} วิดีโอ\n\nข้าม {} วิดีโอ:\n",
+    "msg_and_others": "...และอื่นๆ"
 }
