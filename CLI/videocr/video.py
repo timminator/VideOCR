@@ -216,6 +216,7 @@ class Video:
                         frame_filename = f"frame_{frame_index:0{padding}d}_zone{zone_idx}.jpg"
                         frame_path = os.path.join(temp_dir, frame_filename)
 
+                        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                         cv2.imwrite(frame_path, img)
                         frame_paths.append(frame_path)
                 else:
@@ -496,9 +497,9 @@ class Video:
 
     def _is_gap_mergeable(self, last_sub: PredictedSubtitle, next_sub: PredictedSubtitle, max_merge_gap_sec: float) -> bool:
         if self.is_vfr:
-            end_time_ms = self.frame_timestamps.get(last_sub.index_end, 0)
-            start_time_ms = self.frame_timestamps.get(next_sub.index_start, 0)
-            gap_ms = start_time_ms - end_time_ms
+            _, last_end_ms = self._get_subtitle_ms_times(last_sub)
+            next_start_ms, _ = self._get_subtitle_ms_times(next_sub)
+            gap_ms = next_start_ms - last_end_ms
             return gap_ms <= (max_merge_gap_sec * 1000)
         else:
             max_frame_merge_diff = int(max_merge_gap_sec * self.fps) + 1
