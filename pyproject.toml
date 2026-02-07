@@ -61,3 +61,6 @@ target-version = "py39"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "W"]
 ignore = ["E501", "SIM108", "SIM102", "SIM114"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["videocr"]
