@@ -61,6 +61,8 @@
     "tip_angle_cls": "Détecte et corrige l'angle du texte pivoté.",
     "chk_post_processing": "Activer le post-traitement",
     "tip_post_processing": "Vérifie les résultats OCR pour les espaces manquants et tente de les insérer automatiquement.\nNe prend pas en charge toutes les langues, plus d'infos disponibles en ligne.",
+    "chk_normalize_chinese": "Convertir le chinois traditionnel en simplifié",
+    "tip_normalize_chinese": "Si activé, les caractères chinois traditionnels seront convertis en\nchinois simplifié avant le traitement. Actif uniquement pour \"Chinese & English\".",
     "chk_server_model": "Utiliser le modèle serveur",
     "tip_server_model": "Active le modèle serveur avec de meilleures capacités OCR.\nCe mode peut donner de meilleurs résultats mais nécessite plus de puissance de calcul.\nUn GPU est fortement recommandé.",
     "lbl_videocr_settings": "Paramètres VideOCR :",
@@ -75,6 +77,8 @@
     "tip_seek_step": "Nombre d'images à sauter lors de l'utilisation des flèches gauche/droite.",
     "chk_send_notification": "Envoyer une notification",
     "tip_send_notification": "Envoyer une notification lorsque le processus est terminé.",
+    "chk_prevent_sleep": "Empêcher la mise en veille du système",
+    "tip_prevent_sleep": "Si coché, l’ordinateur ne passera pas en veille pendant le traitement.",    
     "chk_check_updates": "Vérifier les mises à jour au démarrage",
     "tip_check_updates": "Vérifie automatiquement les nouvelles versions de VideOCR au démarrage.",
 
@@ -123,6 +127,9 @@
     "update_title_error": "Erreur",
     "update_msg_error": "Échec de la vérification des mises à jour.\nVeuillez vérifier votre connexion Internet.",
 
+    "btn_yes": "Oui",
+    "btn_no": "Non",
+
     "save_as_title": "Enregistrer sous",
     "save_as_filter_name": "Sous-titre SubRip",
     "save_as_all_files": "Tous les fichiers",
@@ -136,6 +143,8 @@
     "notification_title": "La génération des sous-titres est terminée !",
     "batch_processing_file": "Traitement de",
     "batch_finished_count": "Lot terminé : {} fichiers traités.",
+    "status_queue_cancelled": "File d'attente annulée",
+    "status_queue_finished": "File d'attente terminée",
 
     "progress_step1": "Étape 1 : Image traitée {current} sur {total} ({percent}%)",
     "progress_step2": "Étape 2 : OCR effectué sur l'image {current} sur {total} ({percent}%)",
@@ -169,6 +178,7 @@
     "error_cancel": "\nErreur lors de la tentative d'annulation du processus : {}\n",
     "error_no_process_to_cancel": "\nAucun processus en cours à annuler.\n",
     "title_error": "Erreur",
+    "error_video_not_found": "Fichier vidéo introuvable :\n{}",
 
     "val_err_header": "Erreurs de validation :\n",
     "val_err_start_time": "Format de l'heure de début invalide. Utilisez MM:SS ou HH:MM:SS.",

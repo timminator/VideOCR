@@ -61,6 +61,8 @@
     "tip_angle_cls": "Erkennt und korrigiert gedrehten Text.",
     "chk_post_processing": "Nachbearbeitung aktivieren",
     "tip_post_processing": "Prüft das OCR-Ergebnis auf fehlende Leerzeichen und versucht, diese automatisch einzufügen.\nNicht für alle Sprachen unterstützt, weitere Informationen online verfügbar.",
+    "chk_normalize_chinese": "Traditionelles Chinesisch in vereinfachtes umwandeln",
+    "tip_normalize_chinese": "Wenn aktiviert, werden traditionelle chinesische Zeichen vor der Verarbeitung in\nvereinfachtes Chinesisch umgewandelt. Nur aktiv für \"Chinese & English\".",
     "chk_server_model": "Servermodell verwenden",
     "tip_server_model": "Aktiviert das Servermodell mit höherer OCR-Leistung.\nKann bessere Ergebnisse liefern, benötigt aber auch mehr Rechenleistung.\nEine GPU wird dringend empfohlen, wenn dieser Modus verwendet wird.",
     "lbl_videocr_settings": "VideOCR-Einstellungen:",
@@ -75,6 +77,8 @@
     "tip_seek_step": "Anzahl der Frames, die mit den Pfeiltasten Links/Rechts gesprungen werden.",
     "chk_send_notification": "Benachrichtigung senden",
     "tip_send_notification": "Sendet eine Benachrichtigung, wenn der Vorgang abgeschlossen ist.",
+    "chk_prevent_sleep": "Systemruhemodus verhindern",
+    "tip_prevent_sleep": "Wenn aktiviert, wird verhindert, dass der Computer während der Verarbeitung in den Ruhemodus wechselt.",    
     "chk_check_updates": "Beim Start nach Updates suchen",
     "tip_check_updates": "Prüft beim Start der Anwendung automatisch, ob neue Versionen von VideOCR verfügbar sind.",
 
@@ -123,6 +127,9 @@
     "update_title_error": "Fehler",
     "update_msg_error": "Fehler beim Prüfen auf Updates.\nBitte überprüfen Sie Ihre Internetverbindung.",
 
+    "btn_yes": "Ja",
+    "btn_no": "Nein",
+
     "save_as_title": "Speichern unter",
     "save_as_filter_name": "SubRip-Untertitel",
     "save_as_all_files": "Alle Dateien",
@@ -136,6 +143,8 @@
     "notification_title": "Die Erstellung Ihrer Untertitel ist abgeschlossen!",
     "batch_processing_file": "Verarbeite",
     "batch_finished_count": "Batch abgeschlossen: {} Dateien verarbeitet.",
+    "status_queue_cancelled": "Warteschlange abgebrochen",
+    "status_queue_finished": "Warteschlange abgeschlossen",
 
     "progress_step1": "Schritt 1: Bild {current} von {total} verarbeitet ({percent}%)",
     "progress_step2": "Schritt 2: OCR auf Bild {current} von {total} durchgeführt ({percent}%)",
@@ -169,6 +178,7 @@
     "error_cancel": "\nFehler beim Versuch, den Vorgang abzubrechen: {}\n",
     "error_no_process_to_cancel": "\nEs läuft kein Vorgang, der abgebrochen werden kann.\n",
     "title_error": "Fehler",
+    "error_video_not_found": "Videodatei nicht gefunden:\n{}",
 
     "val_err_header": "Validierungsfehler:\n",
     "val_err_start_time": "Ungültiges Startzeit-Format. Verwenden Sie MM:SS oder HH:MM:SS.",

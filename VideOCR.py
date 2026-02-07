@@ -20,6 +20,7 @@
 
 import ast
 import configparser
+import contextlib
 import ctypes
 import datetime
 import io
@@ -41,6 +42,7 @@ import cv2
 import psutil
 import PySimpleGUI as sg
 from pymediainfo import MediaInfo
+from wakepy import keep
 
 if platform.system() == "Windows":
     import PyTaskbar
@@ -280,6 +282,7 @@ graph_size = (int(640 * dpi_scale), int(360 * dpi_scale))
 current_image_bytes = None
 previous_taskbar_state = None
 LANG = {}
+current_wake_lock = None
 batch_queue = []
 gui_queue = queue.Queue()
 
@@ -406,6 +409,8 @@ def update_gui_text(window):
         '-LBL-SEEK_STEP-': {'text': 'lbl_seek_step', 'tooltip': 'tip_seek_step'},
         '--send_notification': {'text': 'chk_send_notification', 'tooltip': 'tip_send_notification'},
         '--check_for_updates': {'text': 'chk_check_updates', 'tooltip': 'tip_check_updates'},
+        'prevent_system_sleep': {'text': 'chk_prevent_sleep', 'tooltip': 'tip_prevent_sleep'},
+        '--normalize_to_simplified_chinese': {'text': 'chk_normalize_chinese', 'tooltip': 'tip_normalize_chinese'},
         '-BTN-CHECK_UPDATE_MANUAL-': {'text': 'btn_check_now'},
         '-LBL-UI_LANG-': {'text': 'lbl_ui_lang'},
 
@@ -621,6 +626,37 @@ def update_popup(parent_window, version_info, current_version, icon=None):
     update_window.close()
 
 
+def custom_popup_yes_no(parent_window, title, message, icon=None):
+    """Creates and shows a centered Yes/No popup relative to the parent window."""
+    layout = [
+        [sg.Text(message)],
+        [sg.Push(),
+         sg.Button(LANG.get('btn_yes', 'Yes'), key='Yes', size=(10, 1), bind_return_key=True),
+         sg.Button(LANG.get('btn_no', 'No'), key='No', size=(10, 1)),
+         sg.Push()]
+    ]
+    popup_window = sg.Window(title, layout, alpha_channel=0, finalize=True, icon=icon, modal=True)
+
+    popup_window.refresh()
+    center_popup(parent_window, popup_window)
+    popup_window.refresh()
+    popup_window.set_alpha(1)
+    popup_window['No'].set_focus()
+
+    choice = 'No'
+    while True:
+        popup_event, _ = popup_window.read()
+        if popup_event in (sg.WIN_CLOSED, 'No'):
+            choice = 'No'
+            break
+        elif popup_event == 'Yes':
+            choice = 'Yes'
+            break
+
+    popup_window.close()
+    return choice
+
+
 def check_for_updates(window, manual_check=False):
     """Checks GitHub for a new release."""
     try:
@@ -687,6 +723,8 @@ def get_default_settings():
     '--save_crop_box': True,
     '--saved_crop_boxes': '[]',
     '--check_for_updates': True,
+    'prevent_system_sleep': True,
+    '--normalize_to_simplified_chinese': True,
     }
 
 
@@ -777,6 +815,8 @@ def load_settings(window):
                     ('--send_notification', 'checkbox'),
                     ('--save_crop_box', 'checkbox'),
                     ('--check_for_updates', 'checkbox'),
+                    ('prevent_system_sleep', 'checkbox'),
+                    ('--normalize_to_simplified_chinese', 'checkbox'),
                 ]
 
                 for key, elem_type in settings_to_load:
@@ -1144,6 +1184,9 @@ def get_processing_args(values, window):
     # Handle send_notification specifically to store it as a boolean and not a string
     args['send_notification'] = values.get('--send_notification', True)
 
+    # Handle sleep by GUI and not by CLI
+    args['allow_system_sleep'] = True
+
     # Add crop coordinates based on mode
     use_fullframe = values.get('--use_fullframe', False)
 
@@ -1180,6 +1223,8 @@ def run_videocr(args_dict, window):
                     command.append(str(value).lower())
                 else:
                     command.append(str(value))
+
+    print(command)
 
     UNSUPPORTED_HARDWARE_ERROR_PATTERN = re.compile(r"Unsupported Hardware Error: (.*)")
     WARNING_HARDWARE_PATTERN = re.compile(r"Hardware Check Warning: (.*)")
@@ -1438,17 +1483,55 @@ def run_batch_thread(window, queue_data):
 
 
 def set_process_pause_state(pid, pause=True):
-    """Pauses (suspends) or Resumes the process with the given PID."""
+    """
+    Pauses (suspends) or Resumes the process with the given PID
+    and its entire child process tree.
+    """
     try:
-        proc = psutil.Process(pid)
+        parent = psutil.Process(pid)
+
         if pause:
-            proc.suspend()
+            parent.suspend()
+
+            children = parent.children(recursive=True)
+            for child in children:
+                with contextlib.suppress(psutil.NoSuchProcess, psutil.AccessDenied):
+                    child.suspend()
+
         else:
-            proc.resume()
+            children = parent.children(recursive=True)
+            for child in children:
+                with contextlib.suppress(psutil.NoSuchProcess, psutil.AccessDenied):
+                    child.resume()
+
+            parent.resume()
+
         return True
-    except (psutil.NoSuchProcess, psutil.AccessDenied, Exception) as e:
+
+    except (psutil.NoSuchProcess, psutil.AccessDenied) as e:
         log_error(f"Failed to change pause state: {e}")
         return False
+
+
+def set_system_awake(should_be_awake: bool):
+    """Acquires or releases the system wake lock safely."""
+    global current_wake_lock
+
+    if should_be_awake:
+        if current_wake_lock is None:
+            try:
+                current_wake_lock = keep.running()
+                current_wake_lock.__enter__()
+            except Exception as e:
+                log_error(f"Failed to acquire wake lock: {e}")
+    else:
+        if current_wake_lock:
+            try:
+                current_wake_lock.__exit__(None, None, None)
+            except Exception as e:
+                log_error(f"Failed to release wake lock: {e}")
+            finally:
+                current_wake_lock = None
 
 
 available_languages = get_available_languages()
@@ -1457,9 +1540,13 @@ ui_language_display_names = sorted(list(available_languages.keys()))
 
 def GhostButton():
     """
-    Creates an invisible button that takes up vertical space
-    to force the row height to match rows with real buttons.
+    Windows: Creates an invisible button to force row height.
+    Linux: Returns a 0x0 dummy element so it doesn't affect layout.
     """
+    if platform.system() == "Linux":
+        # Return a dummy element with 0 size and 0 padding, invisible button looks worse unfortunately
+        return sg.Text("", size=(0, 0), pad=(0, 0), border_width=0)
+
     return sg.Button(
         "",
         size=(0, 1),
@@ -1534,13 +1621,13 @@ tab_batch_content = [
     [sg.Button("Start Queue", key="-BTN-BATCH-START-"),
      sg.Button("Stop Queue", key="-BTN-BATCH-STOP-", disabled=True),
      sg.Button("Pause", key="-BTN-BATCH-PAUSE-", disabled=True)],
-    [sg.Button("▲", key="-BTN-BATCH-UP-", tooltip="Move the selected job up in the current queue", size=(3, 1)),
-     sg.Button("▼", key="-BTN-BATCH-DOWN-", tooltip="Move the selected job down in the current queue", size=(3, 1)),
+    [sg.Button("▲", key="-BTN-BATCH-UP-", size=(3, 1)),
+     sg.Button("▼", key="-BTN-BATCH-DOWN-", size=(3, 1)),
      sg.VerticalSeparator(),
-     sg.Button("Reset", key="-BTN-BATCH-RESET-", tooltip="Reset a cancelled job"),
-     sg.Button("Edit", key="-BTN-BATCH-EDIT-", tooltip="Send the job back to the main window for editing"),
-     sg.Button("Remove", key="-BTN-BATCH-REMOVE-", tooltip="Remove selected job from queue"),
-     sg.Button("Clear Queue", key="-BTN-BATCH-CLEAR-", tooltip="Clear the current queue")]
+     sg.Button("Reset", key="-BTN-BATCH-RESET-"),
+     sg.Button("Edit", key="-BTN-BATCH-EDIT-"),
+     sg.Button("Remove", key="-BTN-BATCH-REMOVE-"),
+     sg.Button("Clear Queue", key="-BTN-BATCH-CLEAR-")]
 ]
 tab_batch_layout = [[sg.Column(tab_batch_content, expand_x=True, expand_y=True)]]
 
@@ -1571,6 +1658,7 @@ tab2_content = [
     [sg.Checkbox("Enable Dual Zone OCR", default=False, key="--use_dual_zone", enable_events=True)],
     [sg.Checkbox("Enable Angle Classification", default=False, key="--use_angle_cls", enable_events=True)],
     [sg.Checkbox("Enable Post Processing", default=True, key="--post_processing", enable_events=True)],
+    [sg.Checkbox("Normalize Traditional to Simplified Chinese", default=True, key="--normalize_to_simplified_chinese", enable_events=True)],
     [sg.Checkbox("Use Server Model", default=False, key="--use_server_model", enable_events=True)],
     [sg.HorizontalSeparator()],
     [sg.Text("VideOCR Settings:", font=('Arial', 10, 'bold'), key='-LBL-VIDEOCR_SETTINGS-')],
@@ -1582,15 +1670,17 @@ tab2_content = [
             [sg.Text("Output Directory:", size=(30, 1), key='-LBL-OUTPUT_DIR-'), GhostButton()],
             [sg.Text("Keyboard Seek Step (frames):", size=(30, 1), key='-LBL-SEEK_STEP-'), GhostButton()],
             [sg.Checkbox("Send Notification", default=True, key="--send_notification", enable_events=True), GhostButton()],
+            [sg.Checkbox("Prevent System Sleep", default=True, key="prevent_system_sleep", enable_events=True), GhostButton()],
             [sg.Checkbox("Check for Updates On Startup", default=True, key="--check_for_updates", enable_events=True), GhostButton()],
         ], pad=(0, None)),
         sg.Column([
             [sg.Combo(ui_language_display_names, key='-UI_LANG_COMBO-', size=(32, 1), readonly=True, enable_events=True), GhostButton()],
-            [sg.Text(''), GhostButton()],
-            [sg.Text(''), GhostButton()],
+            [GhostButton()],
+            [GhostButton()],
             [sg.Input(DEFAULT_DOCUMENTS_DIR, key="--default_output_dir", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, size=(34, 1), enable_events=True), GhostButton()],
             [sg.Input(KEY_SEEK_STEP, key="--keyboard_seek_step", size=(10, 1), enable_events=True), GhostButton()],
-            [sg.Text(''), GhostButton()],
+            [GhostButton()],
+            [GhostButton()],
             [sg.Button("Check Now", key="-BTN-CHECK_UPDATE_MANUAL-")],
         ], pad=(0, None), expand_x=True),
         sg.Column([
@@ -1598,6 +1688,7 @@ tab2_content = [
             [GhostButton()],
             [GhostButton()],
             [sg.Button("Open Folder...", key="-BTN-FOLDER_BROWSE-", disabled=True)],
+            [GhostButton()],
             [GhostButton()],
             [GhostButton()],
             [GhostButton()],
@@ -1859,6 +1950,8 @@ KEYS_TO_AUTOSAVE = [
     '--send_notification',
     '--save_crop_box',
     '--check_for_updates',
+    'prevent_system_sleep',
+    '--normalize_to_simplified_chinese',
 ]
 
 window.is_drawing = False
@@ -1916,6 +2009,7 @@ while True:
 
                 elif msg_event == '-BATCH-FINISHED-':
                     window.is_processing = False
+                    set_system_awake(False)
 
                     for btn in ['-BTN-BATCH-START-', '-BTN-RUN-']:
                         window[btn].update(disabled=False)
@@ -1929,7 +2023,7 @@ while True:
                     window['-PROGRESS-BAR-'].update(0)
                     window['-STATUS-LINE-'].update("")
                     window['-ETA-LINE-'].update("")
-                    msg = "Queue Cancelled" if getattr(window, 'cancelled_by_user', False) else "Queue Finished"
+                    msg = LANG.get('status_queue_cancelled', "Queue Cancelled") if getattr(window, 'cancelled_by_user', False) else LANG.get('status_queue_finished', "Queue Finished")
                     window['-OUTPUT-'].update('\n', append=True)
                     timestamp = datetime.datetime.now().strftime("%H:%M:%S")
                     window['-OUTPUT-'].update(f"[{timestamp}] {msg}\n", append=True)
@@ -1972,6 +2066,8 @@ while True:
                 window['--output'].update(str(output_path))
 
     if event == sg.WIN_CLOSED:
+        set_system_awake(False)
+
         process_to_kill = getattr(window, '_videocr_process_pid', None)
         if process_to_kill:
             try:
@@ -2421,12 +2517,16 @@ while True:
             custom_popup(window, LANG.get('title_batch_report', "Batch Report"), msg, icon=ICON_PATH)
 
     elif event == "-BTN-BATCH-START-":
+        if window['prevent_system_sleep'].get():
+            set_system_awake(True)
         start_queue(window, batch_queue)
 
     elif event == "-BTN-RUN-":
         is_batch_start = window['-BTN-RUN-'].get_text() == LANG.get('btn_start_queue', "Start Queue")
 
         if is_batch_start:
+            if window['prevent_system_sleep'].get():
+                set_system_awake(True)
             start_queue(window, batch_queue)
 
         else:
@@ -2460,7 +2560,7 @@ while True:
 
                 if existing_status in ('Cancelled', 'Error', 'Completed'):
                     msg = LANG.get('popup_duplicate_msg', "A job for this output file already exists (Status: {}).\n\nDo you want to restart it with current settings?").format(existing_status)
-                    choice = sg.popup_yes_no(msg, title=LANG.get('title_duplicate_job', "Duplicate Job"), icon=ICON_PATH)
+                    choice = custom_popup_yes_no(window, LANG.get('title_duplicate_job', "Duplicate Job"), msg, icon=ICON_PATH)
 
                     if choice == 'Yes':
                         batch_queue[existing_job_index]['args'] = args
@@ -2480,6 +2580,8 @@ while True:
             window['-BATCH-TABLE-'].update(values=[[i['filename'], i['output'], i['status']] for i in batch_queue])
             update_queue_tab_count(window, batch_queue)
 
+            if window['prevent_system_sleep'].get():
+                set_system_awake(True)
             start_queue(window, batch_queue)
 
     elif event == "-BTN-BATCH-PAUSE-":
@@ -2491,6 +2593,9 @@ while True:
         is_currently_paused = window['-BTN-BATCH-PAUSE-'].get_text() == LANG.get('btn_resume', "Resume")
 
         if is_currently_paused:
+            if window['prevent_system_sleep'].get():
+                set_system_awake(True)
+
             if set_process_pause_state(pid, pause=False):
                 window['-BTN-BATCH-PAUSE-'].update(LANG.get('btn_pause', "Pause"))
                 window['-BTN-PAUSE-'].update(LANG.get('btn_pause', "Pause"))
@@ -2501,6 +2606,8 @@ while True:
                         job['status'] = 'Processing'
                         break
         else:
+            set_system_awake(False)
+
             if set_process_pause_state(pid, pause=True):
                 window['-BTN-BATCH-PAUSE-'].update(LANG.get('btn_resume', "Resume"))
                 window['-BTN-PAUSE-'].update(LANG.get('btn_resume', "Resume"))
@@ -2580,7 +2687,9 @@ while True:
             v_path = args['video_path']
 
             if not os.path.exists(v_path):
-                sg.popup_error(f"Video file not found:\n{v_path}", icon=ICON_PATH)
+                error_title = LANG.get('title_error', "Error")
+                error_msg = LANG.get('error_video_not_found', "Video file not found:\n{}").format(v_path)
+                custom_popup(window, error_title, error_msg, icon=ICON_PATH)
                 continue
 
             window['-TABGROUP-'].Widget.select(0)
@@ -2684,13 +2793,19 @@ while True:
 
     elif event == "-BTN-PAUSE-":
         pid = getattr(window, '_videocr_process_pid', None)
+
         if not pid:
             continue
 
         is_currently_paused = window['-BTN-PAUSE-'].get_text() == LANG.get('btn_resume', "Resume")
 
         if is_currently_paused:
+            if window['prevent_system_sleep'].get():
+                set_system_awake(True)
+
             if set_process_pause_state(pid, pause=False):
+                set_system_awake(False)
+
                 window['-BTN-BATCH-PAUSE-'].update(LANG.get('btn_pause', "Pause"))
                 window['-BTN-PAUSE-'].update(LANG.get('btn_pause', "Pause"))
                 window['-OUTPUT-'].update(LANG.get('status_resuming', "\nResuming process...\n"), append=True)

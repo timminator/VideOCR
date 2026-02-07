@@ -61,6 +61,8 @@
     "tip_angle_cls": "Detecta e corrige o ângulo de texto inclinado.",
     "chk_post_processing": "Habilitar pós-processamento",
     "tip_post_processing": "Verifica resultados de OCR para espaços ausentes e tenta inseri-los automaticamente.\nNem todos os idiomas são suportados, mais informações disponíveis online.",
+    "chk_normalize_chinese": "Converter chinês tradicional para simplificado",
+    "tip_normalize_chinese": "Se ativado, os caracteres chineses tradicionais serão convertidos para\nchinês simplificado antes do processamento. Ativo apenas para \"Chinese & English\".",
     "chk_server_model": "Usar modelo de servidor",
     "tip_server_model": "Ativa o modelo de servidor com melhor capacidade de OCR.\nPode gerar resultados melhores, mas exige mais poder de processamento.\nÉ altamente recomendado o uso de GPU.",
     "lbl_videocr_settings": "Configurações do VideOCR:",
@@ -75,6 +77,8 @@
     "tip_seek_step": "Número de quadros a pular ao usar as setas esquerda/direita.",
     "chk_send_notification": "Enviar notificação",
     "tip_send_notification": "Envia uma notificação quando o processo é concluído.",
+    "chk_prevent_sleep": "Impedir suspensão do sistema",
+    "tip_prevent_sleep": "Se marcado, o computador será impedido de entrar em modo de suspensão durante o processamento.",
     "chk_check_updates": "Verificar atualizações ao iniciar",
     "tip_check_updates": "Verifica automaticamente novas versões do VideOCR ao iniciar.",
 
@@ -123,6 +127,9 @@
     "update_title_error": "Erro",
     "update_msg_error": "Falha ao verificar atualizações.\nVerifique sua conexão com a Internet.",
 
+    "btn_yes": "Sim",
+    "btn_no": "Não",
+
     "save_as_title": "Salvar como",
     "save_as_filter_name": "Legenda SubRip",
     "save_as_all_files": "Todos os arquivos",
@@ -136,6 +143,8 @@
     "notification_title": "Geração de legendas concluída!",
     "batch_processing_file": "Processando",
     "batch_finished_count": "Lote finalizado: {} arquivos processados.",
+    "status_queue_cancelled": "Fila cancelada",
+    "status_queue_finished": "Fila finalizada",
 
     "progress_step1": "Etapa 1: Quadro processado {current} de {total} ({percent}%)",
     "progress_step2": "Etapa 2: OCR realizado no quadro {current} de {total} ({percent}%)",
@@ -169,6 +178,7 @@
     "error_cancel": "\nErro ao tentar cancelar o processo: {}\n",
     "error_no_process_to_cancel": "\nNenhum processo em execução para cancelar.\n",
     "title_error": "Erro",
+    "error_video_not_found": "Arquivo de vídeo não encontrado:\n{}",
 
     "val_err_header": "Erros de validação:\n",
     "val_err_start_time": "Formato inválido para hora inicial. Use MM:SS ou HH:MM:SS.",

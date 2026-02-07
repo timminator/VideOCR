@@ -61,6 +61,8 @@
     "tip_angle_cls": "Mendeteksi dan memperbaiki sudut teks yang diputar.",
     "chk_post_processing": "Aktifkan Pasca Pemrosesan",
     "tip_post_processing": "Memeriksa hasil OCR untuk spasi yang hilang dan mencoba memasukkannya secara otomatis.\nTidak mendukung semua bahasa, info lebih lanjut dapat ditemukan online.",
+    "chk_normalize_chinese": "Normalisasi Mandarin Tradisional ke Sederhana",
+    "tip_normalize_chinese": "Jika diaktifkan, karakter Mandarin Tradisional akan dikonversi ke\nMandarin Sederhana sebelum pemrosesan. Hanya aktif untuk \"Chinese & English\".",
     "chk_server_model": "Gunakan Model Server",
     "tip_server_model": "Mengaktifkan model server dengan kemampuan OCR yang lebih tinggi.\nMode ini dapat memberikan hasil yang lebih baik tetapi juga memerlukan daya komputasi yang lebih besar.\nGPU sangat disarankan saat menggunakan mode ini.",
     "lbl_videocr_settings": "Pengaturan VideOCR:",
@@ -75,6 +77,8 @@
     "tip_seek_step": "Jumlah frame untuk melompat saat menggunakan panah Kiri/Kanan.",
     "chk_send_notification": "Kirim Notifikasi",
     "tip_send_notification": "Kirim notifikasi saat proses selesai.",
+    "chk_prevent_sleep": "Cegah Sistem Tidur",
+    "tip_prevent_sleep": "Jika dicentang, komputer akan dicegah masuk ke mode tidur selama pemrosesan.",    
     "chk_check_updates": "Periksa Pembaruan Saat Startup",
     "tip_check_updates": "Otomatis memeriksa versi baru VideOCR saat aplikasi dimulai.",
     
@@ -123,6 +127,9 @@
     "update_title_error": "Error",
     "update_msg_error": "Gagal memeriksa pembaruan.\nSilakan periksa koneksi internet Anda.",
 
+    "btn_yes": "Ya",
+    "btn_no": "Tidak",
+
     "save_as_title": "Simpan Sebagai",
     "save_as_filter_name": "Subtitle SubRip",
     "save_as_all_files": "Semua File",
@@ -136,6 +143,8 @@
     "notification_title": "Pembuatan subtitle Anda selesai!",
     "batch_processing_file": "Memproses",
     "batch_finished_count": "Batch selesai: {} file diproses.",
+    "status_queue_cancelled": "Antrean Dibatalkan",
+    "status_queue_finished": "Antrean Selesai",
     
     "progress_step1": "Langkah 1: Memproses gambar {current} dari {total} ({percent}%)",
     "progress_step2": "Langkah 2: Melakukan OCR pada gambar {current} dari {total} ({percent}%)",
@@ -169,6 +178,7 @@
     "error_cancel": "\nError saat mencoba membatalkan proses: {}\n",
     "error_no_process_to_cancel": "\nTidak ada proses yang berjalan untuk dibatalkan.\n",
     "title_error": "Error",
+    "error_video_not_found": "File video tidak ditemukan:\n{}",
 
     "val_err_header": "Error Validasi:\n",
     "val_err_start_time": "Format Waktu Mulai tidak valid. Gunakan MM:SS atau HH:MM:SS.",

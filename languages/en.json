@@ -61,6 +61,8 @@
     "tip_angle_cls": "Detect and correct rotated text angles.",
     "chk_post_processing": "Enable Post Processing",
     "tip_post_processing": "Checks the OCR result for missing spaces and tries to insert them automatically.\nDoes not support all languages, more info can be found online.",
+    "chk_normalize_chinese": "Normalize Traditional to Simplified Chinese",
+    "tip_normalize_chinese": "If enabled, Traditional Chinese characters will be converted to\nSimplified Chinese before processing. Only active for \"Chinese & English\".",
     "chk_server_model": "Use Server Model",
     "tip_server_model": "Enables the server model with higher OCR capabilities.\nThis mode can deliver better results but requires also more computing power.\nA GPU is highly recommended when using this mode.",
     "lbl_videocr_settings": "VideOCR Settings:",
@@ -75,6 +77,8 @@
     "tip_seek_step": "Number of frames to jump when using Left/Right arrows.",
     "chk_send_notification": "Send Notification",
     "tip_send_notification": "Send notification when the process is complete.",
+    "chk_prevent_sleep": "Prevent System Sleep",
+    "tip_prevent_sleep": "If checked, the computer will be prevented from going to sleep during processing.",
     "chk_check_updates": "Check for Updates On Startup",
     "tip_check_updates": "Automatically check for new versions of VideOCR when the application starts.",
 
@@ -123,6 +127,9 @@
     "update_title_error": "Error",
     "update_msg_error": "Failed to check for updates.\nPlease check your internet connection.",
 
+    "btn_yes": "Yes",
+    "btn_no": "No",
+
     "save_as_title": "Save As",
     "save_as_filter_name": "SubRip Subtitle",
     "save_as_all_files": "All Files",
@@ -136,6 +143,8 @@
     "notification_title": "Your Subtitle generation is done!",
     "batch_processing_file": "Processing",
     "batch_finished_count": "Batch finished: {} files processed.",
+    "status_queue_cancelled": "Queue Cancelled",
+    "status_queue_finished": "Queue Finished",
 
     "progress_step1": "Step 1: Processed image {current} of {total} ({percent}%)",
     "progress_step2": "Step 2: Performed OCR on image {current} of {total} ({percent}%)",
@@ -169,6 +178,7 @@
     "error_cancel": "\nError attempting to cancel process: {}\n",
     "error_no_process_to_cancel": "\nNo process is currently running to cancel.\n",
     "title_error": "Error",
+    "error_video_not_found": "Video file not found:\n{}",
 
     "val_err_header": "Validation Errors:\n",
     "val_err_start_time": "Invalid Start Time format. Use MM:SS or HH:MM:SS.",

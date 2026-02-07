@@ -61,6 +61,8 @@
     "tip_angle_cls": "Rileva e corregge l'inclinazione del testo.",
     "chk_post_processing": "Abilita post-elaborazione",
     "tip_post_processing": "Controlla i risultati OCR per spazi mancanti e tenta di aggiungerli automaticamente.\nNon tutte le lingue sono supportate, maggiori informazioni online.",
+    "chk_normalize_chinese": "Converti il cinese tradizionale in semplificato",
+    "tip_normalize_chinese": "Se abilitato, i caratteri cinesi tradizionali verranno convertiti in\ncinese semplificato prima dell’elaborazione. Attivo solo per \"Chinese & English\".",
     "chk_server_model": "Usa modello server",
     "tip_server_model": "Attiva il modello server con migliori capacità OCR.\nPuò produrre risultati migliori ma richiede più potenza di calcolo.\nSi consiglia vivamente l'uso della GPU.",
     "lbl_videocr_settings": "Impostazioni VideOCR:",
@@ -75,6 +77,8 @@
     "tip_seek_step": "Numero di fotogrammi saltati usando le frecce sinistra/destra.",
     "chk_send_notification": "Invia notifica",
     "tip_send_notification": "Invia una notifica al termine del processo.",
+    "chk_prevent_sleep": "Impedisci sospensione del sistema",
+    "tip_prevent_sleep": "Se selezionato, il computer non entrerà in modalità sospensione durante l’elaborazione.",    
     "chk_check_updates": "Controlla aggiornamenti all'avvio",
     "tip_check_updates": "Verifica automaticamente la presenza di nuove versioni di VideOCR all'avvio.",
 
@@ -123,6 +127,9 @@
     "update_title_error": "Errore",
     "update_msg_error": "Impossibile verificare gli aggiornamenti.\nControlla la connessione a Internet.",
 
+    "btn_yes": "Sì",
+    "btn_no": "No",
+
     "save_as_title": "Salva come",
     "save_as_filter_name": "Sottotitoli SubRip",
     "save_as_all_files": "Tutti i file",
@@ -136,6 +143,8 @@
     "notification_title": "Generazione sottotitoli completata!",
     "batch_processing_file": "Elaborazione in corso",
     "batch_finished_count": "Lotto completato: {} file elaborati.",
+    "status_queue_cancelled": "Coda annullata",
+    "status_queue_finished": "Coda completata",
 
     "progress_step1": "Fase 1: Fotogramma elaborato {current} di {total} ({percent}%)",
     "progress_step2": "Fase 2: OCR eseguito sul fotogramma {current} di {total} ({percent}%)",
@@ -169,6 +178,7 @@
     "error_cancel": "\nErrore durante il tentativo di annullare il processo: {}\n",
     "error_no_process_to_cancel": "\nNessun processo in esecuzione da annullare.\n",
     "title_error": "Errore",
+    "error_video_not_found": "File video non trovato:\n{}",
 
     "val_err_header": "Errori di validazione:\n",
     "val_err_start_time": "Formato orario di inizio non valido. Usa MM:SS o HH:MM:SS.",

@@ -61,6 +61,8 @@
     "tip_angle_cls": "回転したテキスト角度を検出して修正します。",
     "chk_post_processing": "後処理を有効にする",
     "tip_post_processing": "OCR結果の欠落スペースをチェックし、自動的に挿入を試みます。\nすべての言語をサポートしていません。詳細情報はオンラインで確認できます。",
+    "chk_normalize_chinese": "繁体字中国語を簡体字に変換",
+    "tip_normalize_chinese": "有効にすると、処理前に繁体字中国語が\n簡体字中国語に変換されます。「Chinese & English」のみ有効です。",
     "chk_server_model": "サーバーモデルを使用",
     "tip_server_model": "より高いOCR機能を持つサーバーモデルを有効にします。\nこのモードはより良い結果を提供できますが、より多くの計算能力も必要です。\nこのモードを使用する際はGPUを強く推奨します。",
     "lbl_videocr_settings": "VideOCR設定:",
@@ -75,6 +77,8 @@
     "tip_seek_step": "左/右矢印キーを使用する際にジャンプするフレーム数。",
     "chk_send_notification": "通知を送信",
     "tip_send_notification": "プロセスが完了したときに通知を送信します。",
+    "chk_prevent_sleep": "システムのスリープを防止",
+    "tip_prevent_sleep": "チェックすると、処理中にコンピューターがスリープしないようにします。",
     "chk_check_updates": "起動時に更新をチェック",
     "tip_check_updates": "アプリケーション起動時にVideOCRの新しいバージョンを自動的にチェックします。",
     
@@ -123,6 +127,9 @@
     "update_title_error": "エラー",
     "update_msg_error": "更新の確認に失敗しました。\nインターネット接続を確認してください。",
 
+    "btn_yes": "はい",
+    "btn_no": "いいえ",
+
     "save_as_title": "名前を付けて保存",
     "save_as_filter_name": "SubRip字幕",
     "save_as_all_files": "すべてのファイル",
@@ -136,6 +143,8 @@
     "notification_title": "字幕生成が完了しました！",
     "batch_processing_file": "処理中",
     "batch_finished_count": "バッチ完了: {} ファイルを処理しました。",
+    "status_queue_cancelled": "キューがキャンセルされました",
+    "status_queue_finished": "キューが完了しました",
     
     "progress_step1": "ステップ1: 画像 {current} / {total} を処理しました ({percent}%)",
     "progress_step2": "ステップ2: 画像 {current} / {total} でOCRを実行しました ({percent}%)",
@@ -169,6 +178,7 @@
     "error_cancel": "\nプロセスのキャンセル試行中にエラー: {}\n",
     "error_no_process_to_cancel": "\nキャンセルする実行中のプロセスがありません。\n",
     "title_error": "エラー",
+    "error_video_not_found": "ビデオファイルが見つかりません：\n{}",
 
     "val_err_header": "検証エラー:\n",
     "val_err_start_time": "無効な開始時間形式。MM:SSまたはHH:MM:SSを使用してください。",

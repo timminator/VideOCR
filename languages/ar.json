@@ -61,6 +61,8 @@
     "tip_angle_cls": "كشف وتصحيح زوايا النص المدور.",
     "chk_post_processing": "تفعيل المعالجة اللاحقة",
     "tip_post_processing": "يفحص نتيجة OCR للمسافات المفقودة ويحاول إدراجها تلقائياً.\nلا يدعم جميع اللغات، معلومات أكثر متاحة عبر الإنترنت.",
+    "chk_normalize_chinese": "توحيد الصينية التقليدية إلى المبسطة",
+    "tip_normalize_chinese": "عند التفعيل، سيتم تحويل أحرف الصينية التقليدية إلى\nالصينية المبسطة قبل المعالجة. يعمل فقط مع \"Chinese & English\".",
     "chk_server_model": "استخدام نموذج الخادم",
     "tip_server_model": "يفعل نموذج الخادم بقدرات OCR أعلى.\nهذا الوضع يمكن أن يقدم نتائج أفضل لكنه يتطلب أيضاً قوة حاسوبية أكثر.\nGPU مُوصى به بشدة عند استخدام هذا الوضع.",
     "lbl_videocr_settings": "إعدادات VideOCR:",
@@ -75,6 +77,8 @@
     "tip_seek_step": "عدد الإطارات للقفز عند استخدام الأسهم اليسار/اليمين.",
     "chk_send_notification": "إرسال إشعار",
     "tip_send_notification": "إرسال إشعار عند اكتمال العملية.",
+    "chk_prevent_sleep": "منع النظام من السكون",
+    "tip_prevent_sleep": "عند التحديد، سيتم منع الكمبيوتر من الدخول في وضع السكون أثناء المعالجة.",
     "chk_check_updates": "فحص التحديثات عند البدء",
     "tip_check_updates": "فحص تلقائي لإصدارات جديدة من VideOCR عند بدء التطبيق.",
 
@@ -123,6 +127,9 @@
     "update_title_error": "خطأ",
     "update_msg_error": "فشل في فحص التحديثات.\nيرجى فحص اتصال الإنترنت.",
 
+    "btn_yes": "نعم",
+    "btn_no": "لا",
+
     "save_as_title": "حفظ باسم",
     "save_as_filter_name": "ترجمة SubRip",
     "save_as_all_files": "جميع الملفات",
@@ -136,6 +143,8 @@
     "notification_title": "إنشاء الترجمة اكتمل!",
     "batch_processing_file": "جاري معالجة",
     "batch_finished_count": "اكتملت الدفعة: تمت معالجة {} ملفات.",
+    "status_queue_cancelled": "تم إلغاء الانتظار",
+    "status_queue_finished": "انتهت قائمة الانتظار",
 
     "progress_step1": "الخطوة 1: تمت معالجة الصورة {current} من {total} ({percent}%)",
     "progress_step2": "الخطوة 2: تم تنفيذ OCR على الصورة {current} من {total} ({percent}%)",
@@ -169,6 +178,7 @@
     "error_cancel": "\nخطأ في محاولة إلغاء العملية: {}\n",
     "error_no_process_to_cancel": "\nلا توجد عملية قيد التشغيل للإلغاء.\n",
     "title_error": "خطأ",
+    "error_video_not_found": "ملف الفيديو غير موجود:\n{}",
 
     "val_err_header": "أخطاء التحقق:\n",
     "val_err_start_time": "تنسيق وقت البداية غير صالح. استخدم MM:SS أو HH:MM:SS.",

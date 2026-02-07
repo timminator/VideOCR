@@ -61,6 +61,8 @@
     "tip_angle_cls": "Detecta y corrige ángulos de texto rotados.",
     "chk_post_processing": "Habilitar postprocesamiento",
     "tip_post_processing": "Revisa el resultado de OCR para detectar espacios faltantes e intenta insertarlos automáticamente.\nNo compatible con todos los idiomas; más información disponible en línea.",
+    "chk_normalize_chinese": "Normalizar chino tradicional a simplificado",
+    "tip_normalize_chinese": "Si está habilitado, los caracteres chinos tradicionales se convertirán a\nchino simplificado antes del procesamiento. Solo activo para \"Chinese & English\".",
     "chk_server_model": "Usar modelo de servidor",
     "tip_server_model": "Habilita el modelo de servidor con mayores capacidades de OCR.\nPuede ofrecer mejores resultados pero requiere más potencia de cómputo.\nSe recomienda GPU al usar este modo.",
     "lbl_videocr_settings": "Configuración de VideOCR:",
@@ -75,6 +77,8 @@
     "tip_seek_step": "Cantidad de fotogramas a saltar al usar las flechas izquierda/derecha.",
     "chk_send_notification": "Enviar notificación",
     "tip_send_notification": "Enviar una notificación cuando el proceso termine.",
+    "chk_prevent_sleep": "Evitar suspensión del sistema",
+    "tip_prevent_sleep": "Si está marcado, se evitará que la computadora entre en suspensión durante el procesamiento.",
     "chk_check_updates": "Buscar actualizaciones al iniciar",
     "tip_check_updates": "Buscar automáticamente nuevas versiones de VideOCR al iniciar la aplicación.",
     
@@ -123,6 +127,9 @@
     "update_title_error": "Error",
     "update_msg_error": "No se pudo comprobar si hay actualizaciones.\nPor favor verifica tu conexión a internet.",
 
+    "btn_yes": "Sí",
+    "btn_no": "No",
+
     "save_as_title": "Guardar como",
     "save_as_filter_name": "Subtítulo SubRip",
     "save_as_all_files": "Todos los archivos",
@@ -136,6 +143,8 @@
     "notification_title": "¡La generación de subtítulos ha finalizado!",
     "batch_processing_file": "Procesando",
     "batch_finished_count": "Lote finalizado: {} archivos procesados.",
+    "status_queue_cancelled": "Cola cancelada",
+    "status_queue_finished": "Cola finalizada",
 
     "progress_step1": "Paso 1: Imagen procesada {current} de {total} ({percent}%)",
     "progress_step2": "Paso 2: OCR realizado en imagen {current} de {total} ({percent}%)",
@@ -169,6 +178,7 @@
     "error_cancel": "\nError al intentar cancelar el proceso: {}\n",
     "error_no_process_to_cancel": "\nNo hay ningún proceso en ejecución para cancelar.\n",
     "title_error": "Error",
+    "error_video_not_found": "Archivo de video no encontrado:\n{}",
 
     "val_err_header": "Errores de validación:\n",
     "val_err_start_time": "Formato de hora de inicio inválido. Usa MM:SS o HH:MM:SS.",

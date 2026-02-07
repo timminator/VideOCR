@@ -61,6 +61,8 @@
     "tip_angle_cls": "检测并纠正旋转的文本角度。",
     "chk_post_processing": "启用后期处理",
     "tip_post_processing": "检查 OCR 结果中的缺失空格并尝试自动插入。\n并非所有语言都支持，更多信息可在线查阅。",
+    "chk_normalize_chinese": "将繁体中文转换为简体中文",
+    "tip_normalize_chinese": "启用后，将在处理前把繁体中文字符转换为\n简体中文。仅在“Chinese & English”下生效。",
     "chk_server_model": "使用高精度模型",
     "tip_server_model": "启用高精度模型以获得更高的 OCR 能力。\n该模式可提供更好的结果，但也需要更多计算能力。\n建议在此模式下使用 GPU。",
     "lbl_videocr_settings": "VideOCR 设置：",
@@ -75,6 +77,8 @@
     "tip_seek_step": "使用左右箭头时跳过的帧数。",
     "chk_send_notification": "发送通知",
     "tip_send_notification": "处理完成后发送通知。",
+    "chk_prevent_sleep": "防止系统休眠",
+    "tip_prevent_sleep": "勾选后，处理过程中将阻止计算机进入休眠状态。",
     "chk_check_updates": "启动时检查更新",
     "tip_check_updates": "应用启动时自动检查 VideOCR 的新版本。",
 
@@ -123,6 +127,9 @@
     "update_title_error": "错误",
     "update_msg_error": "检查更新失败。\n请检查您的网络连接。",
 
+    "btn_yes": "是",
+    "btn_no": "否",
+
     "save_as_title": "另存为",
     "save_as_filter_name": "SubRip 字幕",
     "save_as_all_files": "所有文件",
@@ -136,6 +143,8 @@
     "notification_title": "字幕生成完成！",
     "batch_processing_file": "正在处理",
     "batch_finished_count": "批量处理完成：已处理 {} 个文件。",
+    "status_queue_cancelled": "队列已取消",
+    "status_queue_finished": "队列已完成",
 
     "progress_step1": "步骤 1：已处理图像 {current} / {total} ({percent}%)",
     "progress_step2": "步骤 2：已对图像 {current} / {total} 进行 OCR ({percent}%)",
@@ -169,6 +178,7 @@
     "error_cancel": "\n尝试取消进程时出错：{}\n",
     "error_no_process_to_cancel": "\n当前没有可取消的进程。\n",
     "title_error": "错误",
+    "error_video_not_found": "未找到视频文件：\n{}",
 
     "val_err_header": "验证错误：\n",
     "val_err_start_time": "无效的开始时间格式。请使用 MM:SS 或 HH:MM:SS。",

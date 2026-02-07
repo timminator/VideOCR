@@ -61,6 +61,8 @@
     "tip_angle_cls": "Phát hiện và sửa góc văn bản bị xoay.",
     "chk_post_processing": "Bật Xử Lý Hậu Kỳ",
     "tip_post_processing": "Kiểm tra kết quả OCR để tìm khoảng trắng bị thiếu và cố gắng chèn chúng tự động.\nKhông hỗ trợ tất cả ngôn ngữ, thông tin thêm có thể tìm thấy trực tuyến.",
+    "chk_normalize_chinese": "Chuẩn hóa tiếng Trung phồn thể sang giản thể",
+    "tip_normalize_chinese": "Khi bật, các ký tự Trung phồn thể sẽ được chuyển sang\nTrung giản thể trước khi xử lý. Chỉ hoạt động với \"Chinese & English\".",
     "chk_server_model": "Sử Dụng Mô Hình Máy Chủ",
     "tip_server_model": "Bật mô hình máy chủ với khả năng OCR cao hơn.\nChế độ này có thể mang lại kết quả tốt hơn nhưng cũng yêu cầu nhiều sức mạnh tính toán hơn.\nGPU được khuyến nghị cao khi sử dụng chế độ này.",
     "lbl_videocr_settings": "Cài Đặt VideOCR:",
@@ -75,6 +77,8 @@
     "tip_seek_step": "Số khung hình để nhảy khi sử dụng phím mũi tên Trái/Phải.",
     "chk_send_notification": "Gửi Thông Báo",
     "tip_send_notification": "Gửi thông báo khi quá trình hoàn tất.",
+    "chk_prevent_sleep": "Ngăn hệ thống ngủ",
+    "tip_prevent_sleep": "Nếu được chọn, máy tính sẽ không chuyển sang chế độ ngủ trong quá trình xử lý.",
     "chk_check_updates": "Kiểm Tra Cập Nhật Khi Khởi Động",
     "tip_check_updates": "Tự động kiểm tra phiên bản mới của VideOCR khi ứng dụng khởi động.",
     
@@ -123,6 +127,9 @@
     "update_title_error": "Lỗi",
     "update_msg_error": "Không thể kiểm tra cập nhật.\nVui lòng kiểm tra kết nối internet của bạn.",
 
+    "btn_yes": "Có",
+    "btn_no": "Không",
+
     "save_as_title": "Lưu Thành",
     "save_as_filter_name": "Phụ Đề SubRip",
     "save_as_all_files": "Tất Cả Tệp",
@@ -136,6 +143,8 @@
     "notification_title": "Tạo phụ đề của bạn đã hoàn tất!",
     "batch_processing_file": "Đang xử lý",
     "batch_finished_count": "Hàng đợi hoàn tất: đã xử lý {} tệp.",
+    "status_queue_cancelled": "Hàng đợi đã bị hủy",
+    "status_queue_finished": "Hàng đợi đã hoàn thành",
     
     "progress_step1": "Bước 1: Đã xử lý hình ảnh {current} trên {total} ({percent}%)",
     "progress_step2": "Bước 2: Đã thực hiện OCR trên hình ảnh {current} trên {total} ({percent}%)",
@@ -169,6 +178,7 @@
     "error_cancel": "\nLỗi khi cố gắng hủy quá trình: {}\n",
     "error_no_process_to_cancel": "\nKhông có quá trình nào đang chạy để hủy.\n",
     "title_error": "Lỗi",
+    "error_video_not_found": "Không tìm thấy tệp video:\n{}",
 
     "val_err_header": "Lỗi Xác Thực:\n",
     "val_err_start_time": "Định dạng Thời Gian Bắt Đầu không hợp lệ. Sử dụng MM:SS hoặc HH:MM:SS.",
