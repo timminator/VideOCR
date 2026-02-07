@@ -6,9 +6,6 @@
 # nuitka-project: --include-data-files=Installer/*.png=VideOCR.png
 # nuitka-project: --include-data-dir=languages=languages
 
-# nuitka-project-if: {OS} == "Windows":
-#     nuitka-project: --include-module=comtypes.stream
-
 # Windows-specific metadata for the executable
 # nuitka-project-if: {OS} == "Windows":
 #     nuitka-project: --file-description="VideOCR"
@@ -1223,8 +1220,6 @@ def run_videocr(args_dict, window):
                     command.append(str(value).lower())
                 else:
                     command.append(str(value))
-
-    print(command)
 
     UNSUPPORTED_HARDWARE_ERROR_PATTERN = re.compile(r"Unsupported Hardware Error: (.*)")
     WARNING_HARDWARE_PATTERN = re.compile(r"Hardware Check Warning: (.*)")

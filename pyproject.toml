@@ -24,7 +24,6 @@ dependencies = [
     "Fast-SSIM",
     "opencc",
     "opencv-python",
-    "Pillow",
     "psutil",
     "pymediainfo",
     "PySimpleGUI-4-foss",

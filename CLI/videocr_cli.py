@@ -1,6 +1,5 @@
 # Compilation instructions
 # nuitka-project: --standalone
-# nuitka-project: --include-module=uuid
 # nuitka-project-if: {OS} == "Windows":
 #     nuitka-project: --output-filename=videocr-cli
 # nuitka-project-if: {OS} == "Linux":
