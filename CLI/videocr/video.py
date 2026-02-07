@@ -69,8 +69,9 @@ class Video:
         self.start_time_offset_ms = props['start_time_offset_ms']
         self.frame_timestamps = props['frame_timestamps']
 
-    def run_ocr(self, use_gpu: bool, lang: str, use_angle_cls: bool, time_start: str, time_end: str, conf_threshold: int, use_fullframe: bool,
-                brightness_threshold: int, ssim_threshold: int, subtitle_position: str, frames_to_skip: int, crop_zones: list[dict], ocr_image_max_width: int) -> None:
+    def run_ocr(self, use_gpu: bool, lang: str, use_angle_cls: bool, time_start: str, time_end: str, conf_threshold: int,
+                use_fullframe: bool, brightness_threshold: int, ssim_threshold: int, subtitle_position: str,
+                frames_to_skip: int, crop_zones: list[dict], ocr_image_max_width: int, normalize_to_simplified_chinese: bool) -> None:
         conf_threshold = float(conf_threshold / 100)
         ssim_threshold = float(ssim_threshold / 100)
         self.lang = lang
@@ -324,7 +325,7 @@ class Video:
             ocr_result = ocr_outputs.get(frame_filename, [])
             pred_data = [ocr_result] if ocr_result else [[]]
 
-            predicted_frame = PredictedFrames(frame_index, pred_data, conf_threshold, zone_index)
+            predicted_frame = PredictedFrames(frame_index, pred_data, conf_threshold, zone_index, lang, normalize_to_simplified_chinese)
             frame_predictions_by_zone[zone_index][frame_index] = predicted_frame
 
         for zone_idx in frame_predictions_by_zone:

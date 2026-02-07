@@ -4,6 +4,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 
 import wordninja_enhanced as wordninja
+from opencc import OpenCC
 from thefuzz import fuzz
 
 from . import utils
@@ -24,8 +25,10 @@ class PredictedFrames:
     words: list[PredictedText]
     confidence: float  # total confidence of all words
     text: str
+    _converter = OpenCC('t2s')
 
-    def __init__(self, index: int, pred_data: list[list], conf_threshold: float, zone_index: int):
+    def __init__(self, index: int, pred_data: list[list], conf_threshold: float, zone_index: int,
+                 lang: str, normalize_to_simplified_chinese: bool = True):
         self.start_index = index
         self.end_index = index
         self.zone_index = zone_index
@@ -74,8 +77,8 @@ class PredictedFrames:
 
         self.text = '\n'.join(' '.join(word.text for word in line) for line in self.lines)
 
-    def is_similar_to(self, other: PredictedFrames, threshold=70) -> bool:
-        return fuzz.ratio(self.text, other.text) >= threshold
+        if normalize_to_simplified_chinese and lang == "ch" and self.text:
+            self.text = self._converter.convert(self.text)
 
 
 class PredictedSubtitle:

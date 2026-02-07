@@ -16,6 +16,9 @@
 
 import argparse
 import sys
+from contextlib import nullcontext
+
+from wakepy import keep
 
 from videocr import save_subtitles_to_file, utils
 
@@ -72,18 +75,19 @@ def main():
     parser.add_argument('--conf_threshold', type=restricted_int(0, 100), default=75, help='Confidence threshold (default: 75)')
     parser.add_argument('--sim_threshold', type=restricted_int(0, 100), default=80, help='Similarity threshold (default: 80)')
     parser.add_argument('--max_merge_gap', type=restricted_float(min_val=0.0), default=0.09, help='Maximum time gap in seconds to merge similar subtitles (default: 0.09)')
-    parser.add_argument('--use_fullframe', type=lambda x: x.lower() == 'true', default=False, help='Use full frame for OCR (true/false)')
-    parser.add_argument('--use_gpu', type=lambda x: x.lower() == 'true', default=False, help='Enable GPU usage (true/false)')
-    parser.add_argument('--use_angle_cls', type=lambda x: x.lower() == 'true', default=False, help='Enable Classification (true/false)')
-    parser.add_argument('--use_server_model', type=lambda x: x.lower() == 'true', default=False, help='Enable usage of server model (true/false)')
+    parser.add_argument('--use_fullframe', type=lambda x: x.lower() == 'true', default=False, help='Use full frame for OCR (default: false)')
+    parser.add_argument('--use_gpu', type=lambda x: x.lower() == 'true', default=False, help='Enable GPU usage (default: false)')
+    parser.add_argument('--use_angle_cls', type=lambda x: x.lower() == 'true', default=False, help='Enable Classification (default: false)')
+    parser.add_argument('--use_server_model', type=lambda x: x.lower() == 'true', default=False, help='Enable usage of server model (default: false)')
     parser.add_argument('--brightness_threshold', type=restricted_int(0, 255), default=None, help='Brightness threshold')
     parser.add_argument('--ssim_threshold', type=restricted_int(0, 100), default=92, help='SSIM similarity threshold (default: 92)')
     parser.add_argument('--subtitle_position', type=str, default='center', help='Subtitle position alignment (center (default), left, right, any)')
     parser.add_argument('--frames_to_skip', type=restricted_int(min_val=0), default=1, help='Frames to skip (default: 1)')
-    parser.add_argument('--post_processing', type=lambda x: x.lower() == 'true', default=False, help='Enable post processing of subtitles (true/false)')
+    parser.add_argument('--normalize_to_simplified_chinese', type=lambda x: x.lower() == 'true', default=True, help='Normalize Traditional Chinese characters to Simplified Chinese for ch (default: true)')
+    parser.add_argument('--post_processing', type=lambda x: x.lower() == 'true', default=False, help='Enable post processing of subtitles (default: false)')
     parser.add_argument('--min_subtitle_duration', type=restricted_float(min_val=0.0), default=0.2, help='Minimum subtitle duration in seconds (default: 0.2)')
     parser.add_argument('--ocr_image_max_width', type=restricted_int(min_val=1), default=1280, help='Maximum image width used for OCR (default: 1280)')
-    parser.add_argument('--use_dual_zone', type=lambda x: x.lower() == 'true', default=False, help='Enable dual zone OCR processing (true/false)')
+    parser.add_argument('--use_dual_zone', type=lambda x: x.lower() == 'true', default=False, help='Enable dual zone OCR processing (default: false)')
     parser.add_argument('--crop_x', type=int, default=None, help='(Zone 1) Crop start X')
     parser.add_argument('--crop_y', type=int, default=None, help='(Zone 1) Crop start Y')
     parser.add_argument('--crop_width', type=int, default=None, help='(Zone 1) Crop width')
@@ -92,6 +96,7 @@ def main():
     parser.add_argument('--crop_y2', type=int, default=None, help='(Zone 2) Crop start Y')
     parser.add_argument('--crop_width2', type=int, default=None, help='(Zone 2) Crop width')
     parser.add_argument('--crop_height2', type=int, default=None, help='(Zone 2) Crop height')
+    parser.add_argument('--allow_system_sleep', type=lambda x: x.lower() == 'true', default=False, help='Allow the system to sleep during processing (default: false)')
 
     args = parser.parse_args()
 
@@ -134,28 +139,32 @@ def main():
                     if is_zone1_full:
                         raise ValueError("Dual zone OCR was requested, but coordinates for the second zone were not provided.")
 
-        save_subtitles_to_file(
-            video_path=args.video_path,
-            file_path=args.output,
-            lang=args.lang,
-            time_start=args.time_start,
-            time_end=args.time_end,
-            conf_threshold=args.conf_threshold,
-            sim_threshold=args.sim_threshold,
-            max_merge_gap_sec=args.max_merge_gap,
-            use_fullframe=args.use_fullframe,
-            use_gpu=args.use_gpu,
-            use_angle_cls=args.use_angle_cls,
-            use_server_model=args.use_server_model,
-            brightness_threshold=args.brightness_threshold,
-            ssim_threshold=args.ssim_threshold,
-            subtitle_position=args.subtitle_position,
-            frames_to_skip=args.frames_to_skip,
-            crop_zones=crop_zones,
-            post_processing=args.post_processing,
-            min_subtitle_duration_sec=args.min_subtitle_duration,
-            ocr_image_max_width=args.ocr_image_max_width,
-        )
+        keep_awake_manager = nullcontext() if args.allow_system_sleep else keep.running()
+
+        with keep_awake_manager:
+            save_subtitles_to_file(
+                video_path=args.video_path,
+                file_path=args.output,
+                lang=args.lang,
+                time_start=args.time_start,
+                time_end=args.time_end,
+                conf_threshold=args.conf_threshold,
+                sim_threshold=args.sim_threshold,
+                max_merge_gap_sec=args.max_merge_gap,
+                use_fullframe=args.use_fullframe,
+                use_gpu=args.use_gpu,
+                use_angle_cls=args.use_angle_cls,
+                use_server_model=args.use_server_model,
+                brightness_threshold=args.brightness_threshold,
+                ssim_threshold=args.ssim_threshold,
+                subtitle_position=args.subtitle_position,
+                frames_to_skip=args.frames_to_skip,
+                crop_zones=crop_zones,
+                normalize_to_simplified_chinese=args.normalize_to_simplified_chinese,
+                post_processing=args.post_processing,
+                min_subtitle_duration_sec=args.min_subtitle_duration,
+                ocr_image_max_width=args.ocr_image_max_width,
+            )
     except ValueError as e:
         print(f"Error: {e}")
         sys.exit(1)
