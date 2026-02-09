@@ -12,7 +12,7 @@ import requests
 
 # --- Configuration ---
 APP_VERSION = "1.4.0"
-PADDLE_VERSION = "1.3.2"
+PADDLE_VERSION = "1.4.0"
 
 SUPPORT_FILES_URLS = {
     "Windows": f"https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{PADDLE_VERSION}/PaddleOCR.PP-OCRv5.support.files.VideOCR.7z",

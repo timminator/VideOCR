@@ -147,9 +147,9 @@ def convert_visual_to_logical(text: str) -> str:
 def find_paddleocr() -> str:
     program_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
     base_folders = [
-        "PaddleOCR-CPU-v1.3.2",
-        "PaddleOCR-GPU-v1.3.2-CUDA-11.8",
-        "PaddleOCR-GPU-v1.3.2-CUDA-12.9"
+        "PaddleOCR-CPU-v1.4.0",
+        "PaddleOCR-GPU-v1.4.0-CUDA-11.8",
+        "PaddleOCR-GPU-v1.4.0-CUDA-12.9"
     ]
     program_name = "paddleocr"
 
@@ -179,10 +179,10 @@ def resolve_model_dirs(lang: str, use_server_model: bool) -> tuple[str, str, str
     mode = "server" if use_server_model else "mobile"
 
     # DET
-    if lang in {"ch", "chinese_cht", "en", "japan", "korean", "th", "el"} | LATIN_LANGS | ESLAV_LANGS:
-        det_sub = f"PP-OCRv5_{mode}_det"
-    else:
+    if lang == "ka":
         det_sub = "PP-OCRv3_mobile_det"
+    else:
+        det_sub = f"PP-OCRv5_{mode}_det"
 
     # REC
     if lang in ("ch", "chinese_cht", "japan"):
@@ -190,15 +190,17 @@ def resolve_model_dirs(lang: str, use_server_model: bool) -> tuple[str, str, str
     elif lang in LATIN_LANGS:
         rec_sub = "latin_PP-OCRv5_mobile_rec"
     elif lang in ARABIC_LANGS:
-        rec_sub = "arabic_PP-OCRv3_mobile_rec"
+        rec_sub = "arabic_PP-OCRv5_mobile_rec"
     elif lang in ESLAV_LANGS:
         rec_sub = "eslav_PP-OCRv5_mobile_rec"
     elif lang in CYRILLIC_LANGS:
-        rec_sub = "cyrillic_PP-OCRv3_mobile_rec"
+        rec_sub = "cyrillic_PP-OCRv5_mobile_rec"
     elif lang in DEVANAGARI_LANGS:
-        rec_sub = "devanagari_PP-OCRv3_mobile_rec"
-    elif lang in ("korean", "en", "th", "el"):
+        rec_sub = "devanagari_PP-OCRv5_mobile_rec"
+    elif lang in ("en", "korean", "th", "el", "te", "ta"):
         rec_sub = f"{lang}_PP-OCRv5_mobile_rec"
+    elif lang == "ka":
+        rec_sub = "ka_PP-OCRv3_mobile_rec"
 
     return (
         os.path.join(det_path, det_sub),
