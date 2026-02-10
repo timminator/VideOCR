@@ -55,7 +55,6 @@ There is also a CLI version available. Unzip the archive to your desired locatio
 ```
 
 ### Linux:
-
 ```
 ./videocr-cli.bin -h
 ```
@@ -163,6 +162,10 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
 - `min_subtitle_duration`
 
   Subtitles shorter than this threshold will be omitted from the final subtitle file.
+
+- `normalize_to_simplified_chinese`
+
+  Traditional Chinese characters will be converted to Simplified Chinese before processing. Only active for \"Chinese & English\". Tries to fix subtitle merging issues caused by the OCR model inconsistently mixing Traditional characters into Simplified text.
 
 - `use_server_model`
 

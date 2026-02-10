@@ -64,7 +64,7 @@ body:
       description: Please specify the details of your setup.
       placeholder: |
         OS: Windows 11 / Ubuntu 22.04
-        VideOCR version: 1.3.2
+        VideOCR version: 1.4.0
         GPU model: NVIDIA RTX 3060 (leave blank if using CPU version)
     validations:
       required: true
