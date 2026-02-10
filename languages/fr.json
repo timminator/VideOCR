@@ -207,5 +207,18 @@
     "reason_metadata": "Erreur de métadonnées",
     "title_batch_report": "Rapport de lot",
     "msg_batch_report_summary": "{} vidéos ajoutées.\n\n{} vidéo(s) ignorée(s) :\n",
-    "msg_and_others": "...et d'autres."
+    "msg_and_others": "...et d'autres.",
+
+    "lbl_when_ready": "Une fois terminé :",
+    "action_none": "Ne rien faire",
+    "action_sleep": "Veille",
+    "action_hibernate": "Mise en veille prolongée",
+    "action_shutdown": "Arrêter",
+    "action_lock": "Verrouiller",
+    "log_post_action": "Exécution de l'action de fin : {}",
+    "tip_post_action": "Sélectionnez une action à effectuer lorsque la file d'attente est terminée.",
+    "title_countdown": "Action requise",
+    "lbl_action_countdown": "Le système exécutera '{}' dans {} secondes.",
+    "btn_proceed": "Procéder maintenant",
+    "log_action_cancelled": "Action de fin annulée par l'utilisateur."
 }

@@ -207,5 +207,18 @@
     "reason_metadata": "メタデータエラー",
     "title_batch_report": "バッチレポート",
     "msg_batch_report_summary": "{} 個のビデオを追加しました。\n\n{} 個のビデオをスキップしました:\n",
-    "msg_and_others": "...他"
+    "msg_and_others": "...他",
+
+    "lbl_when_ready": "完了時:",
+    "action_none": "何もしない",
+    "action_sleep": "スリープ",
+    "action_hibernate": "休止状態",
+    "action_shutdown": "シャットダウン",
+    "action_lock": "ロック",
+    "log_post_action": "完了後のアクションを実行中: {}",
+    "tip_post_action": "バッチキューの完了時に実行するアクションを選択してください。",
+    "title_countdown": "アクションが必要です",
+    "lbl_action_countdown": "システムは {} 秒後に '{}' を実行します。",
+    "btn_proceed": "今すぐ続行",
+    "log_action_cancelled": "完了後のアクションはユーザーによってキャンセルされました。"
 }

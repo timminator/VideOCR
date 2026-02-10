@@ -207,5 +207,18 @@
     "reason_metadata": "메타데이터 오류",
     "title_batch_report": "일괄 처리 보고서",
     "msg_batch_report_summary": "{}개 비디오 추가됨.\n\n{}개 비디오 건너뜀:\n",
-    "msg_and_others": "...및 기타."
+    "msg_and_others": "...및 기타.",
+
+    "lbl_when_ready": "완료 시:",
+    "action_none": "아무것도 안 함",
+    "action_sleep": "절전",
+    "action_hibernate": "최대 절전 모드",
+    "action_shutdown": "종료",
+    "action_lock": "잠금",
+    "log_post_action": "완료 후 작업 실행 중: {}",
+    "tip_post_action": "배치 대기열이 완료되면 수행할 작업을 선택하십시오.",
+    "title_countdown": "조치 필요",
+    "lbl_action_countdown": "시스템이 {} 초 후에 '{}' 작업을 수행합니다.",
+    "btn_proceed": "지금 진행",
+    "log_action_cancelled": "사용자가 완료 후 작업을 취소했습니다."
 }

@@ -207,5 +207,18 @@
     "reason_metadata": "元数据错误",
     "title_batch_report": "批量报告",
     "msg_batch_report_summary": "已添加 {} 个视频。\n\n已跳过 {} 个视频：\n",
-    "msg_and_others": "...以及其他。"
+    "msg_and_others": "...以及其他。",
+
+    "lbl_when_ready": "完成后:",
+    "action_none": "什么也不做",
+    "action_sleep": "睡眠",
+    "action_hibernate": "休眠",
+    "action_shutdown": "关机",
+    "action_lock": "锁定",
+    "log_post_action": "正在执行完成后操作: {}",
+    "tip_post_action": "选择批量队列完成后要执行的操作。",
+    "title_countdown": "需要操作",
+    "lbl_action_countdown": "系统将在 {} 秒后执行 '{}'。",
+    "btn_proceed": "立即执行",
+    "log_action_cancelled": "用户取消了完成后操作。"
 }

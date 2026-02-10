@@ -207,5 +207,18 @@
     "reason_metadata": "ข้อผิดพลาดข้อมูลเมตา",
     "title_batch_report": "รายงานกลุ่ม",
     "msg_batch_report_summary": "เพิ่ม {} วิดีโอ\n\nข้าม {} วิดีโอ:\n",
-    "msg_and_others": "...และอื่นๆ"
+    "msg_and_others": "...และอื่นๆ",
+
+    "lbl_when_ready": "เมื่อเสร็จสิ้น:",
+    "action_none": "ไม่ทำอะไรเลย",
+    "action_sleep": "โหมดสลีป",
+    "action_hibernate": "โหมดไฮเบอร์เนต",
+    "action_shutdown": "ปิดเครื่อง",
+    "action_lock": "ล็อค",
+    "log_post_action": "กำลังดำเนินการหลังเสร็จสิ้น: {}",
+    "tip_post_action": "เลือกการกระทำที่จะทำเมื่อคิวงานเสร็จสิ้น",
+    "title_countdown": "ต้องดำเนินการ",
+    "lbl_action_countdown": "ระบบจะดำเนินการ '{}' ในอีก {} วินาที",
+    "btn_proceed": "ดำเนินการทันที",
+    "log_action_cancelled": "การดำเนินการหลังเสร็จสิ้นถูกยกเลิกโดยผู้ใช้"
 }

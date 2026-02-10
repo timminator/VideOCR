@@ -207,5 +207,18 @@
     "reason_metadata": "Erro de metadados",
     "title_batch_report": "Relatório de Lote",
     "msg_batch_report_summary": "Adicionados {} vídeos.\n\nIgnorados {} vídeo(s):\n",
-    "msg_and_others": "...e outros."
+    "msg_and_others": "...e outros.",
+
+    "lbl_when_ready": "Ao concluir:",
+    "action_none": "Não fazer nada",
+    "action_sleep": "Suspender",
+    "action_hibernate": "Hibernar",
+    "action_shutdown": "Desligar",
+    "action_lock": "Bloquear",
+    "log_post_action": "Executando ação pós-conclusão: {}",
+    "tip_post_action": "Selecione uma ação para realizar quando a fila terminar.",
+    "title_countdown": "Ação Necessária",
+    "lbl_action_countdown": "O sistema executará '{}' em {} segundos.",
+    "btn_proceed": "Prosseguir agora",
+    "log_action_cancelled": "Ação pós-conclusão cancelada pelo usuário."
 }

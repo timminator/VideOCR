@@ -273,6 +273,20 @@ subtitle_positions_list = [
 ]
 default_internal_subtitle_position = 'center'
 
+# --- Post-Action Master List ---
+if platform.system() == "Windows":
+    POST_ACTION_KEYS = ['action_none', 'action_sleep', 'action_hibernate', 'action_shutdown', 'action_lock']
+else:
+    POST_ACTION_KEYS = ['action_none', 'action_sleep', 'action_shutdown']
+
+DEFAULT_ACTION_TEXTS = {
+    'action_none': 'Do Nothing',
+    'action_sleep': 'Sleep',
+    'action_hibernate': 'Hibernate',
+    'action_shutdown': 'Shutdown',
+    'action_lock': 'Lock'
+}
+
 # --- Global Variables ---
 video_path = None
 original_frame_width = 0
@@ -361,6 +375,7 @@ def update_gui_text(window):
         '-BTN-CLEAR_CROP-': {'text': 'btn_clear_crop'},
         '-LBL-PROGRESS-': {'text': 'lbl_progress'},
         '-LBL-LOG-': {'text': 'lbl_log'},
+        '-LBL-WHEN_READY-': {'text': 'lbl_when_ready'},
         '-BTN-ADD-BATCH-': {'text': 'btn_add_to_queue'},
         '-BTN-BATCH-ADD-ALL-': {'text': 'btn_add_all_to_queue'},
         '-BTN-PAUSE-': {'text': 'btn_pause'},
@@ -459,6 +474,9 @@ def update_gui_text(window):
             table_widget.heading('#3', text=LANG.get('col_status', 'Status'))
         except Exception as e:
             log_error(f"Failed to update table headings: {e}")
+
+    current_idx = window['-POST_ACTION-'].Widget.current()
+    update_post_action_combo(window, current_idx)
 
 
 # --- Helper Functions ---
@@ -663,6 +681,54 @@ def custom_popup_yes_no(parent_window, title, message, icon=None):
     return choice
 
 
+def popup_post_action_countdown(parent_window, action_text, icon=None):
+    """
+    Displays a countdown popup relative to the parent window."""
+    timeout_seconds = 60
+
+    layout = [
+        [sg.Text(LANG.get('title_countdown', "Action Required"), font=("Segoe UI", 12, "bold"), pad=(0, 10))],
+        [sg.Text(LANG.get('lbl_action_countdown', "System will execute '{}' in {} seconds.").format(action_text, timeout_seconds),
+                 key='-LBL-COUNTDOWN-', font=("Segoe UI", 10), pad=(10, 10))],
+        [sg.Push(),
+         sg.Button(LANG.get('btn_proceed', "Proceed Now"), key='-BTN-PROCEED-', size=(12, 1)),
+         sg.Button(LANG.get('btn_cancel', "Cancel"), key='-BTN-CANCEL-', size=(10, 1)),
+         sg.Push()]
+    ]
+    popup_window = sg.Window(LANG.get('title_countdown', "Action Required"), layout, keep_on_top=True, modal=True, finalize=True, icon=icon)
+
+    popup_window.refresh()
+    center_popup(parent_window, popup_window)
+    popup_window.refresh()
+    popup_window.set_alpha(1)
+
+    counter = timeout_seconds
+    should_proceed = False
+
+    while True:
+        event, _ = popup_window.read(timeout=1000)
+
+        if event in (sg.WIN_CLOSED, '-BTN-CANCEL-'):
+            should_proceed = False
+            break
+
+        if event == '-BTN-PROCEED-':
+            should_proceed = True
+            break
+
+        if event == sg.TIMEOUT_EVENT:
+            counter -= 1
+            if counter <= 0:
+                should_proceed = True
+                break
+
+            new_text = LANG.get('lbl_action_countdown', "System will execute '{}' in {} seconds.").format(action_text, counter)
+            popup_window['-LBL-COUNTDOWN-'].update(new_text)
+
+    popup_window.close()
+    return should_proceed
+
+
 def check_for_updates(window, manual_check=False):
     """Checks GitHub for a new release."""
     try:
@@ -699,6 +765,17 @@ def update_subtitle_pos_combo(window, selected_internal_pos=None):
     window['-SUBTITLE_POS_COMBO-'].update(value=display_pos, values=translated_pos_names, size=(38, 4))
 
 
+def update_post_action_combo(window, selected_index=0):
+    """Refreshes the Post Action combo text and selects by numeric index."""
+    display_values = [LANG.get(key, DEFAULT_ACTION_TEXTS[key]) for key in POST_ACTION_KEYS]
+    window['-POST_ACTION-'].update(values=display_values)
+
+    if 0 <= selected_index < len(display_values):
+        window['-POST_ACTION-'].update(value=display_values[selected_index])
+    else:
+        window['-POST_ACTION-'].update(value=display_values[0])
+
+
 # --- Settings Save/Load Functions ---
 def get_default_settings():
     """Returns a dictionary of default settings."""
@@ -706,6 +783,7 @@ def get_default_settings():
     '--language': 'en',
     '-LANG_COMBO-': default_display_language,
     '-SUBTITLE_POS_COMBO-': default_internal_subtitle_position,
+    '-POST_ACTION-': 0,
     '--time_start': DEFAULT_TIME_START,
     '--time_end': '',
     '--conf_threshold': str(DEFAULT_CONF_THRESHOLD),
@@ -745,6 +823,9 @@ def save_settings(window, values):
     selected_display_name = values.get('-SUBTITLE_POS_COMBO-')
     internal_pos_value = display_name_to_internal_map.get(selected_display_name, default_internal_subtitle_position)
     settings_to_save['-SUBTITLE_POS_COMBO-'] = internal_pos_value
+
+    current_idx = window['-POST_ACTION-'].Widget.current()
+    settings_to_save['-POST_ACTION-'] = current_idx
 
     selected_lang_display_name = values.get('-UI_LANG_COMBO-')
     if selected_lang_display_name in available_languages:
@@ -792,6 +873,9 @@ def load_settings(window):
 
                 saved_internal_pos = config.get(CONFIG_SECTION, '-SUBTITLE_POS_COMBO-', fallback=default_internal_subtitle_position)
                 update_subtitle_pos_combo(window, saved_internal_pos)
+
+                saved_idx = config.getint(CONFIG_SECTION, '-POST_ACTION-', fallback=0)
+                update_post_action_combo(window, saved_idx)
 
                 code_to_native_name_map = {v: k for k, v in available_languages.items()}
                 display_lang = code_to_native_name_map.get(saved_lang_code, 'English')
@@ -866,6 +950,7 @@ def load_settings(window):
         window['-UI_LANG_COMBO-'].update(value='English')
 
         update_subtitle_pos_combo(window)
+        update_post_action_combo(window)
 
         default_settings = get_default_settings()
         config.add_section(CONFIG_SECTION)
@@ -981,6 +1066,8 @@ def handle_progress(match, label_format_key, last_percentage, log_threshold, tas
 
     if not hasattr(handle_progress, "last_key"):
         handle_progress.last_key = None
+    if not hasattr(handle_progress, "last_item"):
+        handle_progress.last_item = 0
     if not hasattr(handle_progress, "start_time"):
         handle_progress.start_time = None
 
@@ -999,8 +1086,12 @@ def handle_progress(match, label_format_key, last_percentage, log_threshold, tas
 
     current_percent = (current_item / total_items) * 100 if total_items > 0 else 0
     smooth_threshold = 0.1
+    min_item_delta = 10
 
-    if current_item == 1 or current_percent >= last_percentage + smooth_threshold or current_percent >= 100:
+    item_delta = current_item - handle_progress.last_item
+    percent_threshold = last_percentage + smooth_threshold
+
+    if (current_item == 1 or current_percent >= 100 or (current_percent >= percent_threshold and item_delta >= min_item_delta)):
 
         current_time = time.time()
 
@@ -1059,6 +1150,7 @@ def handle_progress(match, label_format_key, last_percentage, log_threshold, tas
                 progress_value = taskbar_base + 1
             gui_queue.put(('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': progress_value}))
 
+        handle_progress.last_item = current_item
         return current_percent
     return last_percentage
 
@@ -1538,6 +1630,48 @@ def set_system_awake(should_be_awake: bool):
                 current_wake_lock = None
 
 
+def execute_post_completion_action(window, icon=None):
+    """Executes the selected system action based on the Combo box index."""
+    if getattr(window, 'cancelled_by_user', False):
+        return
+
+    selected_index = window['-POST_ACTION-'].Widget.current()
+    if selected_index <= 0:
+        return
+
+    action_key = POST_ACTION_KEYS[selected_index]
+    display_text = LANG.get(action_key, DEFAULT_ACTION_TEXTS[action_key])
+
+    proceed = popup_post_action_countdown(window, display_text, icon=icon)
+
+    if not proceed:
+        cancel_msg = LANG.get('log_action_cancelled', "Post-completion action cancelled by user.")
+        window['-OUTPUT-'].update(f'\n{cancel_msg}\n', append=True)
+        return
+
+    log_msg = LANG.get('log_post_action', "Executing post-completion action: {}").format(display_text)
+    window['-OUTPUT-'].update(f'\n{log_msg}\n', append=True)
+
+    system_os = platform.system()
+
+    if action_key == 'action_shutdown':
+        if system_os == "Windows":
+            os.system("shutdown /s /t 0")
+        else:
+            os.system("shutdown -h now")
+    elif action_key == 'action_sleep':
+        if system_os == "Windows":
+            os.system("rundll32.exe powrprof.dll,SetSuspendState 0,1,0")
+        else:
+            os.system("systemctl suspend")
+    elif action_key == 'action_hibernate':
+        if system_os == "Windows":
+            os.system("shutdown /h")
+    elif action_key == 'action_lock':
+        if system_os == "Windows":
+            os.system("rundll32.exe user32.dll,LockWorkStation")
+
+
 available_languages = get_available_languages()
 ui_language_display_names = sorted(list(available_languages.keys()))
 
@@ -1606,7 +1740,10 @@ tab1_content = [
     ],
     [sg.ProgressBar(100, orientation='h', size=(1, 20), key="-PROGRESS-BAR-", expand_x=True)],
     [sg.Text("Log:", key='-LBL-LOG-')],
-    [sg.Multiline(key="-OUTPUT-", size=(None, 7), expand_x=True, autoscroll=True, reroute_stdout=False, reroute_stderr=False, write_only=True, disabled=True)]
+    [sg.Multiline(key="-OUTPUT-", size=(None, 7), expand_x=True, autoscroll=True, reroute_stdout=False, reroute_stderr=False, write_only=True, disabled=True)],
+    [sg.Push(),
+     sg.Text("When ready:", key='-LBL-WHEN_READY-'),
+     sg.Combo([], key='-POST_ACTION-', readonly=True, enable_events=True, size=(20, 1))]
 ]
 tab1_layout = [[sg.Column(tab1_content,
                            size_subsample_height=1,
@@ -1736,7 +1873,18 @@ if platform.system() == "Windows":
 else:
     ICON_PATH = os.path.join(APP_DIR, 'VideOCR.png')
 
-window = sg.Window("VideOCR", layout, icon=ICON_PATH, finalize=True, resizable=True)
+y_offset = 0
+
+if platform.system() == "Windows":
+    SM_CYCAPTION = 4
+    SM_CYFRAME = 33
+
+    caption = ctypes.windll.user32.GetSystemMetrics(SM_CYCAPTION)
+    frame = ctypes.windll.user32.GetSystemMetrics(SM_CYFRAME)
+
+    y_offset = -(caption + frame) // 2
+
+window = sg.Window("VideOCR", layout, relative_location=(0, y_offset), icon=ICON_PATH, finalize=True, resizable=True)
 
 # --- Load settings when the application starts ---
 load_settings(window)
@@ -1956,6 +2104,7 @@ KEYS_TO_AUTOSAVE = [
     '--check_for_updates',
     'prevent_system_sleep',
     '--normalize_to_simplified_chinese',
+    '-POST_ACTION-',
 ]
 
 window.is_drawing = False
@@ -2034,14 +2183,16 @@ while True:
 
                     if hasattr(window, '_videocr_process_pid'):
                         del window._videocr_process_pid
-                    if hasattr(window, 'cancelled_by_user'):
-                        del window.cancelled_by_user
 
                     if taskbar_progress_supported:
                         prog.setState('normal')
                         prog.setProgress(0)
 
                     update_run_and_cancel_button_state(window, batch_queue)
+                    execute_post_completion_action(window, icon=ICON_PATH)
+
+                    if hasattr(window, 'cancelled_by_user'):
+                        del window.cancelled_by_user
 
         except queue.Empty:
             pass

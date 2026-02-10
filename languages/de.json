@@ -207,5 +207,18 @@
     "reason_metadata": "Metadaten-Fehler",
     "title_batch_report": "Batch-Bericht",
     "msg_batch_report_summary": "{} Videos hinzugefügt.\n\n{} Video(s) übersprungen:\n",
-    "msg_and_others": "...und weitere."
+    "msg_and_others": "...und weitere.",
+
+    "lbl_when_ready": "Wenn fertig:",
+    "action_none": "Nichts tun",
+    "action_sleep": "Energie sparen",
+    "action_hibernate": "Ruhezustand",
+    "action_shutdown": "Herunterfahren",
+    "action_lock": "Sperren",
+    "log_post_action": "Führe Abschlussaktion aus: {}",
+    "tip_post_action": "Wählen Sie eine Aktion aus, die nach Abschluss der Warteschlange ausgeführt werden soll.",
+    "title_countdown": "Handlung erforderlich",
+    "lbl_action_countdown": "Das System führt '{}' in {} Sekunden aus.",
+    "btn_proceed": "Jetzt fortfahren",
+    "log_action_cancelled": "Abschlussaktion vom Benutzer abgebrochen."
 }

@@ -207,5 +207,18 @@
     "reason_metadata": "خطأ في البيانات الوصفية",
     "title_batch_report": "تقرير الدفعة",
     "msg_batch_report_summary": "تمت إضافة {} فيديو.\n\nتم تخطي {} فيديو:\n",
-    "msg_and_others": "...وغيرها."
+    "msg_and_others": "...وغيرها.",
+
+    "lbl_when_ready": "عند الانتهاء:",
+    "action_none": "لا تفعل شيئاً",
+    "action_sleep": "سكون",
+    "action_hibernate": "إسبات",
+    "action_shutdown": "إيقاف التشغيل",
+    "action_lock": "قفل",
+    "log_post_action": "جارٍ تنفيذ إجراء ما بعد الانتهاء: {}",
+    "tip_post_action": "اختر إجراءً لتنفيذه عند انتهاء قائمة الانتظار.",
+    "title_countdown": "إجراء مطلوب",
+    "lbl_action_countdown": "سيقوم النظام بتنفيذ '{}' خلال {} ثانية.",
+    "btn_proceed": "تابع الآن",
+    "log_action_cancelled": "تم إلغاء إجراء ما بعد الانتهاء من قبل المستخدم."
 }

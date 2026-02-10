@@ -207,5 +207,18 @@
     "reason_metadata": "Error Metadata",
     "title_batch_report": "Laporan Batch",
     "msg_batch_report_summary": "Ditambahkan {} video.\n\nDilewati {} video:\n",
-    "msg_and_others": "...dan lain-lain."
+    "msg_and_others": "...dan lain-lain.",
+
+    "lbl_when_ready": "Setelah selesai:",
+    "action_none": "Tidak melakukan apa-apa",
+    "action_sleep": "Tidur",
+    "action_hibernate": "Hibernasi",
+    "action_shutdown": "Matikan",
+    "action_lock": "Kunci",
+    "log_post_action": "Menjalankan tindakan pasca-penyelesaian: {}",
+    "tip_post_action": "Pilih tindakan yang akan dilakukan setelah antrean batch selesai.",
+    "title_countdown": "Tindakan Diperlukan",
+    "lbl_action_countdown": "Sistem akan menjalankan '{}' dalam {} detik.",
+    "btn_proceed": "Lanjutkan Sekarang",
+    "log_action_cancelled": "Tindakan pasca-penyelesaian dibatalkan oleh pengguna."
 }

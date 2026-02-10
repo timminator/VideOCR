@@ -207,5 +207,18 @@
     "reason_metadata": "Error de metadatos",
     "title_batch_report": "Informe del lote",
     "msg_batch_report_summary": "Se añadieron {} videos.\n\nSe omitieron {} video(s):\n",
-    "msg_and_others": "...y otros."
+    "msg_and_others": "...y otros.",
+
+    "lbl_when_ready": "Al finalizar:",
+    "action_none": "No hacer nada",
+    "action_sleep": "Suspender",
+    "action_hibernate": "Hibernar",
+    "action_shutdown": "Apagar",
+    "action_lock": "Bloquear",
+    "log_post_action": "Ejecutando acción posterior a la finalización: {}",
+    "tip_post_action": "Seleccione una acción para realizar cuando termine la cola por lotes.",
+    "title_countdown": "Acción requerida",
+    "lbl_action_countdown": "El sistema ejecutará '{}' en {} segundos.",
+    "btn_proceed": "Proceder ahora",
+    "log_action_cancelled": "Acción posterior a la finalización cancelada por el usuario."
 }

@@ -207,5 +207,18 @@
     "reason_metadata": "Metadata Error",
     "title_batch_report": "Batch Report",
     "msg_batch_report_summary": "Added {} videos.\n\nSkipped {} video(s):\n",
-    "msg_and_others": "...and others."
+    "msg_and_others": "...and others.",
+
+    "lbl_when_ready": "When ready:",
+    "action_none": "Do Nothing",
+    "action_sleep": "Sleep",
+    "action_hibernate": "Hibernate",
+    "action_shutdown": "Shutdown",
+    "action_lock": "Lock",
+    "log_post_action": "Executing post-completion action: {}",
+    "tip_post_action": "Select an action to perform when the batch queue finishes.",
+    "title_countdown": "Action Required",
+    "lbl_action_countdown": "System will execute '{}' in {} seconds.",
+    "btn_proceed": "Proceed Now",
+    "log_action_cancelled": "Post-completion action cancelled by user."
 }

@@ -207,5 +207,18 @@
     "reason_metadata": "Lỗi siêu dữ liệu",
     "title_batch_report": "Báo Cáo Hàng Đợi",
     "msg_batch_report_summary": "Đã thêm {} video.\n\nĐã bỏ qua {} video:\n",
-    "msg_and_others": "...và những cái khác."
+    "msg_and_others": "...và những cái khác.",
+
+    "lbl_when_ready": "Khi hoàn tất:",
+    "action_none": "Không làm gì",
+    "action_sleep": "Ngủ",
+    "action_hibernate": "Ngủ đông",
+    "action_shutdown": "Tắt máy",
+    "action_lock": "Khóa",
+    "log_post_action": "Đang thực hiện hành động sau khi hoàn tất: {}",
+    "tip_post_action": "Chọn hành động sẽ thực hiện khi hàng đợi hoàn tất.",
+    "title_countdown": "Yêu cầu hành động",
+    "lbl_action_countdown": "Hệ thống sẽ thực hiện '{}' trong {} giây nữa.",
+    "btn_proceed": "Tiến hành ngay",
+    "log_action_cancelled": "Hành động sau khi hoàn tất đã bị người dùng hủy."
 }

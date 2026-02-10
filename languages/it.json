@@ -207,5 +207,18 @@
     "reason_metadata": "Errore metadati",
     "title_batch_report": "Rapporto lotto",
     "msg_batch_report_summary": "Aggiunti {} video.\n\nSaltati {} video:\n",
-    "msg_and_others": "...e altri."
+    "msg_and_others": "...e altri.",
+
+    "lbl_when_ready": "Al termine:",
+    "action_none": "Non fare nulla",
+    "action_sleep": "Sospendi",
+    "action_hibernate": "Ibernazione",
+    "action_shutdown": "Arresta",
+    "action_lock": "Blocca",
+    "log_post_action": "Esecuzione azione post-completamento: {}",
+    "tip_post_action": "Seleziona un'azione da eseguire al termine della coda batch.",
+    "title_countdown": "Azione richiesta",
+    "lbl_action_countdown": "Il sistema eseguirà '{}' tra {} secondi.",
+    "btn_proceed": "Procedi ora",
+    "log_action_cancelled": "Azione post-completamento annullata dall'utente."
 }

@@ -207,5 +207,18 @@
     "reason_metadata": "Ошибка метаданных",
     "title_batch_report": "Отчет Пакета",
     "msg_batch_report_summary": "Добавлено видео: {}.\n\nПропущено видео: {}:\n",
-    "msg_and_others": "...и другие."
+    "msg_and_others": "...и другие.",
+
+    "lbl_when_ready": "По готовности:",
+    "action_none": "Ничего не делать",
+    "action_sleep": "Сон",
+    "action_hibernate": "Гибернация",
+    "action_shutdown": "Завершение работы",
+    "action_lock": "Блокировка",
+    "log_post_action": "Выполнение действия после завершения: {}",
+    "tip_post_action": "Выберите действие, которое нужно выполнить после завершения очереди.",
+    "title_countdown": "Требуется действие",
+    "lbl_action_countdown": "Система выполнит '{}' через {} секунд.",
+    "btn_proceed": "Продолжить",
+    "log_action_cancelled": "Действие после завершения отменено пользователем."
 }
