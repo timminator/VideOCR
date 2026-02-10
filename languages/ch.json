@@ -220,5 +220,12 @@
     "title_countdown": "需要操作",
     "lbl_action_countdown": "系统将在 {} 秒后执行 '{}'。",
     "btn_proceed": "立即执行",
-    "log_action_cancelled": "用户取消了完成后操作。"
+    "log_action_cancelled": "用户取消了完成后操作。",
+
+    "status_pending": "等待中",
+    "status_processing": "处理中",
+    "status_completed": "已完成",
+    "status_cancelled_queue": "已取消",
+    "status_error": "错误",
+    "status_paused": "已暂停"
 }

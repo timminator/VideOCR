@@ -220,5 +220,12 @@
     "title_countdown": "Action Required",
     "lbl_action_countdown": "System will execute '{}' in {} seconds.",
     "btn_proceed": "Proceed Now",
-    "log_action_cancelled": "Post-completion action cancelled by user."
+    "log_action_cancelled": "Post-completion action cancelled by user.",
+
+    "status_pending": "Pending",
+    "status_processing": "Processing",
+    "status_completed": "Completed",
+    "status_cancelled_queue": "Cancelled",
+    "status_error": "Error",
+    "status_paused": "Paused"
 }

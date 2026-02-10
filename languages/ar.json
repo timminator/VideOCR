@@ -220,5 +220,12 @@
     "title_countdown": "إجراء مطلوب",
     "lbl_action_countdown": "سيقوم النظام بتنفيذ '{}' خلال {} ثانية.",
     "btn_proceed": "تابع الآن",
-    "log_action_cancelled": "تم إلغاء إجراء ما بعد الانتهاء من قبل المستخدم."
+    "log_action_cancelled": "تم إلغاء إجراء ما بعد الانتهاء من قبل المستخدم.",
+
+    "status_pending": "قيد الانتظار",
+    "status_processing": "جارٍ المعالجة",
+    "status_completed": "مكتمل",
+    "status_cancelled_queue": "تم الإلغاء",
+    "status_error": "خطأ",
+    "status_paused": "متوقف مؤقتاً"
 }

@@ -220,5 +220,12 @@
     "title_countdown": "Action requise",
     "lbl_action_countdown": "Le système exécutera '{}' dans {} secondes.",
     "btn_proceed": "Procéder maintenant",
-    "log_action_cancelled": "Action de fin annulée par l'utilisateur."
+    "log_action_cancelled": "Action de fin annulée par l'utilisateur.",
+
+    "status_pending": "Pendiente",
+    "status_processing": "Procesando",
+    "status_completed": "Completado",
+    "status_cancelled_queue": "Cancelado",
+    "status_error": "Error",
+    "status_paused": "Pausado"
 }

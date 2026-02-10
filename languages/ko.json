@@ -220,5 +220,12 @@
     "title_countdown": "조치 필요",
     "lbl_action_countdown": "시스템이 {} 초 후에 '{}' 작업을 수행합니다.",
     "btn_proceed": "지금 진행",
-    "log_action_cancelled": "사용자가 완료 후 작업을 취소했습니다."
+    "log_action_cancelled": "사용자가 완료 후 작업을 취소했습니다.",
+
+    "status_pending": "대기 중",
+    "status_processing": "처리 중",
+    "status_completed": "완료됨",
+    "status_cancelled_queue": "취소됨",
+    "status_error": "오류",
+    "status_paused": "일시 중지됨"
 }

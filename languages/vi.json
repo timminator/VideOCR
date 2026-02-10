@@ -220,5 +220,12 @@
     "title_countdown": "Yêu cầu hành động",
     "lbl_action_countdown": "Hệ thống sẽ thực hiện '{}' trong {} giây nữa.",
     "btn_proceed": "Tiến hành ngay",
-    "log_action_cancelled": "Hành động sau khi hoàn tất đã bị người dùng hủy."
+    "log_action_cancelled": "Hành động sau khi hoàn tất đã bị người dùng hủy.",
+
+    "status_pending": "Đang chờ",
+    "status_processing": "Đang xử lý",
+    "status_completed": "Hoàn thành",
+    "status_cancelled_queue": "Đã hủy",
+    "status_error": "Lỗi",
+    "status_paused": "Tạm dừng"
 }

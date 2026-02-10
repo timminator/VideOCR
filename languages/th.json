@@ -220,5 +220,12 @@
     "title_countdown": "ต้องดำเนินการ",
     "lbl_action_countdown": "ระบบจะดำเนินการ '{}' ในอีก {} วินาที",
     "btn_proceed": "ดำเนินการทันที",
-    "log_action_cancelled": "การดำเนินการหลังเสร็จสิ้นถูกยกเลิกโดยผู้ใช้"
+    "log_action_cancelled": "การดำเนินการหลังเสร็จสิ้นถูกยกเลิกโดยผู้ใช้",
+
+    "status_pending": "รอดำเนินการ",
+    "status_processing": "กำลังประมวลผล",
+    "status_completed": "เสร็จสมบูรณ์",
+    "status_cancelled_queue": "ยกเลิกแล้ว",
+    "status_error": "ข้อผิดพลาด",
+    "status_paused": "หยุดชั่วคราว"
 }

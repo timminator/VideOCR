@@ -220,5 +220,12 @@
     "title_countdown": "Azione richiesta",
     "lbl_action_countdown": "Il sistema eseguirà '{}' tra {} secondi.",
     "btn_proceed": "Procedi ora",
-    "log_action_cancelled": "Azione post-completamento annullata dall'utente."
+    "log_action_cancelled": "Azione post-completamento annullata dall'utente.",
+
+    "status_pending": "In attesa",
+    "status_processing": "Elaborazione",
+    "status_completed": "Completato",
+    "status_cancelled_queue": "Annullato",
+    "status_error": "Errore",
+    "status_paused": "In pausa"
 }

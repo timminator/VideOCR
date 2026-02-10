@@ -220,5 +220,12 @@
     "title_countdown": "アクションが必要です",
     "lbl_action_countdown": "システムは {} 秒後に '{}' を実行します。",
     "btn_proceed": "今すぐ続行",
-    "log_action_cancelled": "完了後のアクションはユーザーによってキャンセルされました。"
+    "log_action_cancelled": "完了後のアクションはユーザーによってキャンセルされました。",
+
+    "status_pending": "保留中",
+    "status_processing": "処理中",
+    "status_completed": "完了",
+    "status_cancelled_queue": "キャンセル済み",
+    "status_error": "エラー",
+    "status_paused": "一時停止"
 }

@@ -220,5 +220,12 @@
     "title_countdown": "Требуется действие",
     "lbl_action_countdown": "Система выполнит '{}' через {} секунд.",
     "btn_proceed": "Продолжить",
-    "log_action_cancelled": "Действие после завершения отменено пользователем."
+    "log_action_cancelled": "Действие после завершения отменено пользователем.",
+
+    "status_pending": "В ожидании",
+    "status_processing": "Обработка",
+    "status_completed": "Завершено",
+    "status_cancelled_queue": "Отменено",
+    "status_error": "Ошибка",
+    "status_paused": "Пауза"
 }

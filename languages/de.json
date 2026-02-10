@@ -220,5 +220,12 @@
     "title_countdown": "Handlung erforderlich",
     "lbl_action_countdown": "Das System führt '{}' in {} Sekunden aus.",
     "btn_proceed": "Jetzt fortfahren",
-    "log_action_cancelled": "Abschlussaktion vom Benutzer abgebrochen."
+    "log_action_cancelled": "Abschlussaktion vom Benutzer abgebrochen.",
+
+    "status_pending": "Ausstehend",
+    "status_processing": "Wird verarbeitet",
+    "status_completed": "Abgeschlossen",
+    "status_cancelled_queue": "Abgebrochen",
+    "status_error": "Fehler",
+    "status_paused": "Pausiert"
 }

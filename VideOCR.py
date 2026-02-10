@@ -287,6 +287,25 @@ DEFAULT_ACTION_TEXTS = {
     'action_lock': 'Lock'
 }
 
+# --- Status Translation Helpers ---
+INTERNAL_STATUS_TO_LANG_KEY = {
+    'Pending': 'status_pending',
+    'Processing': 'status_processing',
+    'Completed': 'status_completed',
+    'Cancelled': 'status_cancelled_queue',
+    'Error': 'status_error',
+    'Paused': 'status_paused'
+}
+
+DEFAULT_STATUS_TEXTS = {
+    'status_pending': 'Pending',
+    'status_processing': 'Processing',
+    'status_completed': 'Completed',
+    'status_cancelled_queue': 'Cancelled',
+    'status_error': 'Error',
+    'status_paused': 'Paused'
+}
+
 # --- Global Variables ---
 video_path = None
 original_frame_width = 0
@@ -348,7 +367,7 @@ def load_language(lang_code):
             exit()
 
 
-def update_gui_text(window):
+def update_gui_text(window, is_paused=False):
     """Updates all text elements in the GUI based on the loaded LANG dictionary."""
     if not LANG:
         return
@@ -378,14 +397,12 @@ def update_gui_text(window):
         '-LBL-WHEN_READY-': {'text': 'lbl_when_ready'},
         '-BTN-ADD-BATCH-': {'text': 'btn_add_to_queue'},
         '-BTN-BATCH-ADD-ALL-': {'text': 'btn_add_all_to_queue'},
-        '-BTN-PAUSE-': {'text': 'btn_pause'},
 
         # Queue Tab
         '-TAB-BATCH-': {'text': 'tab_batch'},
         '-LBL-QUEUE-TITLE-': {'text': 'lbl_queue_title'},
         '-BTN-BATCH-START-': {'text': 'btn_start_queue'},
         '-BTN-BATCH-STOP-': {'text': 'btn_stop_queue'},
-        '-BTN-BATCH-PAUSE-': {'text': 'btn_pause'},
         '-BTN-BATCH-UP-': {'tooltip': 'tip_batch_up'},
         '-BTN-BATCH-DOWN-': {'tooltip': 'tip_batch_down'},
         '-BTN-BATCH-RESET-': {'text': 'btn_reset', 'tooltip': 'tip_batch_reset'},
@@ -466,6 +483,16 @@ def update_gui_text(window):
             if 'tooltip' in lang_keys and lang_keys['tooltip'] in LANG:
                 element.SetTooltip(LANG[lang_keys['tooltip']])
 
+    if is_paused:
+        pause_btn_text = LANG.get('btn_resume', "Resume")
+    else:
+        pause_btn_text = LANG.get('btn_pause', "Pause")
+
+    if '-BTN-PAUSE-' in window.AllKeysDict:
+        window['-BTN-PAUSE-'].update(text=pause_btn_text)
+    if '-BTN-BATCH-PAUSE-' in window.AllKeysDict:
+        window['-BTN-BATCH-PAUSE-'].update(text=pause_btn_text)
+
     if '-BATCH-TABLE-' in window.AllKeysDict:
         try:
             table_widget = window['-BATCH-TABLE-'].Widget
@@ -474,6 +501,8 @@ def update_gui_text(window):
             table_widget.heading('#3', text=LANG.get('col_status', 'Status'))
         except Exception as e:
             log_error(f"Failed to update table headings: {e}")
+
+        refresh_batch_table(window)
 
     current_idx = window['-POST_ACTION-'].Widget.current()
     update_post_action_combo(window, current_idx)
@@ -682,14 +711,13 @@ def custom_popup_yes_no(parent_window, title, message, icon=None):
 
 
 def popup_post_action_countdown(parent_window, action_text, icon=None):
-    """
-    Displays a countdown popup relative to the parent window."""
+    """Displays a countdown popup relative to the parent window."""
     timeout_seconds = 60
 
     layout = [
-        [sg.Text(LANG.get('title_countdown', "Action Required"), font=("Segoe UI", 12, "bold"), pad=(0, 10))],
+        [sg.Text(LANG.get('title_countdown', "Action Required"), font=("Arial", 12, "bold"), pad=(0, 10))],
         [sg.Text(LANG.get('lbl_action_countdown', "System will execute '{}' in {} seconds.").format(action_text, timeout_seconds),
-                 key='-LBL-COUNTDOWN-', font=("Segoe UI", 10), pad=(10, 10))],
+                 key='-LBL-COUNTDOWN-', font=("Arial", 10), pad=(10, 10))],
         [sg.Push(),
          sg.Button(LANG.get('btn_proceed', "Proceed Now"), key='-BTN-PROCEED-', size=(12, 1)),
          sg.Button(LANG.get('btn_cancel', "Cancel"), key='-BTN-CANCEL-', size=(10, 1)),
@@ -774,6 +802,14 @@ def update_post_action_combo(window, selected_index=0):
         window['-POST_ACTION-'].update(value=display_values[selected_index])
     else:
         window['-POST_ACTION-'].update(value=display_values[0])
+
+
+def get_translated_status(internal_status):
+    """Translates internal status codes to display language."""
+    lang_key = INTERNAL_STATUS_TO_LANG_KEY.get(internal_status)
+    if lang_key:
+        return LANG.get(lang_key, DEFAULT_STATUS_TEXTS.get(lang_key, internal_status))
+    return internal_status
 
 
 # --- Settings Save/Load Functions ---
@@ -1578,6 +1614,33 @@ def run_batch_thread(window, queue_data):
     gui_queue.put(('-BATCH-FINISHED-', None))
 
 
+def update_queue_tab_count(window, queue):
+    """Updates the Queue tab title. Counts Pending, Processing, Cancelled, Paused."""
+    active_count = len([j for j in queue if j['status'] in ('Pending', 'Processing', 'Cancelled', 'Paused')])
+
+    base_title = LANG.get('tab_batch', 'Queue')
+    if active_count > 0:
+        new_title = f"{base_title} ({active_count})"
+    else:
+        new_title = base_title
+
+    try:
+        window['-TABGROUP-'].Widget.tab(window['-TAB-BATCH-'].Widget, text=new_title)
+    except Exception as e:
+        log_error(f"Failed to update tab title: {e}")
+
+
+def refresh_batch_table(window):
+    """Refreshes the batch table with translated status text."""
+    data = []
+    for item in batch_queue:
+        display_status = get_translated_status(item['status'])
+        data.append([item['filename'], item['output'], display_status])
+
+    window['-BATCH-TABLE-'].update(values=data)
+    update_queue_tab_count(window, batch_queue)
+
+
 def set_process_pause_state(pid, pause=True):
     """
     Pauses (suspends) or Resumes the process with the given PID
@@ -1670,6 +1733,69 @@ def execute_post_completion_action(window, icon=None):
     elif action_key == 'action_lock':
         if system_os == "Windows":
             os.system("rundll32.exe user32.dll,LockWorkStation")
+
+
+def update_run_and_cancel_button_state(window, queue):
+    """Updates the Run and Cancel button text based on whether there are PENDING items."""
+    has_pending = any(item['status'] == 'Pending' for item in queue)
+
+    if has_pending:
+        window['-BTN-RUN-'].update(text=LANG.get('btn_start_queue', "Start Queue"))
+        window['-BTN-CANCEL-'].update(text=LANG.get('btn_stop_queue', "Stop Queue"))
+    else:
+        window['-BTN-RUN-'].update(text=LANG.get('btn_run', 'Run'))
+        window['-BTN-CANCEL-'].update(text=LANG.get('btn_cancel', "Cancel"))
+
+
+def get_video_dimensions(file_path):
+    """
+    Returns (width, height) of the video file.
+    Returns (0, 0) if dimensions cannot be found.
+    """
+    try:
+        media_info = MediaInfo.parse(file_path)
+        for track in media_info.tracks:
+            if track.track_type == "Video":
+                return int(track.width), int(track.height)
+    except Exception:
+        pass
+    return 0, 0
+
+
+def check_crop_validity(video_path, args):
+    """
+    Checks if the crop coordinates in 'args' fit within the video dimensions.
+    Returns: (True, None) if valid.
+    Returns: (False, ErrorMessage) if invalid.
+    """
+    width, height = get_video_dimensions(video_path)
+    if width == 0 or height == 0:
+        return False, "Could not determine video dimensions."
+
+    def check_zone(x, y, w, h, zone_name=""):
+        if x >= width:
+            return LANG.get('err_crop_x_out', "{} X ({}) is outside video width ({}).").format(zone_name, x, width)
+        if y >= height:
+            return LANG.get('err_crop_y_out', "{} Y ({}) is outside video height ({}).").format(zone_name, y, height)
+        if x + w > width:
+            return LANG.get('err_crop_w_out', "{} extends out of bounds (X+W > Width).").format(zone_name)
+        if y + h > height:
+            return LANG.get('err_crop_h_out', "{} extends out of bounds (Y+H > Height).").format(zone_name)
+        return None
+
+    if 'crop_x' in args:
+        err = check_zone(int(args['crop_x']), int(args['crop_y']),
+                         int(args['crop_width']), int(args['crop_height']), "Zone 1")
+        if err:
+            return False, err
+
+    if 'crop_x2' in args:
+        err = check_zone(int(args['crop_x2']), int(args['crop_y2']),
+                         int(args['crop_width2']), int(args['crop_height2']), "Zone 2")
+        if err:
+            return False, err
+
+    return True, None
 
 
 available_languages = get_available_languages()
@@ -1874,7 +2000,6 @@ else:
     ICON_PATH = os.path.join(APP_DIR, 'VideOCR.png')
 
 y_offset = 0
-
 if platform.system() == "Windows":
     SM_CYCAPTION = 4
     SM_CYFRAME = 33
@@ -1996,85 +2121,6 @@ if not save_in_video_dir_checked_at_start:
     window['-BTN-FOLDER_BROWSE-'].update(disabled=False)
 
 
-def update_run_and_cancel_button_state(window, queue):
-    """Updates the Run and Cancel button text based on whether there are PENDING items."""
-    has_pending = any(item['status'] == 'Pending' for item in queue)
-
-    if has_pending:
-        window['-BTN-RUN-'].update(text=LANG.get('btn_start_queue', "Start Queue"))
-        window['-BTN-CANCEL-'].update(text=LANG.get('btn_stop_queue', "Stop Queue"))
-    else:
-        window['-BTN-RUN-'].update(text=LANG.get('btn_run', 'Run'))
-        window['-BTN-CANCEL-'].update(text=LANG.get('btn_cancel', "Cancel"))
-
-
-def update_queue_tab_count(window, queue):
-    """Updates the Queue tab title. Counts Pending, Processing, Cancelled, Paused."""
-    active_count = len([j for j in queue if j['status'] in ('Pending', 'Processing', 'Cancelled', 'Paused')])
-
-    base_title = LANG.get('tab_batch', 'Queue')
-    if active_count > 0:
-        new_title = f"{base_title} ({active_count})"
-    else:
-        new_title = base_title
-
-    try:
-        window['-TABGROUP-'].Widget.tab(window['-TAB-BATCH-'].Widget, text=new_title)
-    except Exception as e:
-        log_error(f"Failed to update tab title: {e}")
-
-
-def get_video_dimensions(file_path):
-    """
-    Returns (width, height) of the video file.
-    Returns (0, 0) if dimensions cannot be found.
-    """
-    try:
-        media_info = MediaInfo.parse(file_path)
-        for track in media_info.tracks:
-            if track.track_type == "Video":
-                return int(track.width), int(track.height)
-    except Exception:
-        pass
-    return 0, 0
-
-
-def check_crop_validity(video_path, args):
-    """
-    Checks if the crop coordinates in 'args' fit within the video dimensions.
-    Returns: (True, None) if valid.
-    Returns: (False, ErrorMessage) if invalid.
-    """
-    width, height = get_video_dimensions(video_path)
-    if width == 0 or height == 0:
-        return False, "Could not determine video dimensions."
-
-    def check_zone(x, y, w, h, zone_name=""):
-        if x >= width:
-            return LANG.get('err_crop_x_out', "{} X ({}) is outside video width ({}).").format(zone_name, x, width)
-        if y >= height:
-            return LANG.get('err_crop_y_out', "{} Y ({}) is outside video height ({}).").format(zone_name, y, height)
-        if x + w > width:
-            return LANG.get('err_crop_w_out', "{} extends out of bounds (X+W > Width).").format(zone_name)
-        if y + h > height:
-            return LANG.get('err_crop_h_out', "{} extends out of bounds (Y+H > Height).").format(zone_name)
-        return None
-
-    if 'crop_x' in args:
-        err = check_zone(int(args['crop_x']), int(args['crop_y']),
-                         int(args['crop_width']), int(args['crop_height']), "Zone 1")
-        if err:
-            return False, err
-
-    if 'crop_x2' in args:
-        err = check_zone(int(args['crop_x2']), int(args['crop_y2']),
-                         int(args['crop_width2']), int(args['crop_height2']), "Zone 2")
-        if err:
-            return False, err
-
-    return True, None
-
-
 # --- Define the list of keys that, when changed, should trigger a settings save ---
 KEYS_TO_AUTOSAVE = [
     '-UI_LANG_COMBO-',
@@ -2157,8 +2203,7 @@ while True:
                     send_notification(msg_data['title'], msg_data['message'])
 
                 elif msg_event == '-BATCH-REFRESH-':
-                    window['-BATCH-TABLE-'].update(values=[[i['filename'], i['output'], i['status']] for i in batch_queue])
-                    update_queue_tab_count(window, batch_queue)
+                    refresh_batch_table(window)
 
                 elif msg_event == '-BATCH-FINISHED-':
                     window.is_processing = False
@@ -2237,12 +2282,15 @@ while True:
         lang_code = available_languages.get(selected_native_name)
 
         if lang_code:
+            current_resume_text = LANG.get('btn_resume', "Resume")
+            was_paused = window['-BTN-PAUSE-'].get_text() == current_resume_text
+
             selected_pos_display_name = values['-SUBTITLE_POS_COMBO-']
             pos_display_to_internal_map = {LANG.get(lang_key, lang_key): internal_val for lang_key, internal_val in subtitle_positions_list}
             saved_internal_pos = pos_display_to_internal_map.get(selected_pos_display_name, default_internal_subtitle_position)
 
             load_language(lang_code)
-            update_gui_text(window)
+            update_gui_text(window, is_paused=was_paused)
 
             update_subtitle_pos_combo(window, saved_internal_pos)
 
@@ -2585,9 +2633,8 @@ while True:
             'args': args
         })
 
-        window['-BATCH-TABLE-'].update(values=[[i['filename'], i['output'], i['status']] for i in batch_queue])
+        refresh_batch_table(window)
         update_run_and_cancel_button_state(window, batch_queue)
-        update_queue_tab_count(window, batch_queue)
 
     elif event == "-BTN-BATCH-ADD-ALL-":
         all_videos = window['-VIDEO-LIST-'].Values
@@ -2660,9 +2707,8 @@ while True:
         total_frames = original_frames
         video_fps = original_fps
 
-        window['-BATCH-TABLE-'].update(values=[[i['filename'], i['output'], i['status']] for i in batch_queue])
+        refresh_batch_table(window)
         update_run_and_cancel_button_state(window, batch_queue)
-        update_queue_tab_count(window, batch_queue)
 
         if skipped_videos:
             msg = LANG.get('msg_batch_report_summary', "Added {} videos.\n\nSkipped {} video(s):\n").format(added_count, len(skipped_videos))
@@ -2714,7 +2760,8 @@ while True:
                 existing_status = batch_queue[existing_job_index]['status']
 
                 if existing_status in ('Cancelled', 'Error', 'Completed'):
-                    msg = LANG.get('popup_duplicate_msg', "A job for this output file already exists (Status: {}).\n\nDo you want to restart it with current settings?").format(existing_status)
+                    display_status = get_translated_status(existing_status)
+                    msg = LANG.get('popup_duplicate_msg', "A job for this output file already exists (Status: {}).\n\nDo you want to restart it with current settings?").format(display_status)
                     choice = custom_popup_yes_no(window, LANG.get('title_duplicate_job', "Duplicate Job"), msg, icon=ICON_PATH)
 
                     if choice == 'Yes':
@@ -2732,28 +2779,28 @@ while True:
                     'args': args
                 })
 
-            window['-BATCH-TABLE-'].update(values=[[i['filename'], i['output'], i['status']] for i in batch_queue])
-            update_queue_tab_count(window, batch_queue)
+            refresh_batch_table(window)
 
             if window['prevent_system_sleep'].get():
                 set_system_awake(True)
             start_queue(window, batch_queue)
 
-    elif event == "-BTN-BATCH-PAUSE-":
+    elif event in ("-BTN-BATCH-PAUSE-", "-BTN-PAUSE-"):
         pid = getattr(window, '_videocr_process_pid', None)
-
         if not pid:
             continue
 
-        is_currently_paused = window['-BTN-BATCH-PAUSE-'].get_text() == LANG.get('btn_resume', "Resume")
+        is_currently_paused = window[event].get_text() == LANG.get('btn_resume', "Resume")
 
         if is_currently_paused:
             if window['prevent_system_sleep'].get():
                 set_system_awake(True)
 
             if set_process_pause_state(pid, pause=False):
-                window['-BTN-BATCH-PAUSE-'].update(LANG.get('btn_pause', "Pause"))
-                window['-BTN-PAUSE-'].update(LANG.get('btn_pause', "Pause"))
+                for key in ('-BTN-PAUSE-', '-BTN-BATCH-PAUSE-'):
+                    if key in window.AllKeysDict:
+                        window[key].update(text=LANG.get('btn_pause', "Pause"))
+
                 window['-OUTPUT-'].update(LANG.get('status_resuming', "\nResuming process...\n"), append=True)
 
                 for job in batch_queue:
@@ -2764,8 +2811,10 @@ while True:
             set_system_awake(False)
 
             if set_process_pause_state(pid, pause=True):
-                window['-BTN-BATCH-PAUSE-'].update(LANG.get('btn_resume', "Resume"))
-                window['-BTN-PAUSE-'].update(LANG.get('btn_resume', "Resume"))
+                for key in ('-BTN-PAUSE-', '-BTN-BATCH-PAUSE-'):
+                    if key in window.AllKeysDict:
+                        window[key].update(text=LANG.get('btn_resume', "Resume"))
+
                 window['-OUTPUT-'].update(LANG.get('status_pausing', "\nPausing process...\n"), append=True)
 
                 for job in batch_queue:
@@ -2773,7 +2822,7 @@ while True:
                         job['status'] = 'Paused'
                         break
 
-        window['-BATCH-TABLE-'].update(values=[[i['filename'], i['output'], i['status']] for i in batch_queue])
+        refresh_batch_table(window)
 
     elif event == "-BTN-BATCH-CLEAR-":
         active_jobs = [j for j in batch_queue if j['status'] in ('Processing', 'Paused')]
@@ -2782,9 +2831,8 @@ while True:
         else:
             batch_queue.clear()
 
-        window['-BATCH-TABLE-'].update(values=[[i['filename'], i['output'], i['status']] for i in batch_queue])
+        refresh_batch_table(window)
         update_run_and_cancel_button_state(window, batch_queue)
-        update_queue_tab_count(window, batch_queue)
 
     elif event == "-BTN-BATCH-REMOVE-":
         rows = values['-BATCH-TABLE-']
@@ -2798,9 +2846,8 @@ while True:
             for i in sorted(rows, reverse=True):
                 del batch_queue[i]
 
-            window['-BATCH-TABLE-'].update(values=[[i['filename'], i['output'], i['status']] for i in batch_queue])
+            refresh_batch_table(window)
             update_run_and_cancel_button_state(window, batch_queue)
-            update_queue_tab_count(window, batch_queue)
 
     elif event == "-BTN-BATCH-UP-":
         rows = values['-BATCH-TABLE-']
@@ -2808,7 +2855,7 @@ while True:
             idx = rows[0]
             if idx > 0:
                 batch_queue[idx], batch_queue[idx - 1] = batch_queue[idx - 1], batch_queue[idx]
-                window['-BATCH-TABLE-'].update(values=[[i['filename'], i['output'], i['status']] for i in batch_queue])
+                refresh_batch_table(window)
                 window['-BATCH-TABLE-'].update(select_rows=[idx - 1])
 
     elif event == "-BTN-BATCH-DOWN-":
@@ -2817,7 +2864,7 @@ while True:
             idx = rows[0]
             if idx < len(batch_queue) - 1:
                 batch_queue[idx], batch_queue[idx + 1] = batch_queue[idx + 1], batch_queue[idx]
-                window['-BATCH-TABLE-'].update(values=[[i['filename'], i['output'], i['status']] for i in batch_queue])
+                refresh_batch_table(window)
                 window['-BATCH-TABLE-'].update(select_rows=[idx + 1])
 
     elif event == "-BTN-BATCH-RESET-":
@@ -2829,9 +2876,8 @@ while True:
             if status in ('Cancelled', 'Error', 'Completed'):
                 batch_queue[idx]['status'] = 'Pending'
 
-                window['-BATCH-TABLE-'].update(values=[[i['filename'], i['output'], i['status']] for i in batch_queue])
+                refresh_batch_table(window)
                 update_run_and_cancel_button_state(window, batch_queue)
-                update_queue_tab_count(window, batch_queue)
 
     elif event == "-BTN-BATCH-EDIT-":
         rows = values['-BATCH-TABLE-']
@@ -2934,9 +2980,8 @@ while True:
                     window["-BTN-CLEAR_CROP-"].update(disabled=False)
 
                 del batch_queue[idx]
-                window['-BATCH-TABLE-'].update(values=[[i['filename'], i['output'], i['status']] for i in batch_queue])
+                refresh_batch_table(window)
                 update_run_and_cancel_button_state(window, batch_queue)
-                update_queue_tab_count(window, batch_queue)
 
     # --- Clear Crop Button ---
     elif event == "-BTN-CLEAR_CROP-":
@@ -2946,42 +2991,6 @@ while True:
             graph.draw_image(data=current_image_bytes, location=(image_offset_x, image_offset_y))
         save_settings(window, values)
 
-    elif event == "-BTN-PAUSE-":
-        pid = getattr(window, '_videocr_process_pid', None)
-
-        if not pid:
-            continue
-
-        is_currently_paused = window['-BTN-PAUSE-'].get_text() == LANG.get('btn_resume', "Resume")
-
-        if is_currently_paused:
-            if window['prevent_system_sleep'].get():
-                set_system_awake(True)
-
-            if set_process_pause_state(pid, pause=False):
-                set_system_awake(False)
-
-                window['-BTN-BATCH-PAUSE-'].update(LANG.get('btn_pause', "Pause"))
-                window['-BTN-PAUSE-'].update(LANG.get('btn_pause', "Pause"))
-                window['-OUTPUT-'].update(LANG.get('status_resuming', "\nResuming process...\n"), append=True)
-
-                for job in batch_queue:
-                    if job['status'] == 'Paused':
-                        job['status'] = 'Processing'
-                        break
-        else:
-            if set_process_pause_state(pid, pause=True):
-                window['-BTN-BATCH-PAUSE-'].update(LANG.get('btn_resume', "Resume"))
-                window['-BTN-PAUSE-'].update(LANG.get('btn_resume', "Resume"))
-                window['-OUTPUT-'].update(LANG.get('status_pausing', "\nPausing process...\n"), append=True)
-
-                for job in batch_queue:
-                    if job['status'] == 'Processing':
-                        job['status'] = 'Paused'
-                        break
-
-        window['-BATCH-TABLE-'].update(values=[[i['filename'], i['output'], i['status']] for i in batch_queue])
-
     # --- Cancel Button Clicked ---
     elif event in ("-BTN-CANCEL-", "-BTN-BATCH-STOP-"):
         pid_to_kill = getattr(window, '_videocr_process_pid', None)
@@ -2990,7 +2999,7 @@ while True:
             window['-OUTPUT-'].update(LANG.get('status_cancelling', "\nCancelling process...\n"), append=True)
             window.refresh()
             try:
-                if window['-BTN-BATCH-PAUSE-'].get_text() == "Resume":
+                if window['-BTN-PAUSE-'].get_text() == LANG.get('btn_resume', "Resume"):
                     set_process_pause_state(pid_to_kill, pause=False)
 
                 kill_process_tree(pid_to_kill)

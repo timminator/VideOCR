@@ -220,5 +220,12 @@
     "title_countdown": "Tindakan Diperlukan",
     "lbl_action_countdown": "Sistem akan menjalankan '{}' dalam {} detik.",
     "btn_proceed": "Lanjutkan Sekarang",
-    "log_action_cancelled": "Tindakan pasca-penyelesaian dibatalkan oleh pengguna."
+    "log_action_cancelled": "Tindakan pasca-penyelesaian dibatalkan oleh pengguna.",
+
+    "status_pending": "Menunggu",
+    "status_processing": "Memproses",
+    "status_completed": "Selesai",
+    "status_cancelled_queue": "Dibatalkan",
+    "status_error": "Kesalahan",
+    "status_paused": "Dijeda"
 }
