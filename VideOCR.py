@@ -805,6 +805,14 @@ def update_subtitle_pos_combo(window, selected_internal_pos=None):
     window['-SUBTITLE_POS_COMBO-'].update(value=display_pos, values=translated_pos_names, size=(38, 4))
 
 
+def update_alignment_controls(window, values):
+    """Updates the subtitle alignment combo boxes based on current settings."""
+    is_checked = values.get('enable_subtitle_alignment', False)
+    is_dual_zone = values.get('--use_dual_zone', False)
+    window['--subtitle_alignment'].update(disabled=not is_checked)
+    window['--subtitle_alignment2'].update(disabled=not (is_checked and is_dual_zone))
+
+
 def update_post_action_combo(window, selected_index=0):
     """Refreshes the Post Action combo text and selects by numeric index."""
     display_values = [LANG.get(key, DEFAULT_ACTION_TEXTS[key]) for key in POST_ACTION_KEYS]
@@ -2341,18 +2349,10 @@ while True:
         if values is not None:
             save_settings(window, values)
 
-        if event == 'enable_subtitle_alignment':
-            is_checked = values['enable_subtitle_alignment']
-            is_dual_zone = values['--use_dual_zone']
-            window['--subtitle_alignment'].update(disabled=not is_checked)
-            window['--subtitle_alignment2'].update(disabled=not (is_checked and is_dual_zone))
+        if event in ('enable_subtitle_alignment', '--use_dual_zone'):
+            update_alignment_controls(window, values)
 
         if event == '--use_dual_zone' or event == '--use_fullframe':
-            if event == '--use_dual_zone':
-                is_checked = values['enable_subtitle_alignment']
-                is_dual_zone = values['--use_dual_zone']
-                window['--subtitle_alignment2'].update(disabled=not (is_checked and is_dual_zone))
-
             reset_crop_state()
             if video_path and current_image_bytes:
                 graph.erase()
