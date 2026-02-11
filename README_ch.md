@@ -96,6 +96,14 @@
 
   指定字幕在视频中的对齐方式，有助于提升识别准确率。
 
+- `subtitle_alignment`
+
+  （区域1）字幕对齐。此参数允许您使用ASS（Advanced SubStation Alpha）标签控制视频帧内字幕的位置。有效值包括：`bottom-left`、`bottom-center`、`bottom-right`、`middle-left`、`middle-center`、`middle-right`、`top-left`、`top-center`、`top-right`。
+
+- `subtitle_alignment2`
+
+  （区域2）字幕对齐。此参数与`--subtitle_alignment`功能相同，但当启用`--use_dual_zone`时应用于第二个OCR区域。
+
 - `conf_threshold`
 
   文字预测的置信度阈值。低于此值的文字将被忽略。默认值`75`适用于大多数场景。
