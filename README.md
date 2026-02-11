@@ -100,6 +100,14 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
 
   Specifies the alignment of subtitles in the video and allows for better text recognition.
 
+- `subtitle_alignment`
+
+  (Zone 1) Subtitle alignment. This parameter allows you to control the position of the subtitles within the video frame using ASS (Advanced SubStation Alpha) tags. Valid values are: `bottom-left`, `bottom-center`, `bottom-right`, `middle-left`, `middle-center`, `middle-right`, `top-left`, `top-center`, `top-right`.
+
+- `subtitle_alignment2`
+
+  (Zone 2) Subtitle alignment. This works identically to `--subtitle_alignment` but applies to the second OCR zone when `--use_dual_zone` is enabled.
+
 - `conf_threshold`
 
   Confidence threshold for word predictions. Words with lower confidence than this value will be discarded. The default value `75` is fine for most cases. 
