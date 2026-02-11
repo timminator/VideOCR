@@ -105,6 +105,23 @@ def valid_time_string(arg):
         raise argparse.ArgumentTypeError(f"Invalid time format '{arg}'. Use MM:SS or HH:MM:SS.") from None
 
 
+ALIGNMENT_MAP = {
+    'bottom-left': 'an1', 'bottom-center': 'an2', 'bottom-right': 'an3',
+    'middle-left': 'an4', 'middle-center': 'an5', 'middle-right': 'an6',
+    'top-left': 'an7', 'top-center': 'an8', 'top-right': 'an9',
+}
+VALID_ALIGNMENT_NAMES = set(ALIGNMENT_MAP.keys())
+
+
+def valid_alignment_name(arg):
+    if not arg:
+        return None
+    if arg in VALID_ALIGNMENT_NAMES:
+        return ALIGNMENT_MAP[arg]
+    allowed_values = ", ".join(sorted(list(VALID_ALIGNMENT_NAMES)))
+    raise argparse.ArgumentTypeError(f"Invalid alignment '{arg}'. Allowed values are: {allowed_values}")
+
+
 def main():
     parser = argparse.ArgumentParser(description='Extract subtitles from video using PaddleOCR.')
 
@@ -137,6 +154,8 @@ def main():
     parser.add_argument('--crop_y2', type=int, default=None, help='(Zone 2) Crop start Y')
     parser.add_argument('--crop_width2', type=int, default=None, help='(Zone 2) Crop width')
     parser.add_argument('--crop_height2', type=int, default=None, help='(Zone 2) Crop height')
+    parser.add_argument('--subtitle_alignment', type=valid_alignment_name, default=None, help='(Zone 1) Subtitle alignment. Allowed: bottom-left, bottom-center, bottom-right, middle-left, middle-center, middle-right, top-left, top-center, top-right')
+    parser.add_argument('--subtitle_alignment2', type=valid_alignment_name, default=None, help='(Zone 2) Subtitle alignment. See --subtitle_alignment for allowed values.')
     parser.add_argument('--allow_system_sleep', type=lambda x: x.lower() == 'true', default=False, help='Allow the system to sleep during processing (default: false)')
 
     args = parser.parse_args()
@@ -205,6 +224,7 @@ def main():
                 post_processing=args.post_processing,
                 min_subtitle_duration_sec=args.min_subtitle_duration,
                 ocr_image_max_width=args.ocr_image_max_width,
+                subtitle_alignments=[args.subtitle_alignment, args.subtitle_alignment2]
             )
     except ValueError as e:
         print(f"Error: {e}")

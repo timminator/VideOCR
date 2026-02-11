@@ -344,13 +344,25 @@ class Video:
         # Cleanup
         shutil.rmtree(temp_dir, ignore_errors=True)
 
-    def get_subtitles(self, sim_threshold: int, max_merge_gap_sec: float, lang: str, post_processing: bool, min_subtitle_duration_sec: float) -> str:
+    def get_subtitles(self, sim_threshold: int, max_merge_gap_sec: float, lang: str, post_processing: bool, min_subtitle_duration_sec: float, subtitle_alignments: list[str] | None = None) -> str:
         self._generate_subtitles(sim_threshold, max_merge_gap_sec, lang, post_processing, min_subtitle_duration_sec)
 
         srt_lines = []
         for i, sub in enumerate(self.pred_subs, 1):
             start_time, end_time = self._get_srt_timestamps(sub)
-            srt_lines.append(f'{i}\n{start_time} --> {end_time}\n{sub.text}\n\n')
+
+            text = sub.text
+            if subtitle_alignments:
+                # Prioritize the specific tag for the zone.
+                # Fallback to the tag for zone 1 if it exists.
+                tag_to_apply = subtitle_alignments[sub.zone_index] if len(subtitle_alignments) > sub.zone_index else None
+                if not tag_to_apply and subtitle_alignments:
+                    tag_to_apply = subtitle_alignments[0]
+
+                if tag_to_apply:
+                    text = f"{{\\{tag_to_apply}}}{text}"
+
+            srt_lines.append(f'{i}\n{start_time} --> {end_time}\n{text}\n\n')
 
         return ''.join(srt_lines)
 
