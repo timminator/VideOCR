@@ -1,7 +1,6 @@
 import datetime
 import os
 import platform
-import re
 import subprocess
 import sys
 
@@ -106,41 +105,6 @@ def extract_non_chinese_segments(text) -> list[tuple[str, str]]:
         segments.append(('non_chinese', current_segment))
 
     return segments
-
-
-# Converts sentences from the OCR's non-standard 'reversed visual' order to the correct 'logical' order.
-def convert_visual_to_logical(text: str) -> str:
-
-    ARABIC_CHARS = re.compile(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+')
-    ARABIC_TRAILING_PUNCT = re.compile(r'([،؟؛!,.:?()\'"]+)$')
-
-    words = text.split()
-    fixed_words = []
-    arabic_words = []
-
-    for w in words:
-        if ARABIC_CHARS.search(w):
-            m = ARABIC_TRAILING_PUNCT.search(w)
-            if m:
-                punct = m.group(1)
-                core_word = w[:-len(punct)]
-            else:
-                punct = ''
-                core_word = w
-
-            reversed_core = core_word[::-1]
-
-            arabic_words.append(reversed_core + punct)
-        else:
-            if arabic_words:
-                fixed_words.extend(arabic_words[::-1])
-                arabic_words = []
-            fixed_words.append(w)
-
-    if arabic_words:
-        fixed_words.extend(arabic_words[::-1])
-
-    return ' '.join(fixed_words)
 
 
 # finds the available PaddleOCR executable and returns its path

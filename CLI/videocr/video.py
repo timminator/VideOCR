@@ -15,7 +15,6 @@ import wordninja_enhanced as wordninja
 from pymediainfo import MediaInfo
 
 from . import utils
-from .lang_dictionaries import ARABIC_LANGS
 from .models import PredictedFrames, PredictedSubtitle
 from .pyav_adapter import Capture, get_video_properties
 
@@ -282,13 +281,8 @@ class Video:
                     try:
                         match = re.search(r"ppocr INFO:\s*(\[.+\])", line)
                         if match:
-                            ocr_data_raw = ast.literal_eval(match.group(1))
-                            if self.lang in ARABIC_LANGS:
-                                box, (text, score) = ocr_data_raw
-                                corrected_data = [box, (utils.convert_visual_to_logical(text), score)]
-                                ocr_outputs[current_image].append(corrected_data)
-                            else:
-                                ocr_outputs[current_image].append(ocr_data_raw)
+                            parsed = ast.literal_eval(match.group(1))
+                            ocr_outputs[current_image].append(parsed)
                     except Exception as e:
                         print(f"Error parsing OCR for {current_image}: {e}", flush=True)
         finally:

@@ -11,7 +11,7 @@ from pathlib import Path
 import requests
 
 # --- Configuration ---
-APP_VERSION = "1.4.0"
+APP_VERSION = "1.4.1"
 PADDLE_VERSION = "1.4.0"
 
 SUPPORT_FILES_URLS = {

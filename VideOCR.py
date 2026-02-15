@@ -9,9 +9,9 @@
 # Windows-specific metadata for the executable
 # nuitka-project-if: {OS} == "Windows":
 #     nuitka-project: --file-description="VideOCR"
-#     nuitka-project: --file-version="1.4.0"
+#     nuitka-project: --file-version="1.4.1"
 #     nuitka-project: --product-name="VideOCR-GUI"
-#     nuitka-project: --product-version="1.4.0"
+#     nuitka-project: --product-version="1.4.1"
 #     nuitka-project: --copyright="timminator"
 #     nuitka-project: --windows-icon-from-ico=Installer/VideOCR.ico
 
@@ -168,7 +168,7 @@ def find_videocr_program():
 
 
 # --- Configuration ---
-PROGRAM_VERSION = "1.4.0"
+PROGRAM_VERSION = "1.4.1"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 LANGUAGES_DIR = os.path.join(APP_DIR, 'languages')
 VIDEOCR_PATH = find_videocr_program()
