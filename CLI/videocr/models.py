@@ -8,6 +8,7 @@ from opencc import OpenCC
 from thefuzz import fuzz
 
 from . import utils
+from .lang_dictionaries import ARABIC_LANGS
 
 
 @dataclass
@@ -28,7 +29,7 @@ class PredictedFrames:
     _converter = OpenCC('t2s')
 
     def __init__(self, index: int, pred_data: list[list], conf_threshold: float, zone_index: int,
-                 lang: str, normalize_to_simplified_chinese: bool = True):
+                 lang: str, normalize_to_simplified_chinese: bool):
         self.start_index = index
         self.end_index = index
         self.zone_index = zone_index
@@ -63,8 +64,9 @@ class PredictedFrames:
 
         lines_of_words.sort(key=lambda line: min(p[1] for p in line[0].bounding_box))
 
+        is_rtl = lang in ARABIC_LANGS
         for line in lines_of_words:
-            line.sort(key=lambda word: word.bounding_box[0][0])
+            line.sort(key=lambda word: word.bounding_box[0][0], reverse=is_rtl)
 
         self.lines = lines_of_words
 
