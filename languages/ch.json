@@ -12,7 +12,7 @@
     "pos_left": "左对齐",
     "pos_right": "右对齐",
     "pos_any": "任意",
-    "tip_sub_pos": "选择视频字幕的对齐方式",
+    "tip_sub_pos": "选择视频中字幕的对齐方式（相对于可选的裁剪框）",
     "btn_how_to_use": "使用说明",
     "lbl_seek": "定位：",
     "frame_text_format": "帧：{} / {}",

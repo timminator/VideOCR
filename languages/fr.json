@@ -12,7 +12,7 @@
     "pos_left": "Gauche",
     "pos_right": "Droite",
     "pos_any": "N'importe",
-    "tip_sub_pos": "Sélectionnez l'alignement des sous-titres dans la vidéo",
+    "tip_sub_pos": "Sélectionnez l'alignement des sous-titres dans la vidéo (par rapport à une zone de recadrage facultative)",
     "btn_how_to_use": "Comment utiliser",
     "lbl_seek": "Aller à :",
     "frame_text_format": "Image : {} / {}",

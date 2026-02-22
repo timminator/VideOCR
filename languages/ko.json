@@ -12,7 +12,7 @@
     "pos_left": "왼쪽",
     "pos_right": "오른쪽",
     "pos_any": "임의",
-    "tip_sub_pos": "비디오에서 자막의 정렬을 선택하세요",
+    "tip_sub_pos": "비디오의 자막 정렬을 선택하세요 (선택 사항인 크롭 박스 기준)",
     "btn_how_to_use": "사용 방법",
     "lbl_seek": "탐색:",
     "frame_text_format": "프레임: {} / {}",

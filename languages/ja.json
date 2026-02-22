@@ -12,7 +12,7 @@
     "pos_left": "左",
     "pos_right": "右",
     "pos_any": "任意",
-    "tip_sub_pos": "ビデオ内の字幕の配置を選択",
+    "tip_sub_pos": "ビデオ内の字幕の配置を選択します（オプションのクロップボックスからの相対位置）",
     "btn_how_to_use": "使用方法",
     "lbl_seek": "シーク:",
     "frame_text_format": "フレーム: {} / {}",

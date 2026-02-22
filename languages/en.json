@@ -12,7 +12,7 @@
     "pos_left": "Left",
     "pos_right": "Right",
     "pos_any": "Any",
-    "tip_sub_pos": "Select the alignment of subtitles in the video",
+    "tip_sub_pos": "Select the alignment of subtitles in the video (relative to an optional crop box)",
     "btn_how_to_use": "How to Use",
     "lbl_seek": "Seek:",
     "frame_text_format": "Frame: {} / {}",

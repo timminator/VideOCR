@@ -12,7 +12,7 @@
     "pos_left": "Izquierda",
     "pos_right": "Derecha",
     "pos_any": "Cualquiera",
-    "tip_sub_pos": "Seleccione la alineación de los subtítulos en el video",
+    "tip_sub_pos": "Selecciona la alineación de los subtítulos en el video (relativa a un cuadro de recorte opcional)",
     "btn_how_to_use": "Cómo usar",
     "lbl_seek": "Buscar:",
     "frame_text_format": "Fotograma: {} / {}",

@@ -12,7 +12,7 @@
     "pos_left": "Kiri",
     "pos_right": "Kanan",
     "pos_any": "Sembarang",
-    "tip_sub_pos": "Pilih perataan subtitle dalam video",
+    "tip_sub_pos": "Pilih perataan teks dalam video (relatif terhadap kotak pemotongan opsional)",
     "btn_how_to_use": "Cara Penggunaan",
     "lbl_seek": "Cari:",
     "frame_text_format": "Frame: {} / {}",

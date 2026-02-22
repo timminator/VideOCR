@@ -12,7 +12,7 @@
     "pos_left": "Trái",
     "pos_right": "Phải",
     "pos_any": "Bất Kỳ",
-    "tip_sub_pos": "Chọn vị trí căn chỉnh của phụ đề trong video",
+    "tip_sub_pos": "Chọn căn lề của phụ đề trong video (tương đối với một hộp cắt tùy chọn)",
     "btn_how_to_use": "Hướng Dẫn Sử Dụng",
     "lbl_seek": "Tìm Kiếm:",
     "frame_text_format": "Khung Hình: {} / {}",

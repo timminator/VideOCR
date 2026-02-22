@@ -12,7 +12,7 @@
     "pos_left": "Esquerda",
     "pos_right": "Direita",
     "pos_any": "Qualquer",
-    "tip_sub_pos": "Selecione o alinhamento das legendas no vídeo",
+    "tip_sub_pos": "Selecione o alinhamento das legendas no vídeo (relativo a uma caixa de corte opcional)",
     "btn_how_to_use": "Como usar",
     "lbl_seek": "Ir para:",
     "frame_text_format": "Quadro: {} / {}",
