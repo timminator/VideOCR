@@ -139,6 +139,10 @@
   指定OCR区域的像素范围。示例见下图：
   ![image](https://github.com/timminator/VideOCR/raw/master/Pictures/crop_example.png)
 
+- `max_ocr_image_width`
+
+  在传递给OCR引擎之前缩小裁剪的图像帧，使其宽度不超过此设定值。较低的数值可缩短处理时间，但设置过低可能会降低OCR识别的准确率。
+
 - `use_gpu`
 
   设为`True`时，使用GPU进行OCR。

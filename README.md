@@ -136,12 +136,16 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
   
 - `use_dual_zone`
 
-  This parameter allows two specify two areas that will be used for OCR.
+  This parameter allows to specify two areas that will be used for OCR.
 
 - `crop_x(2)`, `crop_y(2)`, `crop_width(2)`, `crop_height(2)`
 
   Specifies the bounding area(s) in pixels for the portion of the frame that will be used for OCR. See image below for example:
   ![image](https://github.com/timminator/VideOCR/blob/master/Pictures/crop_example.png)
+
+- `max_ocr_image_width`
+
+  Downscales the cropped image frame so its width does not exceed this value before passing it to the OCR engine. A lower value shortens the processing time, but setting it too low can reduce OCR accuracy.
 
 - `use_gpu`
 
