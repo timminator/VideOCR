@@ -10,33 +10,43 @@ from pathlib import Path
 
 import requests
 
+from CLI.videocr import __version__
+
 # --- Configuration ---
-APP_VERSION = "1.4.1"
-PADDLE_VERSION = "1.4.0"
+APP_VERSION = __version__
 
 SUPPORT_FILES_URLS = {
-    "Windows": f"https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{PADDLE_VERSION}/PaddleOCR.PP-OCRv5.support.files.VideOCR.7z",
-    "Linux": f"https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{PADDLE_VERSION}/PaddleOCR.PP-OCRv5.support.files.VideOCR.tar.xz"
+    "Windows": "https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{version}/PaddleOCR.PP-OCRv5.support.files.VideOCR.7z",
+    "Linux": "https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{version}/PaddleOCR.PP-OCRv5.support.files.VideOCR.tar.xz"
 }
 
 PADDLE_URLS = {
     "Windows": {
-        "cpu": f"https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{PADDLE_VERSION}/PaddleOCR-CPU-v{PADDLE_VERSION}.7z",
-        "gpu-cuda11.8": f"https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{PADDLE_VERSION}/PaddleOCR-GPU-v{PADDLE_VERSION}-CUDA-11.8.7z",
-        "gpu-cuda12.9": f"https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{PADDLE_VERSION}/PaddleOCR-GPU-v{PADDLE_VERSION}-CUDA-12.9.7z",
+        "cpu": "https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{version}/PaddleOCR-CPU-v{version}.7z",
+        "gpu-cuda11.8": "https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{version}/PaddleOCR-GPU-v{version}-CUDA-11.8.7z",
+        "gpu-cuda12.9": "https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{version}/PaddleOCR-GPU-v{version}-CUDA-12.9.7z",
     },
     "Linux": {
-        "cpu": f"https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{PADDLE_VERSION}/PaddleOCR-CPU-v{PADDLE_VERSION}-Linux.7z",
-        "gpu-cuda11.8": f"https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{PADDLE_VERSION}/PaddleOCR-GPU-v{PADDLE_VERSION}-CUDA-11.8-Linux.7z",
+        "cpu": "https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{version}/PaddleOCR-CPU-v{version}-Linux.7z",
+        "gpu-cuda11.8": "https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{version}/PaddleOCR-GPU-v{version}-CUDA-11.8-Linux.7z",
         "gpu-cuda12.9": [
-            f"https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{PADDLE_VERSION}/PaddleOCR-GPU-v{PADDLE_VERSION}-CUDA-12.9-Linux.7z.001",
-            f"https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{PADDLE_VERSION}/PaddleOCR-GPU-v{PADDLE_VERSION}-CUDA-12.9-Linux.7z.002",
+            "https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{version}/PaddleOCR-GPU-v{version}-CUDA-12.9-Linux.7z.001",
+            "https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{version}/PaddleOCR-GPU-v{version}-CUDA-12.9-Linux.7z.002",
         ]
     }
 }
 
 
 # --- Helper Functions ---
+def get_latest_paddle_version():
+    url = "https://api.github.com/repos/timminator/PaddleOCR-Standalone/releases/latest"
+    r = requests.get(url, timeout=15)
+    r.raise_for_status()
+
+    tag = r.json()["tag_name"]
+    return tag.lstrip("v")
+
+
 def print_header(message):
     """Prints a formatted header."""
     print("\n" + "=" * 60)
@@ -259,7 +269,7 @@ def create_windows_installer(final_app_path, args):
 
 
 # --- Main Build Logic ---
-def package_target(build_target, args, releases_dir, base_gui_dist, base_cli_dist):
+def package_target(build_target, args, releases_dir, base_gui_dist, base_cli_dist, paddle_version):
     """Packages a single distribution for the specified target using pre-compiled files."""
 
     if "gpu" in build_target:
@@ -285,8 +295,16 @@ def package_target(build_target, args, releases_dir, base_gui_dist, base_cli_dis
 
     # Download and Extract Dependencies into the temporary CLI folder
     print_header(f"Downloading Dependencies for {display_target_name} target")
-    support_archive_path = download_file(SUPPORT_FILES_URLS[os_name], temp_cli_dist)
-    paddle_url = PADDLE_URLS[os_name][build_target]
+
+    # Format URLs dynamically using the fetched paddle_version
+    raw_support_url = SUPPORT_FILES_URLS[os_name]
+    support_archive_path = download_file(raw_support_url.format(version=paddle_version), temp_cli_dist)
+
+    raw_paddle_urls = PADDLE_URLS[os_name][build_target]
+    if isinstance(raw_paddle_urls, list):
+        paddle_url = [u.format(version=paddle_version) for u in raw_paddle_urls]
+    else:
+        paddle_url = raw_paddle_urls.format(version=paddle_version)
     paddle_archive_path = download_file(paddle_url, temp_cli_dist)
 
     extract_archive(support_archive_path, temp_cli_dist)
@@ -402,6 +420,8 @@ def main():
     check_dbus()
     check_7zip()
 
+    paddle_version = get_latest_paddle_version()
+
     releases_dir = Path("Releases")
     if releases_dir.exists():
         print_header("Cleaning previous build artifacts")
@@ -449,7 +469,7 @@ def main():
         targets_to_build = [args.target]
 
     for i, build_target in enumerate(targets_to_build):
-        package_target(build_target, args, releases_dir, gui_dist_folder, cli_dist_folder)
+        package_target(build_target, args, releases_dir, gui_dist_folder, cli_dist_folder, paddle_version)
         if i < len(targets_to_build) - 1:
             if "gpu" in build_target:
                 completed_target_name = build_target.replace("gpu-", "GPU-").replace("cuda", "CUDA-")

@@ -82,7 +82,6 @@ Type: files; Name: "{app}\pywintypes312.dll"
 Type: files; Name: "{app}\mfc140u.dll"
 Type: files; Name: "{app}\_win32sysloader.pyd"
 Type: filesandordirs; Name: "{app}\videocr-cli-*"
-Type: files; Name: "{app}\videocr_gui_config.ini"
 
 [UninstallDelete]
 Type: files; Name: "{app}\videocr_gui_config.ini"
@@ -157,7 +156,7 @@ begin
   begin
     OldVersion := GetInstalledVersion();
 
-    if VersionCompare(OldVersion, '1.3.1') < 0 then
+    if VersionCompare(OldVersion, '1.4.1') < 0 then
     begin
       ConfigPath := ExpandConstant('{app}\\videocr_gui_config.ini');
       if FileExists(ConfigPath) then

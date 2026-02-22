@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "VideOCR"
-version = "1.4.1"
+dynamic = ["version"]
 description = "Extract hardcoded subtitles from videos via a simple GUI using machine learning."
 readme = "README.md"
 license = "MIT"
@@ -39,7 +39,7 @@ dependencies = [
 dev = [
     "ruff",
     "pre-commit",
-    "nuitka",
+    "nuitka @ git+https://github.com/Nuitka/Nuitka.git@8a4e61d25d7c40a9728227686a546e6999e8c1c5",
     "requests"
 ]
 
@@ -51,6 +51,9 @@ Issues = "https://github.com/timminator/VideOCR/issues"
 
 [tool.setuptools]
 packages = []
+
+[tool.setuptools.dynamic]
+version = { attr = "CLI.videocr._version.__version__" }
 
 [tool.ruff]
 exclude = ["build", "venv", ".venv", "__pycache__"]

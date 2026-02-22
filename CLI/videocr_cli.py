@@ -1,5 +1,6 @@
 # Compilation instructions
 # nuitka-project: --standalone
+# nuitka-project: --include-windows-runtime-dlls=yes
 # nuitka-project-if: {OS} == "Windows":
 #     nuitka-project: --output-filename=videocr-cli
 # nuitka-project-if: {OS} == "Linux":
@@ -7,22 +8,63 @@
 
 # Windows-specific metadata for the executable
 # nuitka-project-if: {OS} == "Windows":
+#     nuitka-project-set: APP_VERSION = __import__("videocr._version")._version.__version__
 #     nuitka-project: --file-description="VideOCR CLI"
-#     nuitka-project: --file-version="1.4.1"
+#     nuitka-project: --file-version={APP_VERSION}
 #     nuitka-project: --product-name="VideOCR-CLI"
-#     nuitka-project: --product-version="1.4.1"
+#     nuitka-project: --product-version={APP_VERSION}
 #     nuitka-project: --copyright="timminator"
 
 import argparse
+import os
 import sys
 from contextlib import nullcontext
 
 from wakepy import keep
 
 from videocr import save_subtitles_to_file, utils
+from videocr.lang_dictionaries import (
+    ARABIC_LANGS,
+    CYRILLIC_LANGS,
+    DEVANAGARI_LANGS,
+    ESLAV_LANGS,
+    LATIN_LANGS,
+    SPECIFIC_LANGS,
+)
+
+SUPPORTED_LANGUAGES = (
+    SPECIFIC_LANGS
+    | LATIN_LANGS
+    | ARABIC_LANGS
+    | ESLAV_LANGS
+    | CYRILLIC_LANGS
+    | DEVANAGARI_LANGS
+)
 
 
 # custom validators for argparse
+def valid_video_path(arg):
+    if not os.path.isfile(arg):
+        raise argparse.ArgumentTypeError(f"Video file does not exist or is not a valid file: '{arg}'")
+    return arg
+
+
+def valid_output_path(arg):
+    dir_name = os.path.dirname(arg) or '.'
+    if not os.path.isdir(dir_name):
+        raise argparse.ArgumentTypeError(f"Output directory does not exist: '{dir_name}'")
+    if not os.access(dir_name, os.W_OK):
+        raise argparse.ArgumentTypeError(f"Output directory is not writable: '{dir_name}'")
+    return arg
+
+
+def valid_language(arg):
+    lang = arg.lower()
+    if lang not in SUPPORTED_LANGUAGES:
+        raise argparse.ArgumentTypeError(f"Unsupported OCR language code: '{arg}'")
+    return lang
+
+
 def restricted_int(min_val=None, max_val=None):
     def validator(arg):
         try:
@@ -66,9 +108,9 @@ def valid_time_string(arg):
 def main():
     parser = argparse.ArgumentParser(description='Extract subtitles from video using PaddleOCR.')
 
-    parser.add_argument('--video_path', type=str, required=True, help='Path to the video file')
-    parser.add_argument('--output', type=str, default='subtitle.srt', help='Output SRT file path (default: subtitle.srt)')
-    parser.add_argument('--lang', type=str, default='ch', help='OCR language (default: ch)')
+    parser.add_argument('--video_path', type=valid_video_path, required=True, help='Path to the video file')
+    parser.add_argument('--output', type=valid_output_path, default='subtitle.srt', help='Output SRT file path (default: subtitle.srt)')
+    parser.add_argument('--lang', type=valid_language, default='ch', help='OCR language (default: ch)')
     parser.add_argument('--time_start', type=valid_time_string, default='0:00', help='Start time (MM:SS or HH:MM:SS)')
     parser.add_argument('--time_end', type=valid_time_string, default='', help='End time (MM:SS or HH:MM:SS)')
     parser.add_argument('--conf_threshold', type=restricted_int(0, 100), default=75, help='Confidence threshold (default: 75)')
@@ -85,7 +127,7 @@ def main():
     parser.add_argument('--normalize_to_simplified_chinese', type=lambda x: x.lower() == 'true', default=True, help='Normalize Traditional Chinese characters to Simplified Chinese for ch (default: true)')
     parser.add_argument('--post_processing', type=lambda x: x.lower() == 'true', default=False, help='Enable post processing of subtitles (default: false)')
     parser.add_argument('--min_subtitle_duration', type=restricted_float(min_val=0.0), default=0.2, help='Minimum subtitle duration in seconds (default: 0.2)')
-    parser.add_argument('--ocr_image_max_width', type=restricted_int(min_val=1), default=1280, help='Maximum image width used for OCR (default: 1280)')
+    parser.add_argument('--ocr_image_max_width', type=restricted_int(min_val=1), default=960, help='Maximum image width used for OCR (default: 960)')
     parser.add_argument('--use_dual_zone', type=lambda x: x.lower() == 'true', default=False, help='Enable dual zone OCR processing (default: false)')
     parser.add_argument('--crop_x', type=int, default=None, help='(Zone 1) Crop start X')
     parser.add_argument('--crop_y', type=int, default=None, help='(Zone 1) Crop start Y')

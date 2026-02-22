@@ -118,3 +118,16 @@ DEVANAGARI_LANGS = {
     "sa",
     "bgc"
 }
+
+SPECIFIC_LANGS = {
+    "ch",
+    "chinese_cht",
+    "japan",
+    "en",
+    "korean",
+    "th",
+    "el",
+    "te",
+    "ta",
+    "ka"
+}

@@ -4,7 +4,7 @@ import platform
 import subprocess
 import sys
 
-from cpuid import cpuid, cpuid_count, xgetbv
+from cpuid import cpuid, xgetbv
 
 from .lang_dictionaries import (
     ARABIC_LANGS,
@@ -110,25 +110,17 @@ def extract_non_chinese_segments(text) -> list[tuple[str, str]]:
 # finds the available PaddleOCR executable and returns its path
 def find_paddleocr() -> str:
     program_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
-    base_folders = [
-        "PaddleOCR-CPU-v1.4.0",
-        "PaddleOCR-GPU-v1.4.0-CUDA-11.8",
-        "PaddleOCR-GPU-v1.4.0-CUDA-12.9"
-    ]
     program_name = "paddleocr"
-
     ext = ".exe" if platform.system() == "Windows" else ".bin"
-
     executable_name = f"{program_name}{ext}"
 
     for entry in os.listdir(program_dir):
-        for base in base_folders:
-            if entry.startswith(base):
-                path = os.path.join(program_dir, entry, executable_name)
-                if os.path.isfile(path):
-                    return path
+        if entry.startswith("PaddleOCR-"):
+            path = os.path.join(program_dir, entry, executable_name)
+            if os.path.isfile(path):
+                return path
 
-    raise FileNotFoundError(f"Could not find {executable_name} in any folder matching: {base_folders}")
+    raise FileNotFoundError(f"Could not find {executable_name} in any folder starting with 'PaddleOCR'")
 
 
 # resolves the model directory for the specified language and mode
@@ -178,15 +170,14 @@ def perform_hardware_check(paddleocr_path: str, use_gpu: bool) -> None:
     error_prefix = "Unsupported Hardware Error:"
     warning_prefix = "Hardware Check Warning:"
 
-    def has_avx2_and_fma() -> bool:
-        # CPUID leaf 1: AVX, OSXSAVE, FMA
+    def has_avx() -> bool:
+        # CPUID leaf 1: Check AVX and OSXSAVE flags
         _, _, ecx, _ = cpuid(1)
         osxsave = bool(ecx & (1 << 27))
         avx = bool(ecx & (1 << 28))
-        fma = bool(ecx & (1 << 12))
 
         # OS support check: XGETBV for YMM registers
-        ymm_supported = True
+        ymm_supported = False
         if osxsave:
             try:
                 xcr0 = xgetbv(0)
@@ -194,16 +185,12 @@ def perform_hardware_check(paddleocr_path: str, use_gpu: bool) -> None:
             except Exception:
                 ymm_supported = False
 
-        # CPUID leaf 7: AVX2
-        _, ebx, _, _ = cpuid_count(7, 0)
-        avx2 = bool(ebx & (1 << 5))
-
-        return osxsave and avx and avx2 and fma and ymm_supported
+        return avx and ymm_supported
 
     def check_cpu() -> None:
         try:
-            if not has_avx2_and_fma():
-                raise SystemExit(f"{error_prefix} CPU does not support AVX2 and/or FMA, which is required.")
+            if not has_avx():
+                raise SystemExit(f"{error_prefix} CPU or Operating System does not support the AVX instruction set, which is required.")
         except Exception as e:
             print(f"{warning_prefix} Could not determine CPU AVX support due to an error: {e}. Functionality is uncertain.", flush=True)
 

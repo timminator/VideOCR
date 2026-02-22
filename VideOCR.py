@@ -2,16 +2,18 @@
 # nuitka-project: --standalone
 # nuitka-project: --enable-plugin=tk-inter
 # nuitka-project: --windows-console-mode=disable
+# nuitka-project: --include-windows-runtime-dlls=yes
 # nuitka-project: --include-data-files=Installer/*.ico=VideOCR.ico
 # nuitka-project: --include-data-files=Installer/*.png=VideOCR.png
 # nuitka-project: --include-data-dir=languages=languages
 
 # Windows-specific metadata for the executable
 # nuitka-project-if: {OS} == "Windows":
+#     nuitka-project-set: APP_VERSION = __import__("CLI.videocr._version").videocr._version.__version__
 #     nuitka-project: --file-description="VideOCR"
-#     nuitka-project: --file-version="1.4.1"
+#     nuitka-project: --file-version={APP_VERSION}
 #     nuitka-project: --product-name="VideOCR-GUI"
-#     nuitka-project: --product-version="1.4.1"
+#     nuitka-project: --product-version={APP_VERSION}
 #     nuitka-project: --copyright="timminator"
 #     nuitka-project: --windows-icon-from-ico=Installer/VideOCR.ico
 
@@ -47,6 +49,8 @@ if platform.system() == "Windows":
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('VideOCR')
 else:
     from plyer import notification
+
+from CLI.videocr import __version__
 
 
 # -- Save errors to log file ---
@@ -168,7 +172,7 @@ def find_videocr_program():
 
 
 # --- Configuration ---
-PROGRAM_VERSION = "1.4.1"
+PROGRAM_VERSION = __version__
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 LANGUAGES_DIR = os.path.join(APP_DIR, 'languages')
 VIDEOCR_PATH = find_videocr_program()
@@ -180,7 +184,7 @@ DEFAULT_SIM_THRESHOLD = 80
 DEFAULT_MAX_MERGE_GAP = 0.1
 DEFAULT_MIN_SUBTITLE_DURATION = 0.2
 DEFAULT_SSIM_THRESHOLD = 92
-DEFAULT_OCR_IMAGE_MAX_WIDTH = 1280
+DEFAULT_OCR_IMAGE_MAX_WIDTH = 960
 DEFAULT_FRAMES_TO_SKIP = 1
 DEFAULT_TIME_START = "0:00"
 KEY_SEEK_STEP = 1
@@ -1106,6 +1110,8 @@ def handle_progress(match, label_format_key, last_percentage, log_threshold, tas
         handle_progress.last_item = 0
     if not hasattr(handle_progress, "start_time"):
         handle_progress.start_time = None
+    if not hasattr(handle_progress, "last_update_time"):
+        handle_progress.last_update_time = 0
 
     current_item = int(match.group(1))
     total_str = match.group(2)
@@ -1127,9 +1133,12 @@ def handle_progress(match, label_format_key, last_percentage, log_threshold, tas
     item_delta = current_item - handle_progress.last_item
     percent_threshold = last_percentage + smooth_threshold
 
-    if (current_item == 1 or current_percent >= 100 or (current_percent >= percent_threshold and item_delta >= min_item_delta)):
+    current_time = time.time()
+    time_delta = current_time - handle_progress.last_update_time
 
-        current_time = time.time()
+    if (current_item == 1 or current_percent >= 100 or (current_percent >= percent_threshold and item_delta >= min_item_delta) or time_delta >= 0.5):
+
+        handle_progress.last_update_time = current_time
 
         if handle_progress.last_key != label_format_key or current_item == 1:
             handle_progress.last_key = label_format_key
@@ -1721,18 +1730,18 @@ def execute_post_completion_action(window, icon=None):
         if system_os == "Windows":
             os.system("shutdown /s /t 0")
         else:
-            os.system("shutdown -h now")
+            os.system("systemctl poweroff")
     elif action_key == 'action_sleep':
         if system_os == "Windows":
-            os.system("rundll32.exe powrprof.dll,SetSuspendState 0,1,0")
+            ctypes.windll.powrprof.SetSuspendState(False, False, False)
         else:
             os.system("systemctl suspend")
     elif action_key == 'action_hibernate':
         if system_os == "Windows":
-            os.system("shutdown /h")
+            ctypes.windll.powrprof.SetSuspendState(True, False, False)
     elif action_key == 'action_lock':
         if system_os == "Windows":
-            os.system("rundll32.exe user32.dll,LockWorkStation")
+            ctypes.windll.user32.LockWorkStation()
 
 
 def update_run_and_cancel_button_state(window, queue):
@@ -2000,16 +2009,69 @@ else:
     ICON_PATH = os.path.join(APP_DIR, 'VideOCR.png')
 
 y_offset = 0
+decorations_height = 0
+
 if platform.system() == "Windows":
     SM_CYCAPTION = 4
     SM_CYFRAME = 33
+    SM_CXPADDEDBORDER = 92
+    SM_CYBORDER = 6
 
     caption = ctypes.windll.user32.GetSystemMetrics(SM_CYCAPTION)
     frame = ctypes.windll.user32.GetSystemMetrics(SM_CYFRAME)
+    padding = ctypes.windll.user32.GetSystemMetrics(SM_CXPADDEDBORDER)
+    border = ctypes.windll.user32.GetSystemMetrics(SM_CYBORDER)
 
     y_offset = -(caption + frame) // 2
+    decorations_height = caption + (frame * 2) + padding - (border * 2)
+
+
+def get_work_area():
+    """Returns the exact usable screen width and height, excluding the taskbar."""
+    if platform.system() == "Windows":
+        class RECT(ctypes.Structure):
+            _fields_ = [
+                ('left', ctypes.c_long),
+                ('top', ctypes.c_long),
+                ('right', ctypes.c_long),
+                ('bottom', ctypes.c_long)
+            ]
+
+        rect = RECT()
+        SPI_GETWORKAREA = 48
+        ctypes.windll.user32.SystemParametersInfoW(SPI_GETWORKAREA, 0, ctypes.byref(rect), 0)
+
+        work_width = rect.right - rect.left
+        work_height = rect.bottom - rect.top
+        return work_width, work_height
+    else:
+        width, height = sg.Window.get_screen_size()
+        return width, int(height * 0.90)
+
 
 window = sg.Window("VideOCR", layout, relative_location=(0, y_offset), icon=ICON_PATH, finalize=True, resizable=True)
+
+work_width, work_height = get_work_area()
+screen_width, screen_height = sg.Window.get_screen_size()
+current_width, current_height = window.size
+
+safe_inner_height = work_height - decorations_height
+total_outer_height = current_height + decorations_height
+
+if current_height > safe_inner_height:
+    window.set_size((current_width, safe_inner_height))
+    x = (work_width - current_width) // 2
+    window.move(x, 0)
+    window.refresh()
+else:
+    psg_placed_y = ((screen_height - current_height) // 2) + y_offset
+    bottom_edge = psg_placed_y + total_outer_height
+
+    if bottom_edge > work_height:
+        x = (work_width - current_width) // 2
+        new_y = (work_height - total_outer_height) // 2
+        window.move(x, new_y)
+        window.refresh()
 
 # --- Load settings when the application starts ---
 load_settings(window)
