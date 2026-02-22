@@ -2317,8 +2317,8 @@ while True:
             save_settings(window, values)
 
         # --- Handle possible output path change ---
-        if event == '--save_in_video_dir' or event == '-LANG_COMBO-':
-            if (values.get('--save_in_video_dir', True)):
+        if event == '--save_in_video_dir':
+            if values.get('--save_in_video_dir', True):
                 window['-BTN-FOLDER_BROWSE-'].update(disabled=True)
             else:
                 window['-BTN-FOLDER_BROWSE-'].update(disabled=False)
@@ -2326,6 +2326,33 @@ while True:
             if video_path:
                 output_path = generate_output_path(video_path, values)
                 window['--output'].update(str(output_path))
+
+        elif event == '-LANG_COMBO-':
+            if video_path:
+                current_out = values.get('--output', '')
+                selected_lang_name = values.get('-LANG_COMBO-', default_display_language)
+                paddle_code = language_abbr_lookup.get(selected_lang_name, 'en')
+                iso_code = PADDLE_TO_ISO_MAP.get(paddle_code, paddle_code)
+
+                if current_out:
+                    p = pathlib.Path(current_out)
+                    known_codes = set(language_abbr_lookup.values()).union(set(PADDLE_TO_ISO_MAP.values()))
+
+                    if len(p.suffixes) >= 2 and p.suffixes[-1].lower() == '.srt' and p.suffixes[-2][1:] in known_codes:
+                        base_name = p.name[:-(len(p.suffixes[-2]) + len(p.suffixes[-1]))]
+                        new_out = p.with_name(f"{base_name}.{iso_code}.srt")
+                        window['--output'].update(str(new_out))
+
+                    elif p.suffix.lower() == '.srt':
+                        new_out = p.with_name(f"{p.stem}.{iso_code}.srt")
+                        window['--output'].update(str(new_out))
+
+                    else:
+                        output_path = generate_output_path(video_path, values)
+                        window['--output'].update(str(output_path))
+                else:
+                    output_path = generate_output_path(video_path, values)
+                    window['--output'].update(str(output_path))
 
     if event == sg.WIN_CLOSED:
         set_system_awake(False)
