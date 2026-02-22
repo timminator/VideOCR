@@ -113,7 +113,7 @@ class Capture:
     def read(self):
         try:
             frame = next(self.frame_iterator)
-            return True, frame.to_ndarray(format='rgb24')
+            return True, frame.to_ndarray(format='bgr24')
         except StopIteration:
             return False, None
 

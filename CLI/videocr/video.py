@@ -216,7 +216,6 @@ class Video:
                         frame_filename = f"frame_{frame_index:0{padding}d}_zone{zone_idx}.jpg"
                         frame_path = os.path.join(temp_dir, frame_filename)
 
-                        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                         cv2.imwrite(frame_path, img)
                         frame_paths.append(frame_path)
                 else:
