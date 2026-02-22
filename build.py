@@ -10,7 +10,7 @@ from pathlib import Path
 
 import requests
 
-from CLI.videocr import __version__
+from _version import __version__
 
 # --- Configuration ---
 APP_VERSION = __version__

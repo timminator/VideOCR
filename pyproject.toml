@@ -53,7 +53,7 @@ Issues = "https://github.com/timminator/VideOCR/issues"
 packages = []
 
 [tool.setuptools.dynamic]
-version = { attr = "CLI.videocr._version.__version__" }
+version = { attr = "_version.__version__" }
 
 [tool.ruff]
 exclude = ["build", "venv", ".venv", "__pycache__"]

@@ -8,7 +8,7 @@
 
 # Windows-specific metadata for the executable
 # nuitka-project-if: {OS} == "Windows":
-#     nuitka-project-set: APP_VERSION = __import__("videocr._version")._version.__version__
+#     nuitka-project-set: APP_VERSION = (__import__("sys").path.insert(0, "..") or __import__("_version").__version__)
 #     nuitka-project: --file-description="VideOCR CLI"
 #     nuitka-project: --file-version={APP_VERSION}
 #     nuitka-project: --product-name="VideOCR-CLI"
