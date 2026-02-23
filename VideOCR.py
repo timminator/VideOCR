@@ -2340,15 +2340,26 @@ while True:
 
                 if current_out:
                     p = pathlib.Path(current_out)
+                    directory = p.parent
                     known_codes = set(language_abbr_lookup.values()).union(set(PADDLE_TO_ISO_MAP.values()))
+                    base_name = None
 
                     if len(p.suffixes) >= 2 and p.suffixes[-1].lower() == '.srt' and p.suffixes[-2][1:] in known_codes:
                         base_name = p.name[:-(len(p.suffixes[-2]) + len(p.suffixes[-1]))]
-                        new_out = p.with_name(f"{base_name}.{iso_code}.srt")
-                        window['--output'].update(str(new_out))
 
                     elif p.suffix.lower() == '.srt':
-                        new_out = p.with_name(f"{p.stem}.{iso_code}.srt")
+                        base_name = p.stem
+
+                    if base_name:
+                        new_filename = f"{base_name}.{iso_code}.srt"
+                        new_out = directory / new_filename
+
+                        counter = 1
+                        while new_out.exists():
+                            new_filename = f"{base_name}({counter}).{iso_code}.srt"
+                            new_out = directory / new_filename
+                            counter += 1
+
                         window['--output'].update(str(new_out))
 
                     else:
