@@ -1756,6 +1756,20 @@ def update_run_and_cancel_button_state(window, queue):
         window['-BTN-CANCEL-'].update(text=LANG.get('btn_cancel', "Cancel"))
 
 
+def update_taskbar(state=None, progress=None):
+    """Updates the taskbar progress and state, checking for OS support."""
+    global previous_taskbar_state
+    if not taskbar_progress_supported:
+        return
+
+    if state and state != previous_taskbar_state:
+        previous_taskbar_state = state
+        prog.setState(state)
+
+    if progress is not None:
+        prog.setProgress(progress)
+
+
 def get_video_dimensions(file_path):
     """
     Returns (width, height) of the video file.
@@ -2252,14 +2266,7 @@ while True:
                     window['-OUTPUT-'].update(final_text, append=True)
 
                 elif msg_event == '-TASKBAR_STATE_UPDATE-':
-                    if taskbar_progress_supported:
-                        state = msg_data.get('state')
-                        progress = msg_data.get('progress')
-                        if state and state is not previous_taskbar_state:
-                            previous_taskbar_state = state
-                            prog.setState(state)
-                        if progress is not None:
-                            prog.setProgress(progress)
+                    update_taskbar(state=msg_data.get('state'), progress=msg_data.get('progress'))
 
                 elif msg_event == '-NOTIFICATION_EVENT-':
                     send_notification(msg_data['title'], msg_data['message'])
@@ -2291,10 +2298,7 @@ while True:
                     if hasattr(window, '_videocr_process_pid'):
                         del window._videocr_process_pid
 
-                    if taskbar_progress_supported:
-                        prog.setState('normal')
-                        prog.setProgress(0)
-
+                    update_taskbar(state='normal', progress=0)
                     update_run_and_cancel_button_state(window, batch_queue)
                     execute_post_completion_action(window, icon=ICON_PATH)
 
@@ -2891,6 +2895,7 @@ while True:
                         window[key].update(text=LANG.get('btn_pause', "Pause"))
 
                 window['-OUTPUT-'].update(LANG.get('status_resuming', "\nResuming process...\n"), append=True)
+                update_taskbar(state='normal')
 
                 for job in batch_queue:
                     if job['status'] == 'Paused':
@@ -2905,6 +2910,7 @@ while True:
                         window[key].update(text=LANG.get('btn_resume', "Resume"))
 
                 window['-OUTPUT-'].update(LANG.get('status_pausing', "\nPausing process...\n"), append=True)
+                update_taskbar(state='paused')
 
                 for job in batch_queue:
                     if job['status'] == 'Processing':
