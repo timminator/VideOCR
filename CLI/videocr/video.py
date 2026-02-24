@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import ast
 import os
 import re
@@ -40,7 +38,7 @@ class Video:
     frame_timestamps: dict[int, float]
     start_time_offset_ms: float
 
-    def __init__(self, path: str, paddleocr_path: str, det_model_dir: str, rec_model_dir: str, cls_model_dir: str, time_end: str | None = None):
+    def __init__(self, path: str, paddleocr_path: str, det_model_dir: str, rec_model_dir: str, cls_model_dir: str, time_end: str | None):
         self.path = path
         self.paddleocr_path = paddleocr_path
         self.det_model_dir = det_model_dir

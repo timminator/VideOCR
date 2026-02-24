@@ -91,7 +91,7 @@ class PredictedSubtitle:
     lang: str
     _language_model: wordninja.LanguageModel | None
 
-    def __init__(self, frames: list[PredictedFrames], zone_index: int, sim_threshold: int, lang: str, language_model: wordninja.LanguageModel | None = None):
+    def __init__(self, frames: list[PredictedFrames], zone_index: int, sim_threshold: int, lang: str, language_model: wordninja.LanguageModel | None):
         self.frames = [f for f in frames if f.confidence > 0]
         self.frames.sort(key=lambda frame: frame.start_index)
         self.zone_index = zone_index
