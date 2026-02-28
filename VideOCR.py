@@ -179,6 +179,7 @@ VIDEOCR_PATH = find_videocr_program()
 DEFAULT_OUTPUT_SRT = ""
 DEFAULT_LANG = "en"
 DEFAULT_SUBTITLE_POSITION = "center"
+DEFAULT_SUBTITLE_ALIGNMENT = "bottom-center"
 DEFAULT_CONF_THRESHOLD = 75
 DEFAULT_SIM_THRESHOLD = 80
 DEFAULT_MAX_MERGE_GAP = 0.1
@@ -276,6 +277,13 @@ subtitle_positions_list = [
     ('pos_any', 'any')
 ]
 default_internal_subtitle_position = 'center'
+
+# --- Subtitle Alignment Data ---
+SUBTITLE_ALIGNMENT_OPTIONS = [
+    'bottom-center', 'bottom-left', 'bottom-right',
+    'top-center', 'top-left', 'top-right',
+    'middle-center', 'middle-left', 'middle-right'
+]
 
 # --- Post-Action Master List ---
 if platform.system() == "Windows":
@@ -797,6 +805,14 @@ def update_subtitle_pos_combo(window, selected_internal_pos=None):
     window['-SUBTITLE_POS_COMBO-'].update(value=display_pos, values=translated_pos_names, size=(38, 4))
 
 
+def update_alignment_controls(window, values):
+    """Updates the subtitle alignment combo boxes based on current settings."""
+    is_checked = values.get('enable_subtitle_alignment', False)
+    is_dual_zone = values.get('--use_dual_zone', False)
+    window['--subtitle_alignment'].update(disabled=not is_checked)
+    window['--subtitle_alignment2'].update(disabled=not (is_checked and is_dual_zone))
+
+
 def update_post_action_combo(window, selected_index=0):
     """Refreshes the Post Action combo text and selects by numeric index."""
     display_values = [LANG.get(key, DEFAULT_ACTION_TEXTS[key]) for key in POST_ACTION_KEYS]
@@ -840,6 +856,9 @@ def get_default_settings():
     '--min_subtitle_duration': str(DEFAULT_MIN_SUBTITLE_DURATION),
     '--use_server_model': False,
     '--use_dual_zone': False,
+    'enable_subtitle_alignment': False,
+    '--subtitle_alignment': DEFAULT_SUBTITLE_ALIGNMENT,
+    '--subtitle_alignment2': DEFAULT_SUBTITLE_ALIGNMENT,
     '--keyboard_seek_step': str(KEY_SEEK_STEP),
     '--default_output_dir': DEFAULT_DOCUMENTS_DIR,
     '--save_in_video_dir': True,
@@ -939,6 +958,9 @@ def load_settings(window):
                     ('--min_subtitle_duration', 'input'),
                     ('--use_server_model', 'checkbox'),
                     ('--use_dual_zone', 'checkbox'),
+                    ('enable_subtitle_alignment', 'checkbox'),
+                    ('--subtitle_alignment', 'combo'),
+                    ('--subtitle_alignment2', 'combo'),
                     ('--keyboard_seek_step', 'input'),
                     ('--default_output_dir', 'input'),
                     ('--save_in_video_dir', 'checkbox'),
@@ -1316,13 +1338,19 @@ def get_processing_args(values, window):
         args['subtitle_position'] = pos_value
 
     for key in values:
-        if key.startswith('--') and key not in ['--keyboard_seek_step', '--default_output_dir', '--save_in_video_dir', '--send_notification', '--save_crop_box', '--check_for_updates', '--language']:
+        if key.startswith('--') and key not in ['--keyboard_seek_step', '--default_output_dir', '--save_in_video_dir', '--send_notification', '--save_crop_box', '--check_for_updates', '--language', '--subtitle_alignment', '--subtitle_alignment2']:
             stripped_key = key.lstrip('-')
             value = values.get(key)
             if isinstance(value, bool):
                 args[stripped_key] = value
             elif value is not None and str(value).strip() != '':
                 args[stripped_key] = str(value).strip()
+
+    # Conditionally add subtitle alignment args if the feature is enabled
+    if values.get('enable_subtitle_alignment'):
+        args['subtitle_alignment'] = values.get('--subtitle_alignment')
+        if use_dual_zone:
+            args['subtitle_alignment2'] = values.get('--subtitle_alignment2')
 
     # Handle send_notification specifically to store it as a boolean and not a string
     args['send_notification'] = values.get('--send_notification', True)
@@ -1946,6 +1974,11 @@ tab2_content = [
     [sg.Checkbox("Enable GPU Usage", default=True, key="--use_gpu", enable_events=True)],
     [sg.Checkbox("Use Full Frame OCR", default=False, key="--use_fullframe", enable_events=True)],
     [sg.Checkbox("Enable Dual Zone OCR", default=False, key="--use_dual_zone", enable_events=True)],
+    [sg.Checkbox("Enable Subtitle Alignment", default=False, key="enable_subtitle_alignment", enable_events=True)],
+    [sg.Text("Subtitle Alignment (Zone 1):", size=(38, 1), key='--subtitle_alignment_text1'),
+     sg.Combo(SUBTITLE_ALIGNMENT_OPTIONS, default_value='bottom-center', key="--subtitle_alignment", size=(15, 1), readonly=True, enable_events=True, disabled=True)],
+    [sg.Text("Subtitle Alignment (Zone 2):", size=(38, 1), key='--subtitle_alignment_text2'),
+     sg.Combo(SUBTITLE_ALIGNMENT_OPTIONS, default_value='bottom-center', key="--subtitle_alignment2", size=(15, 1), readonly=True, enable_events=True, disabled=True)],
     [sg.Checkbox("Enable Angle Classification", default=False, key="--use_angle_cls", enable_events=True)],
     [sg.Checkbox("Enable Post Processing", default=False, key="--post_processing", enable_events=True)],
     [sg.Checkbox("Normalize Traditional to Simplified Chinese", default=True, key="--normalize_to_simplified_chinese", enable_events=True)],
@@ -2214,6 +2247,9 @@ KEYS_TO_AUTOSAVE = [
     '--use_fullframe',
     '--use_gpu',
     '--use_dual_zone',
+    'enable_subtitle_alignment',
+    '--subtitle_alignment',
+    '--subtitle_alignment2',
     '--use_angle_cls',
     '--post_processing',
     '--min_subtitle_duration',
@@ -2312,6 +2348,9 @@ while True:
     if event in KEYS_TO_AUTOSAVE:
         if values is not None:
             save_settings(window, values)
+
+        if event in ('enable_subtitle_alignment', '--use_dual_zone'):
+            update_alignment_controls(window, values)
 
         if event == '--use_dual_zone' or event == '--use_fullframe':
             reset_crop_state()
