@@ -279,10 +279,16 @@ subtitle_positions_list = [
 default_internal_subtitle_position = 'center'
 
 # --- Subtitle Alignment Data ---
-SUBTITLE_ALIGNMENT_OPTIONS = [
-    'bottom-center', 'bottom-left', 'bottom-right',
-    'top-center', 'top-left', 'top-right',
-    'middle-center', 'middle-left', 'middle-right'
+SUBTITLE_ALIGNMENT_LIST = [
+    ('align_bottom_center', 'bottom-center'),
+    ('align_bottom_left', 'bottom-left'),
+    ('align_bottom_right', 'bottom-right'),
+    ('align_top_center', 'top-center'),
+    ('align_top_left', 'top-left'),
+    ('align_top_right', 'top-right'),
+    ('align_middle_center', 'middle-center'),
+    ('align_middle_left', 'middle-left'),
+    ('align_middle_right', 'middle-right')
 ]
 
 # --- Post-Action Master List ---
@@ -449,6 +455,9 @@ def update_gui_text(window, is_paused=False):
         '--use_fullframe': {'text': 'chk_full_frame', 'tooltip': 'tip_full_frame'},
         '--use_dual_zone': {'text': 'chk_dual_zone', 'tooltip': 'tip_dual_zone'},
         '--use_angle_cls': {'text': 'chk_angle_cls', 'tooltip': 'tip_angle_cls'},
+        'enable_subtitle_alignment': {'text': 'chk_enable_subtitle_alignment', 'tooltip': 'tip_enable_subtitle_alignment'},
+        '--subtitle_alignment_text1': {'text': 'lbl_subtitle_alignment1', 'tooltip': 'tip_subtitle_alignment1'},
+        '--subtitle_alignment_text2': {'text': 'lbl_subtitle_alignment2', 'tooltip': 'tip_subtitle_alignment2'},
         '--post_processing': {'text': 'chk_post_processing', 'tooltip': 'tip_post_processing'},
         '--use_server_model': {'text': 'chk_server_model', 'tooltip': 'tip_server_model'},
         '-LBL-VIDEOCR_SETTINGS-': {'text': 'lbl_videocr_settings'},
@@ -518,6 +527,8 @@ def update_gui_text(window, is_paused=False):
 
     current_idx = window['-POST_ACTION-'].Widget.current()
     update_post_action_combo(window, current_idx)
+
+    update_alignment_combos(window)
 
 
 # --- Helper Functions ---
@@ -805,6 +816,20 @@ def update_subtitle_pos_combo(window, selected_internal_pos=None):
     window['-SUBTITLE_POS_COMBO-'].update(value=display_pos, values=translated_pos_names, size=(38, 4))
 
 
+def update_alignment_combos(window, selected_alignment=None, selected_alignment2=None):
+    """Updates the subtitle alignment combo boxes with translated values and sets the selected items."""
+    internal_to_display_map = {internal_val: LANG.get(lang_key, internal_val) for lang_key, internal_val in SUBTITLE_ALIGNMENT_LIST}
+    translated_names = [internal_to_display_map[internal_val] for _, internal_val in SUBTITLE_ALIGNMENT_LIST]
+    # Zone 1
+    align1_to_select = selected_alignment if selected_alignment else DEFAULT_SUBTITLE_ALIGNMENT
+    display_val1 = internal_to_display_map.get(align1_to_select, internal_to_display_map[DEFAULT_SUBTITLE_ALIGNMENT])
+    window['--subtitle_alignment'].update(value=display_val1, values=translated_names)
+    # Zone 2
+    align2_to_select = selected_alignment2 if selected_alignment2 else DEFAULT_SUBTITLE_ALIGNMENT
+    display_val2 = internal_to_display_map.get(align2_to_select, internal_to_display_map[DEFAULT_SUBTITLE_ALIGNMENT])
+    window['--subtitle_alignment2'].update(value=display_val2, values=translated_names)
+
+
 def update_alignment_controls(window, values):
     """Updates the subtitle alignment combo boxes based on current settings."""
     is_checked = values.get('enable_subtitle_alignment', False)
@@ -889,6 +914,12 @@ def save_settings(window, values):
     selected_lang_display_name = values.get('-UI_LANG_COMBO-')
     if selected_lang_display_name in available_languages:
         settings_to_save['--language'] = available_languages[selected_lang_display_name]
+
+    align_display_to_internal_map = {LANG.get(lang_key, internal_val): internal_val for lang_key, internal_val in SUBTITLE_ALIGNMENT_LIST}
+    for key in ['--subtitle_alignment', '--subtitle_alignment2']:
+        selected_display = values.get(key)
+        internal_val = align_display_to_internal_map.get(selected_display, DEFAULT_SUBTITLE_ALIGNMENT)
+        settings_to_save[key] = internal_val
 
     crop_boxes_to_save = []
     if original_frame_width == 0 and original_frame_height == 0:
@@ -998,6 +1029,11 @@ def load_settings(window):
                     window.saved_crop_boxes_from_config = []
                     log_error(f"Could not parse saved_crop_boxes: {saved_boxes_str}")
 
+                # Update alignment combos display names
+                saved_align1 = config.get(CONFIG_SECTION, '--subtitle_alignment', fallback=DEFAULT_SUBTITLE_ALIGNMENT)
+                saved_align2 = config.get(CONFIG_SECTION, '--subtitle_alignment2', fallback=DEFAULT_SUBTITLE_ALIGNMENT)
+                update_alignment_combos(window, saved_align1, saved_align2)
+
             current_gui_values = window.read(timeout=0)[1]
             save_settings(window, current_gui_values)
 
@@ -1013,6 +1049,7 @@ def load_settings(window):
 
         update_subtitle_pos_combo(window)
         update_post_action_combo(window)
+        update_alignment_combos(window)
 
         default_settings = get_default_settings()
         config.add_section(CONFIG_SECTION)
@@ -1975,10 +2012,10 @@ tab2_content = [
     [sg.Checkbox("Use Full Frame OCR", default=False, key="--use_fullframe", enable_events=True)],
     [sg.Checkbox("Enable Dual Zone OCR", default=False, key="--use_dual_zone", enable_events=True)],
     [sg.Checkbox("Enable Subtitle Alignment", default=False, key="enable_subtitle_alignment", enable_events=True)],
-    [sg.Text("Subtitle Alignment (Zone 1):", size=(38, 1), key='--subtitle_alignment_text1'),
-     sg.Combo(SUBTITLE_ALIGNMENT_OPTIONS, default_value='bottom-center', key="--subtitle_alignment", size=(15, 1), readonly=True, enable_events=True, disabled=True)],
-    [sg.Text("Subtitle Alignment (Zone 2):", size=(38, 1), key='--subtitle_alignment_text2'),
-     sg.Combo(SUBTITLE_ALIGNMENT_OPTIONS, default_value='bottom-center', key="--subtitle_alignment2", size=(15, 1), readonly=True, enable_events=True, disabled=True)],
+    [sg.Text("Zone 1 Alignment:", size=(38, 1), key='--subtitle_alignment_text1'),
+     sg.Combo([item[1] for item in SUBTITLE_ALIGNMENT_LIST], default_value='bottom-center', key="--subtitle_alignment", size=(15, 1), readonly=True, enable_events=True, disabled=True)],
+    [sg.Text("Zone 2 Alignment:", size=(38, 1), key='--subtitle_alignment_text2'),
+     sg.Combo([item[1] for item in SUBTITLE_ALIGNMENT_LIST], default_value='bottom-center', key="--subtitle_alignment2", size=(15, 1), readonly=True, enable_events=True, disabled=True)],
     [sg.Checkbox("Enable Angle Classification", default=False, key="--use_angle_cls", enable_events=True)],
     [sg.Checkbox("Enable Post Processing", default=False, key="--post_processing", enable_events=True)],
     [sg.Checkbox("Normalize Traditional to Simplified Chinese", default=True, key="--normalize_to_simplified_chinese", enable_events=True)],
