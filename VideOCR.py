@@ -528,7 +528,9 @@ def update_gui_text(window, is_paused=False):
     current_idx = window['-POST_ACTION-'].Widget.current()
     update_post_action_combo(window, current_idx)
 
-    update_alignment_combos(window)
+    current_idx1 = window['--subtitle_alignment'].Widget.current()
+    current_idx2 = window['--subtitle_alignment2'].Widget.current()
+    update_alignment_combos(window, current_idx1, current_idx2)
 
 
 # --- Helper Functions ---
@@ -816,17 +818,23 @@ def update_subtitle_pos_combo(window, selected_internal_pos=None):
     window['-SUBTITLE_POS_COMBO-'].update(value=display_pos, values=translated_pos_names, size=(38, 4))
 
 
-def update_alignment_combos(window, selected_alignment=None, selected_alignment2=None):
-    """Updates the subtitle alignment combo boxes with translated values and sets the selected items."""
+def get_alignment_index(key):
+    """Returns the index for a given alignment key"""
+    return next((i for i, (_, v) in enumerate(SUBTITLE_ALIGNMENT_LIST) if v == key), 0)
+
+
+def update_alignment_combos(window, selected_index1=None, selected_index2=None):
     internal_to_display_map = {internal_val: LANG.get(lang_key, internal_val) for lang_key, internal_val in SUBTITLE_ALIGNMENT_LIST}
-    translated_names = [internal_to_display_map[internal_val] for _, internal_val in SUBTITLE_ALIGNMENT_LIST]
+    translated_names = list(internal_to_display_map.values())
+    
     # Zone 1
-    align1_to_select = selected_alignment if selected_alignment else DEFAULT_SUBTITLE_ALIGNMENT
-    display_val1 = internal_to_display_map.get(align1_to_select, internal_to_display_map[DEFAULT_SUBTITLE_ALIGNMENT])
+    idx1 = selected_index1 if selected_index1 is not None else 0
+    display_val1 = translated_names[idx1] if 0 <= idx1 < len(translated_names) else translated_names[0]
     window['--subtitle_alignment'].update(value=display_val1, values=translated_names)
+    
     # Zone 2
-    align2_to_select = selected_alignment2 if selected_alignment2 else DEFAULT_SUBTITLE_ALIGNMENT
-    display_val2 = internal_to_display_map.get(align2_to_select, internal_to_display_map[DEFAULT_SUBTITLE_ALIGNMENT])
+    idx2 = selected_index2 if selected_index2 is not None else 0
+    display_val2 = translated_names[idx2] if 0 <= idx2 < len(translated_names) else translated_names[0]
     window['--subtitle_alignment2'].update(value=display_val2, values=translated_names)
 
 
@@ -1032,9 +1040,10 @@ def load_settings(window):
                 # Update alignment combos display names
                 saved_align1 = config.get(CONFIG_SECTION, '--subtitle_alignment', fallback=DEFAULT_SUBTITLE_ALIGNMENT)
                 saved_align2 = config.get(CONFIG_SECTION, '--subtitle_alignment2', fallback=DEFAULT_SUBTITLE_ALIGNMENT)
-                update_alignment_combos(window, saved_align1, saved_align2)
+                update_alignment_combos(window, get_alignment_index(saved_align1), get_alignment_index(saved_align2))
 
             current_gui_values = window.read(timeout=0)[1]
+            update_alignment_controls(window, current_gui_values)
             save_settings(window, current_gui_values)
 
         except configparser.Error as e:
