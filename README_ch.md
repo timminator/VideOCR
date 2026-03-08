@@ -192,7 +192,7 @@
     - 进入目录并安装依赖：
       ```bash
       cd VideOCR
-      pip install -e ".[dev]"
+      pip install . --group all
       ```
     - 运行构建脚本：
       ```bash

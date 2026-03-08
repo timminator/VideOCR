@@ -35,12 +35,18 @@ dependencies = [
     "plyer ; sys_platform != 'win32'",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "ruff",
     "pre-commit",
-    "nuitka @ git+https://github.com/Nuitka/Nuitka.git@8a4e61d25d7c40a9728227686a546e6999e8c1c5",
-    "requests"
+]
+build = [
+    "nuitka",
+    "requests",
+]
+all = [
+    { include-group = "dev" },
+    { include-group = "build" }
 ]
 
 [project.urls]

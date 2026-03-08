@@ -200,7 +200,7 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
     - Navigate into the cloned folder and install all dependencies:
       ```bash
       cd VideOCR
-      pip install -e ".[dev]"
+      pip install . --group all
       ```
     - Execute the build script to create the desired build:
       ```bash
