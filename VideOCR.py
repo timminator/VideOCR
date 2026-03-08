@@ -1394,9 +1394,14 @@ def get_processing_args(values, window):
 
     # Conditionally add subtitle alignment args if the feature is enabled
     if values.get('enable_subtitle_alignment'):
-        args['subtitle_alignment'] = values.get('--subtitle_alignment')
+        align_display_to_internal_map = {LANG.get(lang_key, internal_val): internal_val for lang_key, internal_val in SUBTITLE_ALIGNMENT_LIST}
+        
+        align1_display = values.get('--subtitle_alignment')
+        args['subtitle_alignment'] = align_display_to_internal_map.get(align1_display, DEFAULT_SUBTITLE_ALIGNMENT)
+        
         if use_dual_zone:
-            args['subtitle_alignment2'] = values.get('--subtitle_alignment2')
+            align2_display = values.get('--subtitle_alignment2')
+            args['subtitle_alignment2'] = align_display_to_internal_map.get(align2_display, DEFAULT_SUBTITLE_ALIGNMENT)
 
     # Handle send_notification specifically to store it as a boolean and not a string
     args['send_notification'] = values.get('--send_notification', True)
