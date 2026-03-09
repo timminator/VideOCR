@@ -105,20 +105,12 @@ def valid_time_string(arg):
         raise argparse.ArgumentTypeError(f"Invalid time format '{arg}'. Use MM:SS or HH:MM:SS.") from None
 
 
-ALIGNMENT_MAP = {
-    'bottom-left': 'an1', 'bottom-center': 'an2', 'bottom-right': 'an3',
-    'middle-left': 'an4', 'middle-center': 'an5', 'middle-right': 'an6',
-    'top-left': 'an7', 'top-center': 'an8', 'top-right': 'an9',
-}
-VALID_ALIGNMENT_NAMES = set(ALIGNMENT_MAP.keys())
-
-
 def valid_alignment_name(arg):
     if not arg:
         return None
-    if arg in VALID_ALIGNMENT_NAMES:
-        return ALIGNMENT_MAP[arg]
-    allowed_values = ", ".join(sorted(list(VALID_ALIGNMENT_NAMES)))
+    if arg in utils.VALID_ALIGNMENT_NAMES:
+        return utils.ALIGNMENT_MAP[arg]
+    allowed_values = ", ".join(sorted(list(utils.VALID_ALIGNMENT_NAMES)))
     raise argparse.ArgumentTypeError(f"Invalid alignment '{arg}'. Allowed values are: {allowed_values}")
 
 

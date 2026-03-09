@@ -15,6 +15,13 @@ from .lang_dictionaries import (
 )
 from .models import PredictedText
 
+ALIGNMENT_MAP = {
+    'bottom-left': 'an1', 'bottom-center': 'an2', 'bottom-right': 'an3',
+    'middle-left': 'an4', 'middle-center': 'an5', 'middle-right': 'an6',
+    'top-left': 'an7', 'top-center': 'an8', 'top-right': 'an9',
+}
+VALID_ALIGNMENT_NAMES = set(ALIGNMENT_MAP.keys())
+
 
 # convert time string to frame index
 def get_frame_index(time_str: str, fps: float) -> int:

@@ -826,12 +826,12 @@ def get_alignment_index(key):
 def update_alignment_combos(window, selected_index1=None, selected_index2=None):
     internal_to_display_map = {internal_val: LANG.get(lang_key, internal_val) for lang_key, internal_val in SUBTITLE_ALIGNMENT_LIST}
     translated_names = list(internal_to_display_map.values())
-    
+
     # Zone 1
     idx1 = selected_index1 if selected_index1 is not None else 0
     display_val1 = translated_names[idx1] if 0 <= idx1 < len(translated_names) else translated_names[0]
     window['--subtitle_alignment'].update(value=display_val1, values=translated_names)
-    
+
     # Zone 2
     idx2 = selected_index2 if selected_index2 is not None else 0
     display_val2 = translated_names[idx2] if 0 <= idx2 < len(translated_names) else translated_names[0]
@@ -1395,10 +1395,10 @@ def get_processing_args(values, window):
     # Conditionally add subtitle alignment args if the feature is enabled
     if values.get('enable_subtitle_alignment'):
         align_display_to_internal_map = {LANG.get(lang_key, internal_val): internal_val for lang_key, internal_val in SUBTITLE_ALIGNMENT_LIST}
-        
+
         align1_display = values.get('--subtitle_alignment')
         args['subtitle_alignment'] = align_display_to_internal_map.get(align1_display, DEFAULT_SUBTITLE_ALIGNMENT)
-        
+
         if use_dual_zone:
             align2_display = values.get('--subtitle_alignment2')
             args['subtitle_alignment2'] = align_display_to_internal_map.get(align2_display, DEFAULT_SUBTITLE_ALIGNMENT)
