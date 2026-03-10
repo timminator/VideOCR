@@ -979,6 +979,11 @@ def load_settings(window):
                 display_lang = code_to_native_name_map.get(saved_lang_code, 'English')
                 window['-UI_LANG_COMBO-'].update(value=display_lang)
 
+                # Update alignment combos display names
+                saved_align1 = config.get(CONFIG_SECTION, '--subtitle_alignment', fallback=DEFAULT_SUBTITLE_ALIGNMENT)
+                saved_align2 = config.get(CONFIG_SECTION, '--subtitle_alignment2', fallback=DEFAULT_SUBTITLE_ALIGNMENT)
+                update_alignment_combos(window, get_alignment_index(saved_align1), get_alignment_index(saved_align2))
+
                 settings_to_load = [
                     ('-LANG_COMBO-', 'combo_lang'),
                     ('--time_start', 'input'),
@@ -998,8 +1003,6 @@ def load_settings(window):
                     ('--use_server_model', 'checkbox'),
                     ('--use_dual_zone', 'checkbox'),
                     ('enable_subtitle_alignment', 'checkbox'),
-                    ('--subtitle_alignment', 'combo'),
-                    ('--subtitle_alignment2', 'combo'),
                     ('--keyboard_seek_step', 'input'),
                     ('--default_output_dir', 'input'),
                     ('--save_in_video_dir', 'checkbox'),
@@ -1036,11 +1039,6 @@ def load_settings(window):
                 except (ValueError, SyntaxError):
                     window.saved_crop_boxes_from_config = []
                     log_error(f"Could not parse saved_crop_boxes: {saved_boxes_str}")
-
-                # Update alignment combos display names
-                saved_align1 = config.get(CONFIG_SECTION, '--subtitle_alignment', fallback=DEFAULT_SUBTITLE_ALIGNMENT)
-                saved_align2 = config.get(CONFIG_SECTION, '--subtitle_alignment2', fallback=DEFAULT_SUBTITLE_ALIGNMENT)
-                update_alignment_combos(window, get_alignment_index(saved_align1), get_alignment_index(saved_align2))
 
             current_gui_values = window.read(timeout=0)[1]
             update_alignment_controls(window, current_gui_values)
@@ -2027,9 +2025,9 @@ tab2_content = [
     [sg.Checkbox("Enable Dual Zone OCR", default=False, key="--use_dual_zone", enable_events=True)],
     [sg.Checkbox("Enable Subtitle Alignment", default=False, key="enable_subtitle_alignment", enable_events=True)],
     [sg.Text("Zone 1 Alignment:", size=(38, 1), key='--subtitle_alignment_text1'),
-     sg.Combo([item[1] for item in SUBTITLE_ALIGNMENT_LIST], default_value='bottom-center', key="--subtitle_alignment", size=(15, 1), readonly=True, enable_events=True, disabled=True)],
+     sg.Combo([], key="--subtitle_alignment", size=(15, 1), readonly=True, enable_events=True, disabled=True)],
     [sg.Text("Zone 2 Alignment:", size=(38, 1), key='--subtitle_alignment_text2'),
-     sg.Combo([item[1] for item in SUBTITLE_ALIGNMENT_LIST], default_value='bottom-center', key="--subtitle_alignment2", size=(15, 1), readonly=True, enable_events=True, disabled=True)],
+     sg.Combo([], key="--subtitle_alignment2", size=(15, 1), readonly=True, enable_events=True, disabled=True)],
     [sg.Checkbox("Enable Angle Classification", default=False, key="--use_angle_cls", enable_events=True)],
     [sg.Checkbox("Enable Post Processing", default=False, key="--post_processing", enable_events=True)],
     [sg.Checkbox("Normalize Traditional to Simplified Chinese", default=True, key="--normalize_to_simplified_chinese", enable_events=True)],

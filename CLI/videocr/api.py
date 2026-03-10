@@ -15,6 +15,11 @@ def save_subtitles_to_file(
     if crop_zones is None:
         crop_zones = []
 
+    if subtitle_alignments is None:
+        subtitle_alignments = [None, None]
+    elif len(subtitle_alignments) == 1:
+        subtitle_alignments.append(None)
+
     paddleocr_path = utils.find_paddleocr()
     try:
         utils.perform_hardware_check(paddleocr_path, use_gpu)
