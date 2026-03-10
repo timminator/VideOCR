@@ -342,17 +342,23 @@ class Video:
         # Cleanup
         shutil.rmtree(temp_dir, ignore_errors=True)
 
-    def get_subtitles(self, sim_threshold: int, max_merge_gap_sec: float, lang: str, post_processing: bool, min_subtitle_duration_sec: float) -> str:
-        self._generate_subtitles(sim_threshold, max_merge_gap_sec, lang, post_processing, min_subtitle_duration_sec)
+    def get_subtitles(self, sim_threshold: int, max_merge_gap_sec: float, lang: str, post_processing: bool, min_subtitle_duration_sec: float, subtitle_alignments: list[str]) -> str:
+        self._generate_subtitles(sim_threshold, max_merge_gap_sec, lang, post_processing, min_subtitle_duration_sec, subtitle_alignments)
 
         srt_lines = []
         for i, sub in enumerate(self.pred_subs, 1):
             start_time, end_time = self._get_srt_timestamps(sub)
-            srt_lines.append(f'{i}\n{start_time} --> {end_time}\n{sub.text}\n\n')
+
+            text = sub.text
+            tag = subtitle_alignments[sub.zone_index]
+            if tag:
+                text = f"{{\\{tag}}}{sub.text}"
+
+            srt_lines.append(f'{i}\n{start_time} --> {end_time}\n{text}\n\n')
 
         return ''.join(srt_lines)
 
-    def _generate_subtitles(self, sim_threshold: int, max_merge_gap_sec: float, lang: str, post_processing: bool, min_subtitle_duration_sec: float) -> None:
+    def _generate_subtitles(self, sim_threshold: int, max_merge_gap_sec: float, lang: str, post_processing: bool, min_subtitle_duration_sec: float, subtitle_alignments: list[str]) -> None:
         print("Generating subtitles...", flush=True)
 
         subs_zone1 = self._process_single_zone(self.pred_frames_zone1, sim_threshold, max_merge_gap_sec, lang, post_processing, min_subtitle_duration_sec)
@@ -363,7 +369,10 @@ class Video:
         elif not subs_zone1 and subs_zone2:
             self.pred_subs = subs_zone2
         elif subs_zone1 and subs_zone2:
-            self.pred_subs = self._merge_dual_zone_subtitles(subs_zone1, subs_zone2)
+            if subtitle_alignments[0] != subtitle_alignments[1]:
+                self.pred_subs = sorted(subs_zone1 + subs_zone2, key=lambda s: s.index_start)
+            else:
+                self.pred_subs = self._merge_dual_zone_subtitles(subs_zone1, subs_zone2)
         else:
             self.pred_subs = []
 
