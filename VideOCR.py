@@ -215,7 +215,7 @@ LANGUAGE_CODE_TO_NATIVE_NAME = {
 }
 
 # --- Language Data ---
-languages_list = [
+LANGUAGES_LIST = [
     ('Abaza', 'abq'), ('Adyghe', 'ady'), ('Afrikaans', 'af'), ('Albanian', 'sq'),
     ('Angika', 'ang'), ('Arabic', 'ar'), ('Avar', 'ava'), ('Azerbaijani', 'az'),
     ('Baluchi', 'bal'), ('Bashkir', 'ba'), ('Basque', 'eu'), ('Belarusian', 'be'),
@@ -246,9 +246,9 @@ languages_list = [
     ('Uyghur', 'ug'), ('Uzbek', 'uz'), ('Vietnamese', 'vi'), ('Welsh', 'cy'),
     ('Sakha', 'sah'),
 ]
-languages_list.sort(key=lambda x: x[0])
-language_display_names = [lang[0] for lang in languages_list]
-language_abbr_lookup = {name: abbr for name, abbr in languages_list}
+LANGUAGES_LIST.sort(key=lambda x: x[0])
+language_display_names = [lang[0] for lang in LANGUAGES_LIST]
+language_abbr_lookup = {name: abbr for name, abbr in LANGUAGES_LIST}
 
 # Mapping from PaddleOCR internal codes to standard ISO 639 codes for deviating abbreviations
 PADDLE_TO_ISO_MAP = {
@@ -267,16 +267,16 @@ PADDLE_TO_ISO_MAP = {
     'che': 'ce',
 }
 
-default_display_language = 'English'
+DEFAULT_DISPLAY_LANGUAGE = 'English'
 
 # --- Subtitle Position Data ---
-subtitle_positions_list = [
+SUBTITLE_POSITIONS_LIST = [
     ('pos_center', 'center'),
     ('pos_left', 'left'),
     ('pos_right', 'right'),
     ('pos_any', 'any')
 ]
-default_internal_subtitle_position = 'center'
+DEFAULT_INTERNAL_SUBTITLE_POSITION = 'center'
 
 # --- Subtitle Alignment Data ---
 SUBTITLE_ALIGNMENT_LIST = [
@@ -454,10 +454,12 @@ def update_gui_text(window, is_paused=False):
         '--use_gpu': {'text': 'chk_use_gpu', 'tooltip': 'tip_use_gpu'},
         '--use_fullframe': {'text': 'chk_full_frame', 'tooltip': 'tip_full_frame'},
         '--use_dual_zone': {'text': 'chk_dual_zone', 'tooltip': 'tip_dual_zone'},
-        '--use_angle_cls': {'text': 'chk_angle_cls', 'tooltip': 'tip_angle_cls'},
         'enable_subtitle_alignment': {'text': 'chk_enable_subtitle_alignment', 'tooltip': 'tip_enable_subtitle_alignment'},
-        '--subtitle_alignment_text1': {'text': 'lbl_subtitle_alignment1', 'tooltip': 'tip_subtitle_alignment1'},
-        '--subtitle_alignment_text2': {'text': 'lbl_subtitle_alignment2', 'tooltip': 'tip_subtitle_alignment2'},
+        '-LBL-SUBTITLE-ALIGNMENT-': {'text': 'lbl_subtitle_alignment1', 'tooltip': 'tip_subtitle_alignment1'},
+        '--subtitle_alignment': {'tooltip': 'tip_subtitle_alignment1'},
+        '-LBL-SUBTITLE-ALIGNMENT2-': {'text': 'lbl_subtitle_alignment2', 'tooltip': 'tip_subtitle_alignment2'},
+        '--subtitle_alignment2': {'tooltip': 'tip_subtitle_alignment2'},
+        '--use_angle_cls': {'text': 'chk_angle_cls', 'tooltip': 'tip_angle_cls'},
         '--post_processing': {'text': 'chk_post_processing', 'tooltip': 'tip_post_processing'},
         '--use_server_model': {'text': 'chk_server_model', 'tooltip': 'tip_server_model'},
         '-LBL-VIDEOCR_SETTINGS-': {'text': 'lbl_videocr_settings'},
@@ -809,11 +811,11 @@ def check_for_updates(window, manual_check=False):
 
 def update_subtitle_pos_combo(window, selected_internal_pos=None):
     """Updates the Subtitle Position combo box with translated values and sets the selected item."""
-    pos_to_select = selected_internal_pos if selected_internal_pos is not None else default_internal_subtitle_position
+    pos_to_select = selected_internal_pos if selected_internal_pos is not None else DEFAULT_INTERNAL_SUBTITLE_POSITION
 
-    internal_to_display_name_map = {internal_val: LANG.get(lang_key, lang_key) for lang_key, internal_val in subtitle_positions_list}
-    display_pos = internal_to_display_name_map.get(pos_to_select, internal_to_display_name_map[default_internal_subtitle_position])
-    translated_pos_names = [internal_to_display_name_map[internal_val] for lang_key, internal_val in subtitle_positions_list]
+    internal_to_display_name_map = {internal_val: LANG.get(lang_key, lang_key) for lang_key, internal_val in SUBTITLE_POSITIONS_LIST}
+    display_pos = internal_to_display_name_map.get(pos_to_select, internal_to_display_name_map[DEFAULT_INTERNAL_SUBTITLE_POSITION])
+    translated_pos_names = [internal_to_display_name_map[internal_val] for lang_key, internal_val in SUBTITLE_POSITIONS_LIST]
 
     window['-SUBTITLE_POS_COMBO-'].update(value=display_pos, values=translated_pos_names, size=(38, 4))
 
@@ -827,12 +829,10 @@ def update_alignment_combos(window, selected_index1=None, selected_index2=None):
     internal_to_display_map = {internal_val: LANG.get(lang_key, internal_val) for lang_key, internal_val in SUBTITLE_ALIGNMENT_LIST}
     translated_names = list(internal_to_display_map.values())
 
-    # Zone 1
     idx1 = selected_index1 if selected_index1 is not None else 0
     display_val1 = translated_names[idx1] if 0 <= idx1 < len(translated_names) else translated_names[0]
     window['--subtitle_alignment'].update(value=display_val1, values=translated_names)
 
-    # Zone 2
     idx2 = selected_index2 if selected_index2 is not None else 0
     display_val2 = translated_names[idx2] if 0 <= idx2 < len(translated_names) else translated_names[0]
     window['--subtitle_alignment2'].update(value=display_val2, values=translated_names)
@@ -870,8 +870,8 @@ def get_default_settings():
     """Returns a dictionary of default settings."""
     return {
     '--language': 'en',
-    '-LANG_COMBO-': default_display_language,
-    '-SUBTITLE_POS_COMBO-': default_internal_subtitle_position,
+    '-LANG_COMBO-': DEFAULT_DISPLAY_LANGUAGE,
+    '-SUBTITLE_POS_COMBO-': DEFAULT_INTERNAL_SUBTITLE_POSITION,
     '-POST_ACTION-': 0,
     '--time_start': DEFAULT_TIME_START,
     '--time_end': '',
@@ -911,9 +911,9 @@ def save_settings(window, values):
 
     settings_to_save = {key: values.get(key, get_default_settings().get(key)) for key in get_default_settings() if key != '--saved_crop_boxes'}
 
-    display_name_to_internal_map = {LANG.get(lang_key, lang_key): internal_val for lang_key, internal_val in subtitle_positions_list}
+    display_name_to_internal_map = {LANG.get(lang_key, lang_key): internal_val for lang_key, internal_val in SUBTITLE_POSITIONS_LIST}
     selected_display_name = values.get('-SUBTITLE_POS_COMBO-')
-    internal_pos_value = display_name_to_internal_map.get(selected_display_name, default_internal_subtitle_position)
+    internal_pos_value = display_name_to_internal_map.get(selected_display_name, DEFAULT_INTERNAL_SUBTITLE_POSITION)
     settings_to_save['-SUBTITLE_POS_COMBO-'] = internal_pos_value
 
     current_idx = window['-POST_ACTION-'].Widget.current()
@@ -969,7 +969,7 @@ def load_settings(window):
                 saved_lang_code = config.get(CONFIG_SECTION, '--language', fallback='en')
                 load_language(saved_lang_code)
 
-                saved_internal_pos = config.get(CONFIG_SECTION, '-SUBTITLE_POS_COMBO-', fallback=default_internal_subtitle_position)
+                saved_internal_pos = config.get(CONFIG_SECTION, '-SUBTITLE_POS_COMBO-', fallback=DEFAULT_INTERNAL_SUBTITLE_POSITION)
                 update_subtitle_pos_combo(window, saved_internal_pos)
 
                 saved_idx = config.getint(CONFIG_SECTION, '-POST_ACTION-', fallback=0)
@@ -979,7 +979,6 @@ def load_settings(window):
                 display_lang = code_to_native_name_map.get(saved_lang_code, 'English')
                 window['-UI_LANG_COMBO-'].update(value=display_lang)
 
-                # Update alignment combos display names
                 saved_align1 = config.get(CONFIG_SECTION, '--subtitle_alignment', fallback=DEFAULT_SUBTITLE_ALIGNMENT)
                 saved_align2 = config.get(CONFIG_SECTION, '--subtitle_alignment2', fallback=DEFAULT_SUBTITLE_ALIGNMENT)
                 update_alignment_combos(window, get_alignment_index(saved_align1), get_alignment_index(saved_align2))
@@ -1023,7 +1022,7 @@ def load_settings(window):
                                 if value_str in language_display_names:
                                     value = value_str
                                 else:
-                                    value = default_display_language
+                                    value = DEFAULT_DISPLAY_LANGUAGE
                             else:
                                 value = config.get(CONFIG_SECTION, key)
 
@@ -1084,7 +1083,7 @@ def generate_output_path(video_path, values, default_dir=DEFAULT_DOCUMENTS_DIR):
         else:
             output_dir = pathlib.Path(output_dir_str)
 
-    selected_lang_name = values.get('-LANG_COMBO-', default_display_language)
+    selected_lang_name = values.get('-LANG_COMBO-', DEFAULT_DISPLAY_LANGUAGE)
     paddle_code = language_abbr_lookup.get(selected_lang_name, 'en')
     iso_code = PADDLE_TO_ISO_MAP.get(paddle_code, paddle_code)
 
@@ -1370,13 +1369,13 @@ def get_processing_args(values, window):
     args = {}
     args['video_path'] = video_path
 
-    selected_lang_name = values.get('-LANG_COMBO-', default_display_language)
+    selected_lang_name = values.get('-LANG_COMBO-', DEFAULT_DISPLAY_LANGUAGE)
     lang_abbr = language_abbr_lookup.get(selected_lang_name)
     if lang_abbr:
         args['lang'] = lang_abbr
 
     selected_display_name = values.get('-SUBTITLE_POS_COMBO-')
-    display_name_to_internal_map = {LANG.get(lang_key, lang_key): internal_val for lang_key, internal_val in subtitle_positions_list}
+    display_name_to_internal_map = {LANG.get(lang_key, lang_key): internal_val for lang_key, internal_val in SUBTITLE_POSITIONS_LIST}
     pos_value = display_name_to_internal_map.get(selected_display_name)
     if pos_value:
         args['subtitle_position'] = pos_value
@@ -1934,7 +1933,7 @@ tab1_content = [
             [sg.Text("Output SRT:", size=(15, 1), key='-LBL-OUTPUT_SRT-'),
             sg.Input(key="--output", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, disabled=True, size=(40, 1)), GhostButton()],
             [sg.Text("Subtitle Language:", size=(15, 1), key='-LBL-SUB_LANG-'),
-            sg.Combo(language_display_names, default_value=default_display_language, key="-LANG_COMBO-", size=(38, 1), readonly=True, enable_events=True, expand_x=True), GhostButton()],
+            sg.Combo(language_display_names, default_value=DEFAULT_DISPLAY_LANGUAGE, key="-LANG_COMBO-", size=(38, 1), readonly=True, enable_events=True, expand_x=True), GhostButton()],
             [sg.Text("Subtitle Position:", size=(15, 1), key='-LBL-SUB_POS-'),
             sg.Combo([], key="-SUBTITLE_POS_COMBO-", size=(38, 4), readonly=True, enable_events=True, expand_x=True), GhostButton()],
         ], pad=(0, None)),
@@ -2024,9 +2023,9 @@ tab2_content = [
     [sg.Checkbox("Use Full Frame OCR", default=False, key="--use_fullframe", enable_events=True)],
     [sg.Checkbox("Enable Dual Zone OCR", default=False, key="--use_dual_zone", enable_events=True)],
     [sg.Checkbox("Enable Subtitle Alignment", default=False, key="enable_subtitle_alignment", enable_events=True)],
-    [sg.Text("Zone 1 Alignment:", size=(38, 1), key='--subtitle_alignment_text1'),
+    [sg.Text("Zone 1 Alignment:", size=(38, 1), key='-LBL-SUBTITLE-ALIGNMENT-'),
      sg.Combo([], key="--subtitle_alignment", size=(15, 1), readonly=True, enable_events=True, disabled=True)],
-    [sg.Text("Zone 2 Alignment:", size=(38, 1), key='--subtitle_alignment_text2'),
+    [sg.Text("Zone 2 Alignment:", size=(38, 1), key='-LBL-SUBTITLE-ALIGNMENT2-'),
      sg.Combo([], key="--subtitle_alignment2", size=(15, 1), readonly=True, enable_events=True, disabled=True)],
     [sg.Checkbox("Enable Angle Classification", default=False, key="--use_angle_cls", enable_events=True)],
     [sg.Checkbox("Enable Post Processing", default=False, key="--post_processing", enable_events=True)],
@@ -2422,7 +2421,7 @@ while True:
         elif event == '-LANG_COMBO-':
             if video_path:
                 current_out = values.get('--output', '')
-                selected_lang_name = values.get('-LANG_COMBO-', default_display_language)
+                selected_lang_name = values.get('-LANG_COMBO-', DEFAULT_DISPLAY_LANGUAGE)
                 paddle_code = language_abbr_lookup.get(selected_lang_name, 'en')
                 iso_code = PADDLE_TO_ISO_MAP.get(paddle_code, paddle_code)
 
@@ -2478,8 +2477,8 @@ while True:
             was_paused = window['-BTN-PAUSE-'].get_text() == current_resume_text
 
             selected_pos_display_name = values['-SUBTITLE_POS_COMBO-']
-            pos_display_to_internal_map = {LANG.get(lang_key, lang_key): internal_val for lang_key, internal_val in subtitle_positions_list}
-            saved_internal_pos = pos_display_to_internal_map.get(selected_pos_display_name, default_internal_subtitle_position)
+            pos_display_to_internal_map = {LANG.get(lang_key, lang_key): internal_val for lang_key, internal_val in SUBTITLE_POSITIONS_LIST}
+            saved_internal_pos = pos_display_to_internal_map.get(selected_pos_display_name, DEFAULT_INTERNAL_SUBTITLE_POSITION)
 
             load_language(lang_code)
             update_gui_text(window, is_paused=was_paused)
