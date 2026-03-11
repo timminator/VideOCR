@@ -100,14 +100,6 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
 
   Specifies the alignment of subtitles in the video and allows for better text recognition.
 
-- `subtitle_alignment`
-
-  (Zone 1) Subtitle alignment. This parameter allows you to control the position of the subtitles within the video frame using ASS (Advanced SubStation Alpha) tags. Valid values are: `bottom-left`, `bottom-center`, `bottom-right`, `middle-left`, `middle-center`, `middle-right`, `top-left`, `top-center`, `top-right`.
-
-- `subtitle_alignment2`
-
-  (Zone 2) Subtitle alignment. This works identically to `--subtitle_alignment` but applies to the second OCR zone when `--use_dual_zone` is enabled.
-
 - `conf_threshold`
 
   Confidence threshold for word predictions. Words with lower confidence than this value will be discarded. The default value `75` is fine for most cases. 
@@ -142,14 +134,14 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
 
   By default, the specified cropped area is used for OCR or if a crop is not specified, then the bottom third of the frame will be used. By setting this value to `True` the entire frame will be used.
   
-- `use_dual_zone`
-
-  This parameter allows to specify two areas that will be used for OCR.
-
 - `crop_x(2)`, `crop_y(2)`, `crop_width(2)`, `crop_height(2)`
 
   Specifies the bounding area(s) in pixels for the portion of the frame that will be used for OCR. See image below for example:
   ![image](https://github.com/timminator/VideOCR/blob/master/Pictures/crop_example.png)
+
+- `subtitle_alignment(2)`
+
+  Subtitle alignment. This parameter allows you to control the position of the subtitles within the video frame using ASS (Advanced SubStation Alpha) tags. Valid values are: `bottom-left`, `bottom-center`, `bottom-right`, `middle-left`, `middle-center`, `middle-right`, `top-left`, `top-center`, `top-right`.
 
 - `max_ocr_image_width`
 

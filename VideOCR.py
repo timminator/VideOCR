@@ -1382,7 +1382,7 @@ def get_processing_args(values, window):
         args['subtitle_position'] = pos_value
 
     for key in values:
-        if key.startswith('--') and key not in ['--keyboard_seek_step', '--default_output_dir', '--save_in_video_dir', '--send_notification', '--save_crop_box', '--check_for_updates', '--language', '--subtitle_alignment', '--subtitle_alignment2']:
+        if key.startswith('--') and key not in ['--keyboard_seek_step', '--default_output_dir', '--save_in_video_dir', '--send_notification', '--save_crop_box', '--check_for_updates', '--language', '--use_dual_zone', '--subtitle_alignment', '--subtitle_alignment2']:
             stripped_key = key.lstrip('-')
             value = values.get(key)
             if isinstance(value, bool):

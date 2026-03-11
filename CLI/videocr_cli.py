@@ -137,7 +137,6 @@ def main():
     parser.add_argument('--post_processing', type=lambda x: x.lower() == 'true', default=False, help='Enable post processing of subtitles (default: false)')
     parser.add_argument('--min_subtitle_duration', type=restricted_float(min_val=0.0), default=0.2, help='Minimum subtitle duration in seconds (default: 0.2)')
     parser.add_argument('--ocr_image_max_width', type=restricted_int(min_val=1), default=960, help='Maximum image width used for OCR (default: 960)')
-    parser.add_argument('--use_dual_zone', type=lambda x: x.lower() == 'true', default=False, help='Enable dual zone OCR processing (default: false)')
     parser.add_argument('--crop_x', type=int, default=None, help='(Zone 1) Crop start X')
     parser.add_argument('--crop_y', type=int, default=None, help='(Zone 1) Crop start Y')
     parser.add_argument('--crop_width', type=int, default=None, help='(Zone 1) Crop width')
@@ -174,22 +173,18 @@ def main():
             elif not is_zone1_empty:
                 raise ValueError("Partial crop coordinates detected for Zone 1. You must provide ALL four: --crop_x, --crop_y, --crop_width, and --crop_height.")
 
-            if args.use_dual_zone:
-                zone2_vars = [args.crop_x2, args.crop_y2, args.crop_width2, args.crop_height2]
+            zone2_vars = [args.crop_x2, args.crop_y2, args.crop_width2, args.crop_height2]
 
-                is_zone2_full = all(v is not None for v in zone2_vars)
-                is_zone2_empty = all(v is None for v in zone2_vars)
+            is_zone2_full = all(v is not None for v in zone2_vars)
+            is_zone2_empty = all(v is None for v in zone2_vars)
 
-                if is_zone2_full:
-                    crop_zones.append({
-                        'x': args.crop_x2, 'y': args.crop_y2,
-                        'width': args.crop_width2, 'height': args.crop_height2
-                    })
-                elif not is_zone2_empty:
-                    raise ValueError("Partial crop coordinates detected for Zone 2. You must provide ALL four: --crop_x2, --crop_y2, --crop_width2, and --crop_height2.")
-                else:
-                    if is_zone1_full:
-                        raise ValueError("Dual zone OCR was requested, but coordinates for the second zone were not provided.")
+            if is_zone2_full:
+                crop_zones.append({
+                    'x': args.crop_x2, 'y': args.crop_y2,
+                    'width': args.crop_width2, 'height': args.crop_height2
+                })
+            elif not is_zone2_empty:
+                raise ValueError("Partial crop coordinates detected for Zone 2. You must provide ALL four: --crop_x2, --crop_y2, --crop_width2, and --crop_height2.")
 
         keep_awake_manager = nullcontext() if args.allow_system_sleep else keep.running()
 
