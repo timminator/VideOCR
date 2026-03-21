@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 
 from . import utils
@@ -5,12 +7,12 @@ from .video import Video
 
 
 def save_subtitles_to_file(
-        video_path: str, file_path='subtitle.srt', lang='ch', time_start='0:00', time_end='',
-        conf_threshold=75, sim_threshold=80, max_merge_gap_sec=0.1, use_fullframe=False,
-        use_gpu=False, use_angle_cls=False, use_server_model=False, brightness_threshold=None,
-        ssim_threshold=92, subtitle_position="center", frames_to_skip=1, crop_zones=None,
-        ocr_image_max_width=960, post_processing=False, min_subtitle_duration_sec=0.2,
-        normalize_to_simplified_chinese=True, subtitle_alignments=None) -> None:
+        video_path: str, file_path: str = 'subtitle.srt', lang: str = 'ch', time_start: str = '0:00', time_end: str = '',
+        conf_threshold: int = 75, sim_threshold: int = 80, max_merge_gap_sec: float = 0.1, use_fullframe: bool = False,
+        use_gpu: bool = False, use_angle_cls: bool = False, use_server_model: bool = False, brightness_threshold: int | None = None,
+        ssim_threshold: int = 92, subtitle_position: str = "center", frames_to_skip: int = 1, crop_zones: list[dict[str, int]] | None = None,
+        ocr_image_max_width: int = 800, post_processing: bool = False, min_subtitle_duration_sec: float = 0.2,
+        normalize_to_simplified_chinese: bool = True, subtitle_alignments: list[str | None] | None = None) -> None:
 
     if crop_zones is None:
         crop_zones = []
@@ -29,14 +31,14 @@ def save_subtitles_to_file(
 
     det_model_dir, rec_model_dir, cls_model_dir = utils.resolve_model_dirs(lang, use_server_model)
 
-    v = Video(video_path, paddleocr_path, det_model_dir, rec_model_dir, cls_model_dir, time_end)
+    v = Video(video_path, paddleocr_path, det_model_dir, rec_model_dir, cls_model_dir)
     try:
         v.run_ocr(
             use_gpu, lang, use_angle_cls, time_start, time_end, conf_threshold,
             use_fullframe, brightness_threshold, ssim_threshold, subtitle_position,
             frames_to_skip, crop_zones, ocr_image_max_width, normalize_to_simplified_chinese
         )
-    except ValueError as e:
+    except Exception as e:
         print(f"Error: {e}", flush=True)
         sys.exit(1)
     subtitles = v.get_subtitles(sim_threshold, max_merge_gap_sec, lang, post_processing, min_subtitle_duration_sec, subtitle_alignments)

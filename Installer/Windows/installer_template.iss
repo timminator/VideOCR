@@ -156,7 +156,7 @@ begin
   begin
     OldVersion := GetInstalledVersion();
 
-    if VersionCompare(OldVersion, '1.4.1') < 0 then
+    if VersionCompare(OldVersion, '1.4.2') < 0 then
     begin
       ConfigPath := ExpandConstant('{app}\\videocr_gui_config.ini');
       if FileExists(ConfigPath) then

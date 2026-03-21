@@ -15,10 +15,13 @@
 #     nuitka-project: --product-version={APP_VERSION}
 #     nuitka-project: --copyright="timminator"
 
+from __future__ import annotations
+
 import argparse
 import os
 import sys
 from contextlib import nullcontext
+from typing import Callable
 
 from wakepy import keep
 
@@ -43,13 +46,13 @@ SUPPORTED_LANGUAGES = (
 
 
 # custom validators for argparse
-def valid_video_path(arg):
+def valid_video_path(arg: str) -> str:
     if not os.path.isfile(arg):
         raise argparse.ArgumentTypeError(f"Video file does not exist or is not a valid file: '{arg}'")
     return arg
 
 
-def valid_output_path(arg):
+def valid_output_path(arg: str) -> str:
     dir_name = os.path.dirname(arg) or '.'
     if not os.path.isdir(dir_name):
         raise argparse.ArgumentTypeError(f"Output directory does not exist: '{dir_name}'")
@@ -58,15 +61,15 @@ def valid_output_path(arg):
     return arg
 
 
-def valid_language(arg):
+def valid_language(arg: str) -> str:
     lang = arg.lower()
     if lang not in SUPPORTED_LANGUAGES:
         raise argparse.ArgumentTypeError(f"Unsupported OCR language code: '{arg}'")
     return lang
 
 
-def restricted_int(min_val=None, max_val=None):
-    def validator(arg):
+def restricted_int(min_val: int | None = None, max_val: int | None = None) -> Callable[[str], int]:
+    def validator(arg: str) -> int:
         try:
             value = int(arg)
         except ValueError:
@@ -80,8 +83,8 @@ def restricted_int(min_val=None, max_val=None):
     return validator
 
 
-def restricted_float(min_val=None, max_val=None):
-    def validator(arg):
+def restricted_float(min_val: float | None = None, max_val: float | None = None) -> Callable[[str], float]:
+    def validator(arg: str) -> float:
         try:
             value = float(arg)
         except ValueError:
@@ -95,7 +98,7 @@ def restricted_float(min_val=None, max_val=None):
     return validator
 
 
-def valid_time_string(arg):
+def valid_time_string(arg: str) -> str:
     if not arg:
         return ""
     try:
@@ -105,7 +108,7 @@ def valid_time_string(arg):
         raise argparse.ArgumentTypeError(f"Invalid time format '{arg}'. Use MM:SS or HH:MM:SS.") from None
 
 
-def valid_alignment_name(arg):
+def valid_alignment_name(arg: str) -> str | None:
     if not arg:
         return None
     if arg in utils.VALID_ALIGNMENT_NAMES:
@@ -114,7 +117,7 @@ def valid_alignment_name(arg):
     raise argparse.ArgumentTypeError(f"Invalid alignment '{arg}'. Allowed values are: {allowed_values}")
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description='Extract subtitles from video using PaddleOCR.')
 
     parser.add_argument('--video_path', type=valid_video_path, required=True, help='Path to the video file')
@@ -136,7 +139,7 @@ def main():
     parser.add_argument('--normalize_to_simplified_chinese', type=lambda x: x.lower() == 'true', default=True, help='Normalize Traditional Chinese characters to Simplified Chinese for ch (default: true)')
     parser.add_argument('--post_processing', type=lambda x: x.lower() == 'true', default=False, help='Enable post processing of subtitles (default: false)')
     parser.add_argument('--min_subtitle_duration', type=restricted_float(min_val=0.0), default=0.2, help='Minimum subtitle duration in seconds (default: 0.2)')
-    parser.add_argument('--ocr_image_max_width', type=restricted_int(min_val=1), default=960, help='Maximum image width used for OCR (default: 960)')
+    parser.add_argument('--ocr_image_max_width', type=restricted_int(min_val=1), default=800, help='Maximum image width used for OCR (default: 800)')
     parser.add_argument('--crop_x', type=int, default=None, help='(Zone 1) Crop start X')
     parser.add_argument('--crop_y', type=int, default=None, help='(Zone 1) Crop start Y')
     parser.add_argument('--crop_width', type=int, default=None, help='(Zone 1) Crop width')
@@ -158,7 +161,7 @@ def main():
             if start_ms > end_ms:
                 raise ValueError(f"Start Time ({args.time_start}) cannot be after End Time ({args.time_end}).")
 
-        crop_zones = []
+        crop_zones: list[dict[str, int]] = []
         if not args.use_fullframe:
             zone1_vars = [args.crop_x, args.crop_y, args.crop_width, args.crop_height]
 

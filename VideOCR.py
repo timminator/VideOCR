@@ -1,6 +1,7 @@
 # Compilation instructions
 # nuitka-project: --standalone
 # nuitka-project: --enable-plugin=tk-inter
+# nuitka-project: --nofollow-import-to=PIL
 # nuitka-project: --windows-console-mode=disable
 # nuitka-project: --include-windows-runtime-dlls=yes
 # nuitka-project: --include-data-files=Installer/*.ico=VideOCR.ico
@@ -156,17 +157,15 @@ def send_notification(title, message):
 # --- Determine VideOCR location ---
 def find_videocr_program():
     """Determines the path to the videocr-cli executable (.exe or .bin)."""
-    base_folders = [f'videocr-cli-CPU-v{PROGRAM_VERSION}', f'videocr-cli-GPU-v{PROGRAM_VERSION}']
     program_name = 'videocr-cli'
-
-    extensions = ".exe" if platform.system() == "Windows" else ".bin"
+    extension = ".exe" if platform.system() == "Windows" else ".bin"
 
     for entry in os.listdir(APP_DIR):
-        for base in base_folders:
-            if entry.startswith(base):
-                potential_path = os.path.join(APP_DIR, entry, f'{program_name}{extensions}')
-                if os.path.exists(potential_path):
-                    return potential_path
+        if entry.startswith("videocr-cli-"):
+            potential_path = os.path.join(APP_DIR, entry, f'{program_name}{extension}')
+            if os.path.exists(potential_path):
+                return potential_path
+
     # Should never be reached
     return None
 
@@ -185,10 +184,10 @@ DEFAULT_SIM_THRESHOLD = 80
 DEFAULT_MAX_MERGE_GAP = 0.1
 DEFAULT_MIN_SUBTITLE_DURATION = 0.2
 DEFAULT_SSIM_THRESHOLD = 92
-DEFAULT_OCR_IMAGE_MAX_WIDTH = 960
+DEFAULT_OCR_IMAGE_MAX_WIDTH = 800
 DEFAULT_FRAMES_TO_SKIP = 1
 DEFAULT_TIME_START = "0:00"
-KEY_SEEK_STEP = 1
+KEY_SEEK_STEP = 0.1
 CONFIG_FILE = os.path.join(APP_DIR, 'videocr_gui_config.ini')
 CONFIG_SECTION = 'Settings'
 try:
@@ -328,9 +327,8 @@ DEFAULT_STATUS_TEXTS = {
 video_path = None
 original_frame_width = 0
 original_frame_height = 0
-total_frames = 0
-video_fps = 0
-current_frame_num = 0
+video_duration_ms = 0.0
+current_time_ms = 0.0
 resized_frame_width = 0
 resized_frame_height = 0
 image_offset_x = 0
@@ -405,7 +403,6 @@ def update_gui_text(window, is_paused=False):
         '-LBL-SEEK-': {'text': 'lbl_seek'},
         '-LBL-CROP_BOX-': {'text': 'lbl_crop_box'},
         '-CROP_COORDS-': {'text': 'crop_not_set'},
-        '-FRAME_TEXT-': {'text': 'frame_text_empty'},
         '-TIME_TEXT-': {'text': 'time_text_empty'},
         '-BTN-RUN-': {'text': 'btn_run'},
         '-BTN-CANCEL-': {'text': 'btn_cancel'},
@@ -579,24 +576,21 @@ def format_seconds(seconds):
     return f"{m:02d}m {s:02d}s"
 
 
-def update_frame_and_time_display(window, current_frame, total_frames, fps):
-    """Updates the frame count and time text elements."""
-    frame_text_format = LANG.get('frame_text_format', 'Frame: {} / {}')
+def update_time_display(window, current_ms, total_ms):
+    """Updates the time text elements."""
     time_text_format = LANG.get('time_text_format', 'Time: {} / {}')
 
-    window["-FRAME_TEXT-"].update(frame_text_format.format(current_frame + 1, total_frames))
-
-    if total_frames > 0 and fps > 0:
-        current_seconds = current_frame / fps
-        total_seconds = total_frames / fps
-        time_text = f"{format_time(current_seconds)} / {format_time(total_seconds)}"
+    if total_ms > 0:
+        current_sec = current_ms / 1000.0
+        total_sec = total_ms / 1000.0
+        time_text = f"{format_time(current_sec)} / {format_time(total_sec)}"
         window["-TIME_TEXT-"].update(time_text_format.format(time_text))
     else:
         time_text_empty = LANG.get('time_text_empty', 'Time: -/-')
         window["-TIME_TEXT-"].update(time_text_empty)
 
 
-def _parse_and_validate_time_parts(time_str: str) -> tuple[int, int, int] | None:
+def _parse_and_validate_time_parts(time_str):
     """Internal helper to parse MM:SS or HH:MM:SS and validate parts."""
     if not time_str:
         return None
@@ -630,7 +624,7 @@ def is_valid_time_format(time_str: str) -> bool:
     return _parse_and_validate_time_parts(time_str) is not None
 
 
-def time_string_to_seconds(time_str: str) -> int | None:
+def time_string_to_seconds(time_str):
     """Converts MM:SS or HH:MM:SS string to total seconds. Returns None if invalid."""
     if not time_str:
         return None
@@ -642,6 +636,17 @@ def time_string_to_seconds(time_str: str) -> int | None:
 
     h, m, s = parsed_time
     return h * 3600 + m * 60 + s
+
+
+def parse_srt_time_to_seconds(time_str):
+    """Parses a timestamp string like '00:00:01,500' or '00:01:00' into seconds (float)."""
+    try:
+        parts = time_str.replace(',', '.').split(':')
+        if len(parts) == 3:
+            return float(parts[0]) * 3600 + float(parts[1]) * 60 + float(parts[2])
+    except Exception:
+        return 0.0
+    return 0.0
 
 
 def center_popup(parent_window, popup_window):
@@ -958,8 +963,10 @@ def save_settings(window, values):
 
 
 def load_settings(window):
-    """Loads settings from the config file and updates GUI elements.
-       Creates a default config if the file doesn't exist."""
+    """
+    Loads settings from the config file and updates GUI elements.
+    Creates a default config if the file doesn't exist.
+    """
     config = configparser.ConfigParser()
 
     if os.path.exists(CONFIG_FILE):
@@ -1097,62 +1104,52 @@ def generate_output_path(video_path, values, default_dir=DEFAULT_DOCUMENTS_DIR):
     return output_path
 
 
-def get_video_frame(video_path, frame_number, display_size):
-    """Reads a specific frame from a video file using validated metadata,
-    resizes it maintaining aspect ratio, and returns it in PNG bytes format
-    with additional metadata."""
+def get_video_metadata(video_path):
+    """Retrieves video metadata using pymediainfo."""
+    try:
+        media_info = MediaInfo.parse(video_path)
+        video_track = None
 
-    # Using pymediainfo in addition to VideoCapture because there can be stream vs container discrepancies
-    media_info = MediaInfo.parse(video_path)
-    video_track = None
+        for track in media_info.tracks:
+            if track.track_type == "Video":
+                video_track = track
 
-    for track in media_info.tracks:
-        if track.track_type == "Video":
-            video_track = track
-            break
+        if not video_track:
+            return 0, 0, 0.0, 0.0
 
-    if video_track:
-        frame_count = getattr(video_track, "frame_count", None)
-        source_frame_count = getattr(video_track, "source_frame_count", None)
-    else:
-        frame_count = source_frame_count = None
+        width = int(video_track.width) if video_track.width else 0
+        height = int(video_track.height) if video_track.height else 0
 
+        duration_ms = 0.0
+        if video_track.duration:
+            duration_ms = float(video_track.duration)
+
+        return width, height, duration_ms
+
+    except Exception as e:
+        log_error(f"Error reading metadata for {video_path}: {e}")
+        return 0, 0, 0.0
+
+
+def get_video_frame(video_path, timestamp_ms, display_size):
+    """Reads a specific frame from a video file using cv2 by seeking to timestamp_ms."""
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
-        return None, 0, 0, 0, 0, 0, 0, 0, 0
+        return None, 0, 0, 0, 0
 
-    cv_reported_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    cv_fps = cap.get(cv2.CAP_PROP_FPS)
-    original_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    original_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-    total_frames_candidates = [cv_reported_frames]
-    if frame_count is not None:
-        total_frames_candidates.append(int(frame_count))
-    if source_frame_count is not None:
-        total_frames_candidates.append(int(source_frame_count))
-
-    total_frames = min([f for f in total_frames_candidates if f > 0], default=0)
-
-    frame_number = max(0, min(frame_number, total_frames - 1 if total_frames > 0 else 0))
-
-    if total_frames <= 0 or original_width <= 0 or original_height <= 0 or cv_fps <= 0:
-        cap.release()
-        return None, 0, 0, 0, 0, 0, 0, 0, 0
-
-    cap.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
+    cap.set(cv2.CAP_PROP_POS_MSEC, timestamp_ms)
     ret, frame = cap.read()
     cap.release()
 
     if not ret:
-        return None, original_width, original_height, total_frames, cv_fps, 0, 0, 0, 0
+        return None, 0, 0, 0, 0
 
     h, w = frame.shape[:2]
     scale = min(display_size[0] / w, display_size[1] / h)
     new_w, new_h = int(w * scale), int(h * scale)
 
     if new_w <= 0 or new_h <= 0:
-        return None, original_width, original_height, total_frames, cv_fps, 0, 0, 0, 0
+        return None, 0, 0, 0, 0
 
     resized_frame = cv2.resize(frame, (new_w, new_h))
 
@@ -1161,108 +1158,126 @@ def get_video_frame(video_path, frame_number, display_size):
 
     is_success, buffer = cv2.imencode(".png", resized_frame)
     if not is_success:
-        return None, original_width, original_height, total_frames, cv_fps, new_w, new_h, offset_x, offset_y
+        return None, 0, 0, 0, 0
 
-    return io.BytesIO(buffer), original_width, original_height, total_frames, cv_fps, new_w, new_h, offset_x, offset_y
+    return io.BytesIO(buffer), new_w, new_h, offset_x, offset_y
 
 
 def handle_progress(match, label_format_key, last_percentage, log_threshold, taskbar_base=0, show_taskbar_progress=True):
     """Handles progress parsing, ETA calculation, and GUI updates."""
-
     if not hasattr(handle_progress, "last_key"):
         handle_progress.last_key = None
-    if not hasattr(handle_progress, "last_item"):
-        handle_progress.last_item = 0
     if not hasattr(handle_progress, "start_time"):
         handle_progress.start_time = None
     if not hasattr(handle_progress, "last_update_time"):
         handle_progress.last_update_time = 0
-
-    current_item = int(match.group(1))
-    total_str = match.group(2)
-
-    if total_str == 'unknown':
-        total_items = 0
-        display_total = LANG.get('unknown', 'unknown')
-    elif total_str.startswith('~'):
-        total_items = int(total_str[1:])
-        display_total = f"~{total_items}"
-    else:
-        total_items = int(total_str)
-        display_total = str(total_items)
-
-    current_percent = (current_item / total_items) * 100 if total_items > 0 else 0
-    smooth_threshold = 0.1
-    min_item_delta = 10
-
-    item_delta = current_item - handle_progress.last_item
-    percent_threshold = last_percentage + smooth_threshold
+    if not hasattr(handle_progress, "start_percent"):
+        handle_progress.start_percent = 0.0
+    if not hasattr(handle_progress, "last_taskbar_val"):
+        handle_progress.last_taskbar_val = -1
 
     current_time = time.time()
+    is_time_based = label_format_key in ("progress_seek", "progress_step1")
+
+    if is_time_based:
+        curr_ts_str = match.group(1)
+        target_ts_str = match.group(2)
+        frame_num = match.group(3)
+
+        curr_sec = parse_srt_time_to_seconds(curr_ts_str)
+        target_sec = parse_srt_time_to_seconds(target_ts_str)
+
+        current_percent = 0.0
+        if target_sec > 0:
+            current_percent = (curr_sec / target_sec) * 100.0
+            current_percent = min(max(current_percent, 0.0), 100.0)
+
+        current_item_display = curr_ts_str
+        display_total = target_ts_str
+    else:
+        current_item = int(match.group(1))
+        total_str = match.group(2)
+
+        if total_str == 'Unknown':
+            total_items = 0
+            display_total = LANG.get('unknown', 'unknown')
+            current_percent = 0.0
+        else:
+            total_items = int(total_str)
+            display_total = str(total_items)
+            current_percent = (current_item / total_items) * 100.0 if total_items > 0 else 0.0
+
+        current_item_display = str(current_item)
+
+    if handle_progress.last_key != label_format_key:
+        handle_progress.last_key = label_format_key
+        handle_progress.start_time = current_time
+        handle_progress.last_update_time = 0
+        handle_progress.start_percent = current_percent
+
     time_delta = current_time - handle_progress.last_update_time
+    percent_threshold = last_percentage + 0.1
 
-    if (current_item == 1 or current_percent >= 100 or (current_percent >= percent_threshold and item_delta >= min_item_delta) or time_delta >= 0.5):
+    should_update = False
+    if current_percent >= 100 or current_percent >= percent_threshold or time_delta >= 0.2:
+        should_update = True
 
-        handle_progress.last_update_time = current_time
+    if not should_update:
+        return last_percentage
 
-        if handle_progress.last_key != label_format_key or current_item == 1:
-            handle_progress.last_key = label_format_key
-            handle_progress.start_time = current_time
-            eta_time_str = "--:--"
-        else:
-            elapsed = current_time - handle_progress.start_time
-            if elapsed > 1 and current_item > 0 and total_items > 0:
-                rate = current_item / elapsed
-                remaining = total_items - current_item
-                eta_time_str = format_seconds(remaining / rate)
-            else:
-                eta_time_str = "--:--"
+    handle_progress.last_update_time = current_time
 
-        if 'vfr' in label_format_key:
-            prefix = LANG.get('eta_map', "ETA Mapping")
-        elif 'seek' in label_format_key:
-            prefix = LANG.get('eta_seek', "ETA Seeking")
-        else:
-            base = LANG.get('eta_step', "ETA Step")
-            if 'step1' in label_format_key:
-                prefix = f"{base} 1/2"
-            elif 'step2' in label_format_key:
-                prefix = f"{base} 2/2"
-            else:
-                prefix = base
+    if label_format_key == "progress_seek":
+        prefix = LANG.get('progress_seek', 'Seeking:')
+        frame_lbl = LANG.get('lbl_frame', 'Frame')
+        msg_template = f"{prefix} {curr_ts_str} / {target_ts_str}, {frame_lbl}: {frame_num} ({{percent}}%)"
+        eta_prefix = LANG.get('eta_seek', 'ETA Seeking')
+    elif label_format_key == "progress_step1":
+        prefix = LANG.get('progress_step1_prefix', 'Step 1/2:')
+        frame_lbl = LANG.get('lbl_frame', 'Frame')
+        msg_template = f"{prefix} {curr_ts_str} / {target_ts_str}, {frame_lbl}: {frame_num} ({{percent}}%)"
+        eta_prefix = f"{LANG.get('eta_step', 'ETA Step')} 1/2"
+    else:
+        raw_msg = LANG.get(label_format_key, "Step 2/2: Performed OCR on image {current} of {total} ({percent}%)")
+        msg_template = raw_msg.replace('{current}', current_item_display).replace('{total}', display_total)
+        eta_prefix = f"{LANG.get('eta_step', 'ETA Step')} 2/2"
 
-        final_eta_str = f"{prefix}: {eta_time_str}"
+    if log_threshold > 0:
+        prev_step = -1 if last_percentage < 0 else int(last_percentage) // log_threshold
+        curr_step = int(current_percent) // log_threshold
 
-        label_format = LANG.get(label_format_key, "Processing {current}/{total} ({percent}%)")
+        if last_percentage < 0 or curr_step > prev_step or (current_percent >= 100 and last_percentage < 100):
+            log_msg = msg_template.format(percent=int(current_percent))
+            gui_queue.put(('-VIDEOCR_OUTPUT-', log_msg + "\n"))
 
-        smooth_percent_str = f"{current_percent:.1f}"
-        status_message_smooth = label_format.format(current=current_item, total=display_total, percent=smooth_percent_str)
+    eta_str = ""
+    elapsed = current_time - handle_progress.start_time
+    percent_done_this_phase = current_percent - handle_progress.start_percent
 
-        log_percent_str = f"{int(current_percent)}"
-        status_message_log = label_format.format(current=current_item, total=display_total, percent=log_percent_str)
+    if percent_done_this_phase > 0:
+        rate = percent_done_this_phase / elapsed
+        remaining_percent = 100.0 - current_percent
+        remaining_seconds = remaining_percent / rate
+        eta_str = f"{eta_prefix}: {format_seconds(remaining_seconds)}"
 
-        progress_data = {
-                'text': status_message_smooth,
-                'percent': current_percent,
-                'eta': final_eta_str
-        }
-        gui_queue.put(('-PROGRESS-SMOOTH-', progress_data))
+    display_text = msg_template.format(percent=f"{current_percent:.1f}")
 
-        prev_step = int(last_percentage / log_threshold)
-        curr_step = int(current_percent / log_threshold)
+    gui_queue.put(('-PROGRESS-SMOOTH-', {
+        'text': display_text,
+        'percent': current_percent,
+        'eta': eta_str
+    }))
 
-        if current_item == 1 or curr_step > prev_step or current_percent >= 100:
-            gui_queue.put(('-VIDEOCR_OUTPUT-', status_message_log + "\n"))
+    if taskbar_progress_supported and show_taskbar_progress and taskbar_base is not None:
+        if label_format_key in ("progress_step1", "progress_step2"):
+            step_progress = max(1, int(current_percent * 0.5))
+            progress_value = taskbar_base + step_progress
 
-        if taskbar_progress_supported and show_taskbar_progress and taskbar_base is not None:
-            progress_value = taskbar_base + int(current_percent * 0.5)
-            if current_item == 1 and progress_value <= taskbar_base:
-                progress_value = taskbar_base + 1
-            gui_queue.put(('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': progress_value}))
+            if last_percentage < 0 or handle_progress.last_taskbar_val != progress_value:
+                gui_queue.put(('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': progress_value}))
+                handle_progress.last_taskbar_val = progress_value
 
-        handle_progress.last_item = current_item
-        return current_percent
-    return last_percentage
+    return current_percent
 
 
 def read_pipe(pipe, output_list):
@@ -1308,8 +1323,8 @@ def get_processing_args(values, window):
     time_end_seconds = time_string_to_seconds(time_end)
 
     video_duration_seconds = 0
-    if total_frames > 0 and video_fps > 0:
-        video_duration_seconds = total_frames / video_fps
+    if video_duration_ms > 0:
+        video_duration_seconds = video_duration_ms / 1000.0
 
     if time_start_seconds is not None:
         if time_start_seconds > video_duration_seconds:
@@ -1431,6 +1446,11 @@ def get_processing_args(values, window):
 
 def run_videocr(args_dict, window):
     """Runs the videocr-cli tool in a separate process and streams output."""
+    if not VIDEOCR_PATH:
+        error_msg = LANG.get('error_cli_not_found', "\nError: videocr-cli not found. Please check the path.\n")
+        gui_queue.put(('-VIDEOCR_OUTPUT-', error_msg))
+        return False
+
     command = [VIDEOCR_PATH]
 
     for key, value in args_dict.items():
@@ -1446,19 +1466,15 @@ def run_videocr(args_dict, window):
     UNSUPPORTED_HARDWARE_ERROR_PATTERN = re.compile(r"Unsupported Hardware Error: (.*)")
     WARNING_HARDWARE_PATTERN = re.compile(r"Hardware Check Warning: (.*)")
     PADDLE_ERROR_PATTERN = re.compile(r"Error: PaddleOCR failed.")
-    STEP1_PROGRESS_PATTERN = re.compile(r"Step 1: Processing image (\d+) of (\d+)")
-    STEP2_PROGRESS_PATTERN = re.compile(r"Step 2: Performing OCR on image (\d+) of (\d+)")
-    STARTING_OCR_PATTERN = re.compile(r"Starting PaddleOCR")
-    GENERATING_SUBTITLES_PATTERN = re.compile(r"Generating subtitles")
-    VFR_PATTERN = re.compile(r"Variable frame rate detected. Building timestamp map...")
-    VFR_ESTIMATING_PATTERN = re.compile(r"Frame count not found. Estimating progress based on duration...")
-    VFR_PROGRESS_PATTERN = re.compile(r"Mapping frame (\d+) of (~?\d+|unknown)")
-    SEEK_PROGRESS_PATTERN = re.compile(r"Advancing to frame (\d+)/(\d+)")
-    MAP_GENERATION_STOP_PATTERN = re.compile(r"Reached target time. Stopped map generation after frame (\d+)\.")
+    SEEK_PROGRESS_PATTERN = re.compile(r"Seeking to start time\.\.\. Current: ([\d:]+) / ([\d:]+), Frame: (\d+)")
+    STEP1_PROGRESS_PATTERN = re.compile(r"Step 1/2: Processing video\.\.\. Current: ([\d:]+) / ([\d:]+|Unknown), Frame: (\d+)")
+    STEP2_PROGRESS_PATTERN = re.compile(r"Step 2/2: Performing OCR on image (\d+) of (\d+)")
+    STARTING_OCR_PATTERN = re.compile(r"Starting PaddleOCR\.\.\.")
+    GENERATING_SUBTITLES_PATTERN = re.compile(r"Generating subtitles\.\.\.")
+    REACHED_END_TIME_PATTERN = re.compile(r"Reached end time\. Stopping\.")
 
     last_reported_percentage_step1 = -1.0
     last_reported_percentage_step2 = -1.0
-    last_reported_percentage_vfr = -1.0
     last_reported_percentage_seek = -1.0
 
     expecting_log_path = False
@@ -1543,28 +1559,20 @@ def run_videocr(args_dict, window):
                         last_reported_percentage_step2, 5, taskbar_base=50)
                     continue
 
-                match3 = VFR_PROGRESS_PATTERN.search(line)
-                if match3:
+                match_seek = SEEK_PROGRESS_PATTERN.search(line)
+                if match_seek:
                     if taskbar_progress_supported and not taskbar_progress_started:
                         gui_queue.put(('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': 1}))
                         taskbar_progress_started = True
-
-                    last_reported_percentage_vfr = handle_progress(
-                        match3, "progress_vfr",
-                        last_reported_percentage_vfr, 5, show_taskbar_progress=False)
-                    continue
-
-                match4 = SEEK_PROGRESS_PATTERN.search(line)
-                if match4:
-                    if taskbar_progress_supported and not taskbar_progress_started:
-                        gui_queue.put(('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': 1}))
-                        taskbar_progress_started = True
-
                     last_reported_percentage_seek = handle_progress(
-                        match4, "progress_seek",
+                        match_seek, "progress_seek",
                         last_reported_percentage_seek, 20, show_taskbar_progress=False)
                     continue
 
+                if REACHED_END_TIME_PATTERN.search(line):
+                    gui_queue.put(('-VIDEOCR_OUTPUT-', LANG.get('log_reached_end', line) + '\n'))
+                    gui_queue.put(('-PROGRESS-SMOOTH-', {'text': LANG.get('log_reached_end', line), 'percent': None}))
+                    continue
                 if STARTING_OCR_PATTERN.search(line):
                     gui_queue.put(('-VIDEOCR_OUTPUT-', LANG.get('cli_starting_ocr', line) + '\n'))
                     gui_queue.put(('-PROGRESS-SMOOTH-', {'text': LANG.get('cli_starting_ocr', line), 'percent': None}))
@@ -1572,21 +1580,6 @@ def run_videocr(args_dict, window):
                 elif GENERATING_SUBTITLES_PATTERN.search(line):
                     gui_queue.put(('-VIDEOCR_OUTPUT-', LANG.get('cli_generating_subs', line) + '\n'))
                     gui_queue.put(('-PROGRESS-SMOOTH-', {'text': LANG.get('cli_generating_subs', line), 'percent': None}))
-                    continue
-                elif VFR_ESTIMATING_PATTERN.search(line):
-                    gui_queue.put(('-VIDEOCR_OUTPUT-', LANG.get('cli_vfr_estimating', line) + '\n'))
-                    gui_queue.put(('-PROGRESS-SMOOTH-', {'text': LANG.get('cli_vfr_estimating', line), 'percent': None}))
-                    continue
-                elif VFR_PATTERN.search(line):
-                    gui_queue.put(('-VIDEOCR_OUTPUT-', LANG.get('cli_vfr_detected', line) + '\n'))
-                    gui_queue.put(('-PROGRESS-SMOOTH-', {'text': LANG.get('cli_vfr_detected', line), 'percent': None}))
-                    continue
-                elif map_gen_match := MAP_GENERATION_STOP_PATTERN.search(line):
-                    frame_num = map_gen_match.group(1)
-                    template = LANG.get('cli_map_gen_stopped', line)
-                    output = template.format(frame_num=frame_num)
-                    gui_queue.put(('-VIDEOCR_OUTPUT-', output + '\n'))
-                    gui_queue.put(('-PROGRESS-SMOOTH-', {'text': output, 'percent': None}))
                     continue
 
         exit_code = process.wait()
@@ -1616,10 +1609,6 @@ def run_videocr(args_dict, window):
 
         return exit_code == 0
 
-    except FileNotFoundError:
-        error_msg = LANG.get('error_cli_not_found', "\nError: '{}' not found. Please check the path.\n")
-        gui_queue.put(('-VIDEOCR_OUTPUT-', error_msg.format(VIDEOCR_PATH)))
-        return False
     except Exception as e:
         error_msg = LANG.get('error_generic_exception', "\nAn error occurred: {}\n")
         gui_queue.put(('-VIDEOCR_OUTPUT-', error_msg.format(e)))
@@ -1635,12 +1624,12 @@ def start_queue(window, queue_data):
     if not pending_items:
         return
 
-    for btn in ['-BTN-BATCH-START-', '-BTN-RUN-', '-SAVE_AS_BTN-']:
+    for btn in ['-BTN-BATCH-START-', '-BTN-RUN-']:
         window[btn].update(disabled=True)
     window['-BTN-CANCEL-'].update(disabled=False)
     window['-BTN-BATCH-STOP-'].update(disabled=False)
-    window['-BTN-BATCH-PAUSE-'].update(disabled=False, text="Pause")
-    window['-BTN-PAUSE-'].update(disabled=False, text="Pause")
+    window['-BTN-BATCH-PAUSE-'].update(disabled=False, text=LANG.get('btn_pause', "Pause"))
+    window['-BTN-PAUSE-'].update(disabled=False, text=LANG.get('btn_pause', "Pause"))
 
     window.cancelled_by_user = False
     threading.Thread(target=run_batch_thread, args=(window, queue_data), daemon=True).start()
@@ -1846,28 +1835,9 @@ def update_taskbar(state=None, progress=None):
         prog.setProgress(progress)
 
 
-def get_video_dimensions(file_path):
-    """
-    Returns (width, height) of the video file.
-    Returns (0, 0) if dimensions cannot be found.
-    """
-    try:
-        media_info = MediaInfo.parse(file_path)
-        for track in media_info.tracks:
-            if track.track_type == "Video":
-                return int(track.width), int(track.height)
-    except Exception:
-        pass
-    return 0, 0
-
-
 def check_crop_validity(video_path, args):
-    """
-    Checks if the crop coordinates in 'args' fit within the video dimensions.
-    Returns: (True, None) if valid.
-    Returns: (False, ErrorMessage) if invalid.
-    """
-    width, height = get_video_dimensions(video_path)
+    """Checks if the crop coordinates in 'args' fit within the video dimensions."""
+    width, height, _ = get_video_metadata(video_path)
     if width == 0 or height == 0:
         return False, "Could not determine video dimensions."
 
@@ -1949,7 +1919,7 @@ tab1_content = [
     [sg.Text("Seek:", key='-LBL-SEEK-'), sg.Slider(range=(0, 0), key="-SLIDER-", orientation='h', size=(45, 15), expand_x=True, enable_events=True, disable_number_display=True, disabled=True)],
     [
         sg.Push(),
-        sg.Text("Frame: -/-", key="-FRAME_TEXT-"), sg.Text("|"), sg.Text("Time: -/-", key="-TIME_TEXT-")
+        sg.Text("Time: -/-", key="-TIME_TEXT-")
     ],
     [sg.Text("Crop Box (X, Y, W, H):", key='-LBL-CROP_BOX-'), sg.Text("Not Set", key="-CROP_COORDS-", size=(45, 1), expand_x=True)],
     [sg.Button("Run", key="-BTN-RUN-"),
@@ -2039,7 +2009,7 @@ tab2_content = [
             [sg.Checkbox("Save Crop Box Selection", default=True, key="--save_crop_box", enable_events=True), GhostButton()],
             [sg.Checkbox("Save SRT in Video Directory", default=True, key="--save_in_video_dir", enable_events=True), GhostButton()],
             [sg.Text("Output Directory:", size=(30, 1), key='-LBL-OUTPUT_DIR-'), GhostButton()],
-            [sg.Text("Keyboard Seek Step (frames):", size=(30, 1), key='-LBL-SEEK_STEP-'), GhostButton()],
+            [sg.Text("Keyboard Seek Step (seconds):", size=(30, 1), key='-LBL-SEEK_STEP-'), GhostButton()],
             [sg.Checkbox("Send Notification", default=True, key="--send_notification", enable_events=True), GhostButton()],
             [sg.Checkbox("Prevent System Sleep", default=True, key="prevent_system_sleep", enable_events=True), GhostButton()],
             [sg.Checkbox("Check for Updates On Startup", default=True, key="--check_for_updates", enable_events=True), GhostButton()],
@@ -2365,8 +2335,8 @@ while True:
                     for btn in ['-BTN-BATCH-START-', '-BTN-RUN-']:
                         window[btn].update(disabled=False)
 
-                    window['-BTN-BATCH-PAUSE-'].update(disabled=True, text="Pause")
-                    window['-BTN-PAUSE-'].update(disabled=True, text="Pause")
+                    window['-BTN-BATCH-PAUSE-'].update(disabled=True, text=LANG.get('btn_pause', "Pause"))
+                    window['-BTN-PAUSE-'].update(disabled=True, text=LANG.get('btn_pause', "Pause"))
                     window['-BTN-CANCEL-'].update(disabled=True)
                     window['-BTN-BATCH-STOP-'].update(disabled=True)
                     window['-SAVE_AS_BTN-'].update(disabled=not video_path)
@@ -2485,6 +2455,9 @@ while True:
 
             update_subtitle_pos_combo(window, saved_internal_pos)
 
+            if video_path:
+                update_time_display(window, current_time_ms, video_duration_ms)
+
     # --- File/Folder Handling ---
     elif event == '-BTN-OPEN-FILE-':
         video_file_types = LANG.get('video_file_types', "Video Files")
@@ -2580,9 +2553,7 @@ while True:
         window['-BTN-RUN-'].update(disabled=True)
         window["-SLIDER-"].update(disabled=True)
 
-        frame_text_empty = LANG.get('frame_text_empty', 'Frame -/-')
         time_text_empty = LANG.get('time_text_empty', 'Time: -/-')
-        window["-FRAME_TEXT-"].update(frame_text_empty)
         window["-TIME_TEXT-"].update(time_text_empty)
         window['--output'].update("", disabled=True)
         window['-SAVE_AS_BTN-'].update(disabled=True)
@@ -2590,109 +2561,109 @@ while True:
         reset_crop_state()
         graph.erase()
 
-        img_bytes, orig_w, orig_h, total_f, fps, res_w, res_h, off_x, off_y = get_video_frame(video_path, 0, graph_size)
+        orig_w, orig_h, duration_ms = get_video_metadata(video_path)
 
-        if img_bytes and total_f > 0 and fps > 0:
+        if orig_w > 0 and orig_h > 0 and duration_ms > 0:
             original_frame_width = orig_w
             original_frame_height = orig_h
-            total_frames = total_f
-            video_fps = fps
-            current_frame_num = 0
-            resized_frame_width = res_w
-            resized_frame_height = res_h
-            image_offset_x = off_x
-            image_offset_y = off_y
-            current_image_bytes = img_bytes.getvalue()
+            video_duration_ms = duration_ms
+            current_time_ms = 0.0
 
-            graph.draw_image(data=current_image_bytes, location=(image_offset_x, image_offset_y))
+            img_bytes, res_w, res_h, off_x, off_y = get_video_frame(video_path, 0, graph_size)
 
-            slider_max = total_frames - 1
-            window["-SLIDER-"].update(range=(0, slider_max), value=0, disabled=False)
-            update_frame_and_time_display(window, current_frame_num, total_frames, video_fps)
+            if img_bytes:
+                resized_frame_width = res_w
+                resized_frame_height = res_h
+                image_offset_x = off_x
+                image_offset_y = off_y
+                current_image_bytes = img_bytes.getvalue()
 
-            try:
-                output_path = generate_output_path(video_path, values)
+                graph.draw_image(data=current_image_bytes, location=(image_offset_x, image_offset_y))
+                window["-SLIDER-"].update(range=(0, video_duration_ms), value=0, disabled=False)
+                update_time_display(window, 0, video_duration_ms)
 
-                window['--output'].update(str(output_path))
-                if not getattr(window, 'is_processing', False):
-                    window['-BTN-RUN-'].update(disabled=False)
+                try:
+                    output_path = generate_output_path(video_path, values)
+
+                    window['--output'].update(str(output_path))
+                    if not getattr(window, 'is_processing', False):
+                        window['-BTN-RUN-'].update(disabled=False)
+                        window['-SAVE_AS_BTN-'].update(disabled=False)
+
+                    if '-GRAPH-' in window.AllKeysDict:
+                        window['-GRAPH-'].set_focus()
+
+                except Exception as e:
+                    popup_title = LANG.get('error_set_path_title', "Unable to Set Output Path")
+                    popup_msg = LANG.get('error_set_path_msg', "Could not automatically generate default output path.\nPlease specify one manually.\nError: {}")
+                    custom_popup(window, popup_title, popup_msg.format(e), icon=ICON_PATH)
+                    window['--output'].update("", disabled=False)
                     window['-SAVE_AS_BTN-'].update(disabled=False)
 
-                if '-GRAPH-' in window.AllKeysDict:
-                    window['-GRAPH-'].set_focus()
+                # --- Auto-load crop box if setting is enabled ---
+                if values.get('--save_crop_box') and hasattr(window, 'saved_crop_boxes_from_config') and window.saved_crop_boxes_from_config:
+                    loaded_boxes_data = window.saved_crop_boxes_from_config
+                    new_crop_boxes_to_apply = []
 
-            except Exception as e:
-                popup_title = LANG.get('error_set_path_title', "Unable to Set Output Path")
-                popup_msg = LANG.get('error_set_path_msg', "Could not automatically generate default output path.\nPlease specify one manually.\nError: {}")
-                custom_popup(window, popup_title, popup_msg.format(e), icon=ICON_PATH)
-                window['--output'].update("", disabled=False)
-                window['-SAVE_AS_BTN-'].update(disabled=False)
+                    for box_data in loaded_boxes_data:
+                        rel_coords = box_data.get('coords', {})
+                        if not rel_coords:
+                            continue
 
-            # --- Auto-load crop box if setting is enabled ---
-            if values.get('--save_crop_box') and hasattr(window, 'saved_crop_boxes_from_config') and window.saved_crop_boxes_from_config:
-                loaded_boxes_data = window.saved_crop_boxes_from_config
-                new_crop_boxes_to_apply = []
+                        abs_coords = {
+                            'crop_x': math.floor(rel_coords.get('crop_x', 0) * original_frame_width),
+                            'crop_y': math.floor(rel_coords.get('crop_y', 0) * original_frame_height),
+                            'crop_width': math.ceil(rel_coords.get('crop_width', 0) * original_frame_width),
+                            'crop_height': math.ceil(rel_coords.get('crop_height', 0) * original_frame_height),
+                        }
 
-                for box_data in loaded_boxes_data:
-                    rel_coords = box_data.get('coords', {})
-                    if not rel_coords:
-                        continue
+                        scale_w = resized_frame_width / original_frame_width if original_frame_width > 0 else 0
+                        scale_h = resized_frame_height / original_frame_height if original_frame_height > 0 else 0
 
-                    abs_coords = {
-                        'crop_x': math.floor(rel_coords.get('crop_x', 0) * original_frame_width),
-                        'crop_y': math.floor(rel_coords.get('crop_y', 0) * original_frame_height),
-                        'crop_width': math.ceil(rel_coords.get('crop_width', 0) * original_frame_width),
-                        'crop_height': math.ceil(rel_coords.get('crop_height', 0) * original_frame_height),
-                    }
+                        rect_x1_img = abs_coords['crop_x'] * scale_w
+                        rect_y1_img = abs_coords['crop_y'] * scale_h
+                        rect_x2_img = (abs_coords['crop_x'] + abs_coords['crop_width']) * scale_w
+                        rect_y2_img = (abs_coords['crop_y'] + abs_coords['crop_height']) * scale_h
 
-                    scale_w = resized_frame_width / original_frame_width if original_frame_width > 0 else 0
-                    scale_h = resized_frame_height / original_frame_height if original_frame_height > 0 else 0
+                        new_box_to_apply = {
+                            'coords': abs_coords,
+                            'img_points': ((rect_x1_img, rect_y1_img), (rect_x2_img, rect_y2_img))
+                        }
+                        new_crop_boxes_to_apply.append(new_box_to_apply)
 
-                    rect_x1_img = abs_coords['crop_x'] * scale_w
-                    rect_y1_img = abs_coords['crop_y'] * scale_h
-                    rect_x2_img = (abs_coords['crop_x'] + abs_coords['crop_width']) * scale_w
-                    rect_y2_img = (abs_coords['crop_y'] + abs_coords['crop_height']) * scale_h
+                    use_dual_zone = values.get('--use_dual_zone', False)
+                    limit = 2 if use_dual_zone else 1
+                    window.crop_boxes = new_crop_boxes_to_apply[:limit]
 
-                    new_box_to_apply = {
-                        'coords': abs_coords,
-                        'img_points': ((rect_x1_img, rect_y1_img), (rect_x2_img, rect_y2_img))
-                    }
-                    new_crop_boxes_to_apply.append(new_box_to_apply)
+                    if window.crop_boxes:
+                        redraw_canvas_and_boxes()
 
-                use_dual_zone = values.get('--use_dual_zone', False)
-                limit = 2 if use_dual_zone else 1
-                window.crop_boxes = new_crop_boxes_to_apply[:limit]
+                        if not use_dual_zone:
+                            b = window.crop_boxes[0]
+                            coord_text = f"({b['coords']['crop_x']}, {b['coords']['crop_y']}, {b['coords']['crop_width']}, {b['coords']['crop_height']})"
+                        else:
+                            coords_str_parts = []
+                            zone_text = LANG.get('crop_zone_text', "Zone")
+                            for i, b in enumerate(window.crop_boxes):
+                                coords_str_parts.append(f"{zone_text} {i + 1}: ({b['coords']['crop_x']}, {b['coords']['crop_y']}, {b['coords']['crop_width']}, {b['coords']['crop_height']})")
+                            coord_text = "  |  ".join(coords_str_parts)
 
-                if window.crop_boxes:
-                    redraw_canvas_and_boxes()
-
-                    if not use_dual_zone:
-                        b = window.crop_boxes[0]
-                        coord_text = f"({b['coords']['crop_x']}, {b['coords']['crop_y']}, {b['coords']['crop_width']}, {b['coords']['crop_height']})"
-                    else:
-                        coords_str_parts = []
-                        zone_text = LANG.get('crop_zone_text', "Zone")
-                        for i, b in enumerate(window.crop_boxes):
-                            coords_str_parts.append(f"{zone_text} {i + 1}: ({b['coords']['crop_x']}, {b['coords']['crop_y']}, {b['coords']['crop_width']}, {b['coords']['crop_height']})")
-                        coord_text = "  |  ".join(coords_str_parts)
-
-                    window['-CROP_COORDS-'].update(coord_text)
-                    window["-BTN-CLEAR_CROP-"].update(disabled=False)
+                        window['-CROP_COORDS-'].update(coord_text)
+                        window["-BTN-CLEAR_CROP-"].update(disabled=False)
 
         else:
             popup_title = LANG.get('error_invalid_video_title', "Invalid or Empty Video File")
             popup_msg = LANG.get('error_invalid_video_msg', "Could not load video, video has no frames, or FPS is zero:\n{}")
             custom_popup(window, popup_title, popup_msg.format(video_path), icon=ICON_PATH)
             video_path = None
-            total_frames = 0
-            video_fps = 0
+            video_duration_ms = 0.0
 
     # --- Slider Moved ---
-    elif event == "-SLIDER-" and video_path and total_frames > 0:
-        new_frame_num = int(values["-SLIDER-"])
-        if new_frame_num != current_frame_num:
-            current_frame_num = new_frame_num
-            img_bytes, _, _, _, _, res_w, res_h, off_x, off_y = get_video_frame(video_path, current_frame_num, graph_size)
+    elif event == "-SLIDER-" and video_path and video_duration_ms > 0:
+        new_time_ms = float(values["-SLIDER-"])
+        if abs(new_time_ms - current_time_ms) > 50:
+            current_time_ms = new_time_ms
+            img_bytes, res_w, res_h, off_x, off_y = get_video_frame(video_path, current_time_ms, graph_size)
 
             if img_bytes:
                 resized_frame_width, resized_frame_height = res_w, res_h
@@ -2700,25 +2671,27 @@ while True:
                 current_image_bytes = img_bytes.getvalue()
 
                 redraw_canvas_and_boxes()
-                update_frame_and_time_display(window, current_frame_num, total_frames, video_fps)
+                update_time_display(window, current_time_ms, video_duration_ms)
 
     # --- Handle Keyboard Arrow Keys (Bound to Graph) ---
     elif event in ('-GRAPH-<Left>', '-GRAPH-<Right>'):
-        if video_path and total_frames > 0:
-            current_frame_num = int(values["-SLIDER-"])
+        if video_path and video_duration_ms > 0:
+            current_time = float(values["-SLIDER-"])
             try:
-                seek_step = int(values["--keyboard_seek_step"])
+                seek_step_seconds = float(values["--keyboard_seek_step"])
             except (ValueError, TypeError):
-                seek_step = KEY_SEEK_STEP
+                seek_step_seconds = KEY_SEEK_STEP
+
+            step_ms = seek_step_seconds * 1000.0
 
             if event == '-GRAPH-<Left>':
-                new_frame_num = max(0, current_frame_num - seek_step)
+                new_time = max(0, current_time - step_ms)
             else:  # '-GRAPH-<Right>'
-                new_frame_num = min(total_frames - 1, current_frame_num + seek_step)
+                new_time = min(video_duration_ms, current_time + step_ms)
 
-            if new_frame_num != current_frame_num:
-                window["-SLIDER-"].update(value=new_frame_num)
-                window.write_event_value("-SLIDER-", new_frame_num)
+            if new_time != current_time:
+                window["-SLIDER-"].update(value=new_time)
+                window.write_event_value("-SLIDER-", new_time)
 
     # --- Graph Interaction ---
     elif event == "-GRAPH-":
@@ -2742,6 +2715,7 @@ while True:
             if len(window.crop_boxes) >= max_boxes:
                 reset_crop_state()
                 redraw_canvas_and_boxes()
+                save_settings(window, values)
 
             window.start_point_img = (img_x, img_y)
 
@@ -2771,6 +2745,7 @@ while True:
             min_draw_size = 7
             if (rect_x2_img - rect_x1_img) < min_draw_size or (rect_y2_img - rect_y1_img) < min_draw_size:
                 redraw_canvas_and_boxes()
+                save_settings(window, values)
                 continue
 
             crop_x = math.floor(rect_x1_img * original_frame_width / resized_frame_width)
@@ -2810,19 +2785,44 @@ while True:
             custom_popup(window, "Validation Error", "\n".join(errors), icon=ICON_PATH)
             continue
 
-        new_output_full = args['output']
+        target_output_full = args['output']
+        existing_job_index = -1
 
-        if any(j['args']['output'] == new_output_full for j in batch_queue):
-            msg = LANG.get('msg_duplicate_queue', "A job for '{}' is already in the queue.\n\nPlease change the output path or delete the job from the Queue.").format(os.path.basename(new_output_full))
-            custom_popup(window, LANG.get('title_duplicate', "Duplicate"), msg, icon=ICON_PATH)
-            continue
+        for idx, job in enumerate(batch_queue):
+            if job['args']['output'] == target_output_full:
+                existing_job_index = idx
+                break
 
-        batch_queue.append({
-            'filename': os.path.basename(args['video_path']),
-            'output': os.path.basename(new_output_full),
-            'status': 'Pending',
-            'args': args
-        })
+        should_create_new = True
+
+        if existing_job_index != -1:
+            existing_status = batch_queue[existing_job_index]['status']
+
+            if existing_status in ('Cancelled', 'Error', 'Completed', 'Pending'):
+                display_status = get_translated_status(existing_status)
+                msg = LANG.get('popup_duplicate_msg', "A job for this output file already exists (Status: {}).\n\nDo you want to update/restart it with current settings?").format(display_status)
+                choice = custom_popup_yes_no(window, LANG.get('title_duplicate_job', "Duplicate Job"), msg, icon=ICON_PATH)
+
+                if choice == 'Yes':
+                    batch_queue[existing_job_index]['args'] = args
+                    batch_queue[existing_job_index]['status'] = 'Pending'
+                    should_create_new = False
+                else:
+                    continue
+
+            elif existing_status in ('Processing', 'Paused'):
+                display_status = get_translated_status(existing_status)
+                msg = LANG.get('msg_duplicate_queue_running', "A job for '{}' is currently active (Status: {}).\n\nPlease change the output path or wait for it to finish.").format(os.path.basename(target_output_full), display_status)
+                custom_popup(window, LANG.get('title_duplicate', "Duplicate"), msg, icon=ICON_PATH)
+                continue
+
+        if should_create_new:
+            batch_queue.append({
+                'filename': os.path.basename(args['video_path']),
+                'output': os.path.basename(target_output_full),
+                'status': 'Pending',
+                'args': args
+            })
 
         refresh_batch_table(window)
         update_run_and_cancel_button_state(window, batch_queue)
@@ -2832,8 +2832,7 @@ while True:
         if not all_videos:
             continue
 
-        original_frames = total_frames
-        original_fps = video_fps
+        original_duration_ms = video_duration_ms
 
         added_count = 0
         skipped_videos = []
@@ -2856,18 +2855,12 @@ while True:
                 skipped_videos.append(f"{os.path.basename(v_path)} ({LANG.get('reason_dup_path', 'Duplicate Output path')})")
                 continue
 
-            try:
-                media_info = MediaInfo.parse(v_path)
-                track = next((t for t in media_info.tracks if t.track_type == "Video"), None)
-                if not track or not track.duration:
-                    skipped_videos.append(f"{os.path.basename(v_path)} ({LANG.get('reason_no_track', 'No video track')})")
-                    continue
-                f_dur = float(track.duration) / 1000.0
-                video_fps = 30.0
-                total_frames = int(f_dur * video_fps)
-            except Exception:
+            _, _, duration_ms = get_video_metadata(v_path)
+            if duration_ms <= 0:
                 skipped_videos.append(f"{os.path.basename(v_path)} ({LANG.get('reason_metadata', 'Metadata Error')})")
                 continue
+
+            video_duration_ms = duration_ms
 
             args, errors = get_processing_args(values, window)
             if errors:
@@ -2894,9 +2887,8 @@ while True:
 
         progress_window.close()
 
-        # Restore Globals
-        total_frames = original_frames
-        video_fps = original_fps
+        # Restore Global
+        video_duration_ms = original_duration_ms
 
         refresh_batch_table(window)
         update_run_and_cancel_button_state(window, batch_queue)
@@ -3077,6 +3069,14 @@ while True:
         if rows and len(rows) == 1:
             idx = rows[0]
             job = batch_queue[idx]
+
+            if job['status'] in ('Processing', 'Paused'):
+                display_status = get_translated_status(job['status'])
+                error_title = LANG.get('title_error', "Error")
+                error_msg = LANG.get('popup_cannot_edit_running', "A job that is currently {} cannot be edited.\nPlease stop or cancel the process first.").format(display_status)
+                custom_popup(window, error_title, error_msg, icon=ICON_PATH)
+                continue
+
             args = job['args']
             v_path = args['video_path']
 
@@ -3092,16 +3092,15 @@ while True:
             reset_crop_state()
             graph.erase()
 
-            img_bytes, orig_w, orig_h, total_f, fps, res_w, res_h, off_x, off_y = get_video_frame(v_path, 0, graph_size)
+            orig_w, orig_h, duration_ms = get_video_metadata(v_path)
+            img_bytes, res_w, res_h, off_x, off_y = get_video_frame(v_path, 0, graph_size)
 
-            if img_bytes:
-                # Update Globals
+            if img_bytes and duration_ms > 0:
                 video_path = v_path
                 original_frame_width = orig_w
                 original_frame_height = orig_h
-                total_frames = total_f
-                video_fps = fps
-                current_frame_num = 0
+                video_duration_ms = duration_ms
+                current_time_ms = 0.0
                 resized_frame_width = res_w
                 resized_frame_height = res_h
                 image_offset_x = off_x
@@ -3110,8 +3109,8 @@ while True:
 
                 graph.draw_image(data=current_image_bytes, location=(image_offset_x, image_offset_y))
 
-                window["-SLIDER-"].update(range=(0, total_frames - 1), value=0, disabled=False)
-                update_frame_and_time_display(window, 0, total_frames, fps)
+                window["-SLIDER-"].update(range=(0, video_duration_ms), value=0, disabled=False)
+                update_time_display(window, 0, video_duration_ms)
                 window['-BTN-RUN-'].update(disabled=False)
                 window['-SAVE_AS_BTN-'].update(disabled=False)
 
@@ -3167,8 +3166,9 @@ while True:
                     window["-BTN-CLEAR_CROP-"].update(disabled=False)
                 else:
                     coords_str_parts = []
+                    zone_text = LANG.get('crop_zone_text', "Zone")
                     for i, b in enumerate(new_boxes):
-                        coords_str_parts.append(f"Zone {i + 1}: ({b['coords']['crop_x']}, {b['coords']['crop_y']}, ...)")
+                        coords_str_parts.append(f"{zone_text} {i + 1}: ({b['coords']['crop_x']}, {b['coords']['crop_y']}, {b['coords']['crop_width']}, {b['coords']['crop_height']})")
                     window['-CROP_COORDS-'].update("  |  ".join(coords_str_parts))
                     window["-BTN-CLEAR_CROP-"].update(disabled=False)
 

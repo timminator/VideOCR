@@ -1,10 +1,16 @@
 import datetime
 import os
 import platform
+import re
+import shutil
 import subprocess
 import sys
+import tempfile
+from typing import IO
 
-from cpuid import cpuid, xgetbv
+import av
+import numpy as np
+from cpuid import cpuid, xgetbv  # type: ignore
 
 from .lang_dictionaries import (
     ARABIC_LANGS,
@@ -23,45 +29,20 @@ ALIGNMENT_MAP = {
 VALID_ALIGNMENT_NAMES = set(ALIGNMENT_MAP.keys())
 
 
-# convert time string to frame index
-def get_frame_index(time_str: str, fps: float) -> int:
-    t = time_str.split(':')
-    t = list(map(float, t))
-    if len(t) == 3:
-        td = datetime.timedelta(hours=t[0], minutes=t[1], seconds=t[2])
-    elif len(t) == 2:
-        td = datetime.timedelta(minutes=t[0], seconds=t[1])
-    else:
-        raise ValueError(
-            f'Time data "{time_str}" does not match format "%H:%M:%S"')
-
-    total_seconds = td.total_seconds()
-    if total_seconds < 0:
-        return 0
-    return int(total_seconds * fps)
-
-
-# convert time string to milliseconds
 def get_ms_from_time_str(time_str: str) -> float:
-    t = time_str.split(':')
-    t = list(map(float, t))
+    """Convert time string to milliseconds."""
+    t = [float(x) for x in time_str.split(":")]
     if len(t) == 3:
         td = datetime.timedelta(hours=t[0], minutes=t[1], seconds=t[2])
     elif len(t) == 2:
         td = datetime.timedelta(minutes=t[0], seconds=t[1])
     else:
-        raise ValueError(
-            f'Time data "{time_str}" does not match format "%H:%M:%S"')
+        raise ValueError(f'Time data "{time_str}" does not match format "%H:%M:%S"')
     return td.total_seconds() * 1000
 
 
-# finds the frame index closest to the target millisecond timestamp.
-def get_frame_index_from_ms(frame_timestamps: dict[int, float], target_ms: float) -> int:
-    return min(frame_timestamps.items(), key=lambda item: abs(item[1] - target_ms))[0]
-
-
-# convert frame index into SRT timestamp
 def get_srt_timestamp(frame_index: int, fps: float, offset_ms: float = 0.0) -> str:
+    """Convert frame index into SRT timestamp."""
     td = datetime.timedelta(milliseconds=(frame_index / fps * 1000 + offset_ms))
     ms = td.microseconds // 1000
     m, s = divmod(td.seconds, 60)
@@ -69,8 +50,8 @@ def get_srt_timestamp(frame_index: int, fps: float, offset_ms: float = 0.0) -> s
     return f'{h:02d}:{m:02d}:{s:02d},{ms:03d}'
 
 
-# convert milliseconds into SRT timestamp
 def get_srt_timestamp_from_ms(ms: float) -> str:
+    """Convert milliseconds into SRT timestamp."""
     td = datetime.timedelta(milliseconds=ms)
     minutes, seconds = divmod(td.seconds, 60)
     hours, minutes = divmod(minutes, 60)
@@ -78,8 +59,23 @@ def get_srt_timestamp_from_ms(ms: float) -> str:
     return f'{hours:02d}:{minutes:02d}:{seconds:02d},{milliseconds:03d}'
 
 
+def frame_to_array(frame: av.VideoFrame, fmt: str) -> np.ndarray:
+    """Converts a frame to an array, safely falls back if threads arg is unsupported."""
+    if not hasattr(frame_to_array, "supports_threads"):
+        frame_to_array.supports_threads = True  # type: ignore
+
+    if frame_to_array.supports_threads:  # type: ignore
+        try:
+            return frame.to_ndarray(format=fmt, threads=1)
+        except TypeError:
+            frame_to_array.supports_threads = False  # type: ignore
+
+    return frame.to_ndarray(format=fmt)
+
+
 # checks if two words are on the same line based on vertical overlap
 def is_on_same_line(word1: PredictedText, word2: PredictedText) -> bool:
+    """Checks if two words are on the same line based on vertical overlap."""
     y_min1 = min(p[1] for p in word1.bounding_box)
     y_max1 = max(p[1] for p in word1.bounding_box)
     y_min2 = min(p[1] for p in word2.bounding_box)
@@ -91,12 +87,12 @@ def is_on_same_line(word1: PredictedText, word2: PredictedText) -> bool:
     return (y_min1 < midpoint2 < y_max1) or (y_min2 < midpoint1 < y_max2)
 
 
-# extracts non chinese segments out of the detected text for post processing
-def extract_non_chinese_segments(text) -> list[tuple[str, str]]:
-    segments = []
+def extract_non_chinese_segments(text: str) -> list[tuple[str, str]]:
+    """Extracts non chinese segments out of the detected text for post processing."""
+    segments: list[tuple[str, str]] = []
     current_segment = ''
 
-    def is_chinese(char):
+    def is_chinese(char: str) -> bool:
         return '\u4e00' <= char <= '\u9fff'
 
     for char in text:
@@ -114,8 +110,8 @@ def extract_non_chinese_segments(text) -> list[tuple[str, str]]:
     return segments
 
 
-# finds the available PaddleOCR executable and returns its path
 def find_paddleocr() -> str:
+    """Finds the available PaddleOCR executable and returns its path."""
     program_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
     program_name = "paddleocr"
     ext = ".exe" if platform.system() == "Windows" else ".bin"
@@ -130,8 +126,8 @@ def find_paddleocr() -> str:
     raise FileNotFoundError(f"Could not find {executable_name} in any folder starting with 'PaddleOCR'")
 
 
-# resolves the model directory for the specified language and mode
 def resolve_model_dirs(lang: str, use_server_model: bool) -> tuple[str, str, str]:
+    """Resolves the model directory for the specified language and mode."""
     program_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
     base_path = os.path.join(program_dir, "PaddleOCR.PP-OCRv5.support.files")
 
@@ -172,8 +168,8 @@ def resolve_model_dirs(lang: str, use_server_model: bool) -> tuple[str, str, str
     )
 
 
-# checks if the current system supports the hardware requirements
 def perform_hardware_check(paddleocr_path: str, use_gpu: bool) -> None:
+    """Checks if the current system supports the hardware requirements."""
     error_prefix = "Unsupported Hardware Error:"
     warning_prefix = "Hardware Check Warning:"
 
@@ -256,8 +252,8 @@ def perform_hardware_check(paddleocr_path: str, use_gpu: bool) -> None:
         check_gpu()
 
 
-# reads lines from a pipe and appends them to a list
-def read_pipe(pipe, output_list: list[str]) -> None:
+def read_pipe(pipe: IO[str], output_list: list[str]) -> None:
+    """Reads lines from a pipe and appends them to a list."""
     try:
         for line in iter(pipe.readline, ''):
             output_list.append(line)
@@ -265,8 +261,8 @@ def read_pipe(pipe, output_list: list[str]) -> None:
         pipe.close()
 
 
-# Check if a process with given PID is still running (cross-platform)
 def is_process_running(pid: int) -> bool:
+    """Check if a process with given PID is still running."""
     try:
         if platform.system() == "Windows":
             result = subprocess.run(
@@ -282,10 +278,36 @@ def is_process_running(pid: int) -> bool:
     return False
 
 
-# saves errors to log file
+def create_clean_temp_dir() -> str:
+    """Cleans up orphaned temporary directories from previous crashed runs and creates a fresh one for the current process."""
+    current_pid = os.getpid()
+    temp_prefix = f"videocr_temp_{current_pid}_"
+    base_temp = tempfile.gettempdir()
+
+    for name in os.listdir(base_temp):
+        if name.startswith("videocr_temp_"):
+            temp_path = os.path.join(base_temp, name)
+            try:
+                match = re.match(r"videocr_temp_(\d+)_", name)
+                if match:
+                    dir_pid = int(match.group(1))
+
+                    if dir_pid == current_pid:
+                        continue
+
+                    if os.path.isdir(temp_path):
+                        if not is_process_running(dir_pid):
+                            shutil.rmtree(temp_path, ignore_errors=True)
+            except Exception as e:
+                print(f"Could not remove leftover temp dir '{name}': {e}", flush=True)
+
+    return tempfile.mkdtemp(prefix=temp_prefix)
+
+
 def log_error(message: str, log_name: str = "error_log.txt") -> str:
+    """Saves errors to a log file."""
     if platform.system() == "Windows":
-        log_dir = os.path.join(os.getenv('LOCALAPPDATA'), "VideOCR")
+        log_dir = os.path.join(os.getenv('LOCALAPPDATA') or os.path.expanduser('~'), "VideOCR")
     else:
         log_dir = os.path.join(os.path.expanduser('~'), ".config", "VideOCR")
 
