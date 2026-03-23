@@ -38,8 +38,9 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "ruff",
+    "mypy",
     "pre-commit",
+    "ruff",
 ]
 build = [
     "nuitka",
@@ -47,7 +48,7 @@ build = [
 ]
 all = [
     { include-group = "dev" },
-    { include-group = "build" }
+    { include-group = "build" },
 ]
 
 [project.urls]
@@ -55,6 +56,13 @@ Homepage = "https://github.com/timminator/VideOCR"
 documentation = "https://github.com/timminator/VideOCR/blob/master/README.md"
 Repository = "https://github.com/timminator/VideOCR.git"
 Issues = "https://github.com/timminator/VideOCR/issues"
+
+[tool.mypy]
+strict = true
+exclude = [
+    "VideOCR\\.build",
+    "CLI/videocr_cli\\.build"
+]
 
 [tool.setuptools]
 packages = []

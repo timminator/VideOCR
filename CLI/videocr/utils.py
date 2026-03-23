@@ -1,12 +1,11 @@
 import datetime
 import os
-import platform
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
-from typing import IO
+from typing import IO, Any
 
 import av
 import numpy as np
@@ -59,7 +58,7 @@ def get_srt_timestamp_from_ms(ms: float) -> str:
     return f'{hours:02d}:{minutes:02d}:{seconds:02d},{milliseconds:03d}'
 
 
-def frame_to_array(frame: av.VideoFrame, fmt: str) -> np.ndarray:
+def frame_to_array(frame: av.VideoFrame, fmt: str) -> np.ndarray[Any, Any]:
     """Converts a frame to an array, safely falls back if threads arg is unsupported."""
     if not hasattr(frame_to_array, "supports_threads"):
         frame_to_array.supports_threads = True  # type: ignore
@@ -114,7 +113,7 @@ def find_paddleocr() -> str:
     """Finds the available PaddleOCR executable and returns its path."""
     program_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
     program_name = "paddleocr"
-    ext = ".exe" if platform.system() == "Windows" else ".bin"
+    ext = ".exe" if sys.platform == "win32" else ".bin"
     executable_name = f"{program_name}{ext}"
 
     for entry in os.listdir(program_dir):
@@ -198,13 +197,13 @@ def perform_hardware_check(paddleocr_path: str, use_gpu: bool) -> None:
             print(f"{warning_prefix} Could not determine CPU AVX support due to an error: {e}. Functionality is uncertain.", flush=True)
 
     CUDA_COMPATIBILITY_MAP = {
-        "CUDA-11.8": (6.1, 8.9) if platform.system() == "Windows" else (6.0, 8.9),
+        "CUDA-11.8": (6.1, 8.9) if sys.platform == "win32" else (6.0, 8.9),
         "CUDA-12.9": (7.5, 12.0),
     }
 
     CUDA_DRIVER_MAP = {
-        "CUDA-11.8": "451.22" if platform.system() == "Windows" else "450.36.06",
-        "CUDA-12.9": "527.41" if platform.system() == "Windows" else "525.60.13",
+        "CUDA-11.8": "451.22" if sys.platform == "win32" else "450.36.06",
+        "CUDA-12.9": "527.41" if sys.platform == "win32" else "525.60.13",
     }
 
     def parse_version(v_str: str) -> tuple[int, ...]:
@@ -264,7 +263,7 @@ def read_pipe(pipe: IO[str], output_list: list[str]) -> None:
 def is_process_running(pid: int) -> bool:
     """Check if a process with given PID is still running."""
     try:
-        if platform.system() == "Windows":
+        if sys.platform == "win32":
             result = subprocess.run(
                 ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
                 capture_output=True, text=True, timeout=5
@@ -306,7 +305,7 @@ def create_clean_temp_dir() -> str:
 
 def log_error(message: str, log_name: str = "error_log.txt") -> str:
     """Saves errors to a log file."""
-    if platform.system() == "Windows":
+    if sys.platform == "win32":
         log_dir = os.path.join(os.getenv('LOCALAPPDATA') or os.path.expanduser('~'), "VideOCR")
     else:
         log_dir = os.path.join(os.path.expanduser('~'), ".config", "VideOCR")

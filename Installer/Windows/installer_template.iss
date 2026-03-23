@@ -86,6 +86,7 @@ Type: filesandordirs; Name: "{app}\videocr-cli-*"
 [UninstallDelete]
 Type: files; Name: "{app}\videocr_gui_config.ini"
 Type: filesandordirs; Name: "{localappdata}\VideOCR"
+Type: filesandordirs; Name: "{%USERPROFILE}\VideOCR"
 
 [Code]
 function GetToken(const S: string; Index: Integer): Integer;

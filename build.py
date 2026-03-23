@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import argparse
 import os
-import platform
 import shutil
 import stat
 import subprocess
@@ -8,19 +9,19 @@ import sys
 import tarfile
 from pathlib import Path
 
-import requests
+import requests  # type: ignore
 
 from _version import __version__
 
 # --- Configuration ---
 APP_VERSION = __version__
 
-SUPPORT_FILES_URLS = {
+SUPPORT_FILES_URLS: dict[str, str] = {
     "Windows": "https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{version}/PaddleOCR.PP-OCRv5.support.files.VideOCR.7z",
     "Linux": "https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{version}/PaddleOCR.PP-OCRv5.support.files.VideOCR.tar.xz"
 }
 
-PADDLE_URLS = {
+PADDLE_URLS: dict[str, dict[str, str | list[str]]] = {
     "Windows": {
         "cpu": "https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{version}/PaddleOCR-CPU-v{version}.7z",
         "gpu-cuda11.8": "https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{version}/PaddleOCR-GPU-v{version}-CUDA-11.8.7z",
@@ -38,23 +39,23 @@ PADDLE_URLS = {
 
 
 # --- Helper Functions ---
-def get_latest_paddle_version():
+def get_latest_paddle_version() -> str:
     url = "https://api.github.com/repos/timminator/PaddleOCR-Standalone/releases/latest"
     r = requests.get(url, timeout=15)
     r.raise_for_status()
 
-    tag = r.json()["tag_name"]
+    tag = str(r.json()["tag_name"])
     return tag.lstrip("v")
 
 
-def print_header(message):
+def print_header(message: str) -> None:
     """Prints a formatted header."""
     print("\n" + "=" * 60)
     print(f" {message}")
     print("=" * 60)
 
 
-def check_tkinter():
+def check_tkinter() -> None:
     """Checks if Tkinter is installed and available."""
     print_header("Checking for Tkinter support...")
     try:
@@ -72,9 +73,9 @@ def check_tkinter():
         sys.exit(1)
 
 
-def check_dbus():
+def check_dbus() -> None:
     """On Linux, checks if dbus is likely installed for better plyer support."""
-    if platform.system() == "Linux":
+    if sys.platform == "linux":
         print_header("Checking for D-Bus on Linux...")
         if shutil.which("dbus-daemon"):
             print("D-Bus daemon found. Plyer notifications should work well.")
@@ -83,7 +84,7 @@ def check_dbus():
             print("On Debian/Ubuntu, you can install it with: sudo apt-get install dbus")
 
 
-def check_7zip():
+def check_7zip() -> None:
     """Checks if 7-Zip is installed and available."""
     print_header("Checking for 7-Zip...")
     if not (shutil.which("7z") or shutil.which("7z.exe")):
@@ -95,7 +96,7 @@ def check_7zip():
     print("7-Zip found.")
 
 
-def run_command(command, cwd=None):
+def run_command(command: list[str], cwd: str | Path | None = None) -> None:
     """Runs a command in the shell, streams its output, and exits if it fails."""
     try:
         print(f"\nRunning command: {' '.join(command)}" + (f" in '{cwd}'" if cwd else ""))
@@ -108,17 +109,19 @@ def run_command(command, cwd=None):
         sys.exit(1)
 
 
-def download_file(urls, dest_folder):
+def download_file(urls: str | list[str], dest_folder: str | Path) -> Path:
     """Downloads a file or a sequence of files from URLs into a destination folder."""
     if not isinstance(urls, list):
         urls = [urls]
 
-    first_file_path = None
+    if not urls:
+        raise ValueError("No URLs provided to download.")
+
+    first_file_path = Path(dest_folder) / urls[0].split('/')[-1]
+
     for url in urls:
         local_filename = url.split('/')[-1]
         file_path = Path(dest_folder) / local_filename
-        if not first_file_path:
-            first_file_path = file_path
 
         print(f"Downloading {local_filename}...")
         try:
@@ -135,7 +138,7 @@ def download_file(urls, dest_folder):
     return first_file_path
 
 
-def extract_archive(file_path, dest_folder):
+def extract_archive(file_path: Path, dest_folder: str | Path) -> None:
     """Extracts a .7z, multipart .7z, or .tar.xz archive."""
     print(f"Extracting {file_path.name}...")
 
@@ -160,9 +163,9 @@ def extract_archive(file_path, dest_folder):
     print(f"Extracted to {dest_folder}")
 
 
-def sign_file(signtool_path, cert_name, file_to_sign):
+def sign_file(signtool_path: str | None, cert_name: str | None, file_to_sign: Path) -> None:
     """Signs a file using signtool.exe on Windows."""
-    if not signtool_path or platform.system() != "Windows":
+    if not signtool_path or sys.platform != "win32":
         return
     print(f"Signing {file_to_sign.name}...")
     if not Path(signtool_path).is_file():
@@ -185,7 +188,7 @@ def sign_file(signtool_path, cert_name, file_to_sign):
     print(f"Successfully signed {file_to_sign.name}")
 
 
-def create_final_archive(folder_path, build_target):
+def create_final_archive(folder_path: Path, build_target: str) -> None:
     """Creates a compressed archive of the final build folder."""
     print_header(f"Creating final archive for {folder_path.name}")
 
@@ -198,7 +201,7 @@ def create_final_archive(folder_path, build_target):
         archive_path = folder_path.parent / f"{folder_path.name}.7z"
         print(f"Creating {archive_path.name}...")
 
-        is_linux_cuda12_split = platform.system() == "Linux" and build_target == "gpu-cuda12.9"
+        is_linux_cuda12_split = sys.platform == "linux" and build_target == "gpu-cuda12.9"
 
         command = [
             seven_zip_exe, "a", "-t7z",
@@ -219,9 +222,9 @@ def create_final_archive(folder_path, build_target):
         sys.exit(1)
 
 
-def create_windows_installer(final_app_path, args):
+def create_windows_installer(final_app_path: Path, args: argparse.Namespace) -> None:
     """Creates a Windows installer using Inno Setup by passing parameters to the compiler."""
-    if platform.system() != "Windows":
+    if sys.platform != "win32":
         return
 
     iscc_exe = args.iscc or shutil.which("iscc") or shutil.which("ISCC.exe")
@@ -269,7 +272,7 @@ def create_windows_installer(final_app_path, args):
 
 
 # --- Main Build Logic ---
-def package_target(build_target, args, releases_dir, base_gui_dist, base_cli_dist, paddle_version):
+def package_target(build_target: str, args: argparse.Namespace, releases_dir: Path, base_gui_dist: Path, base_cli_dist: Path, paddle_version: str) -> None:
     """Packages a single distribution for the specified target using pre-compiled files."""
 
     if "gpu" in build_target:
@@ -278,7 +281,7 @@ def package_target(build_target, args, releases_dir, base_gui_dist, base_cli_dis
         display_target_name = build_target.upper()
 
     print_header(f"Packaging for Target: {display_target_name}")
-    os_name = platform.system()
+    os_name = "Windows" if sys.platform == "win32" else "Linux"
     os_suffix = "-Linux" if os_name == "Linux" else ""
 
     # Create a temporary directory for this target's packaging process
@@ -301,6 +304,8 @@ def package_target(build_target, args, releases_dir, base_gui_dist, base_cli_dis
     support_archive_path = download_file(raw_support_url.format(version=paddle_version), temp_cli_dist)
 
     raw_paddle_urls = PADDLE_URLS[os_name][build_target]
+
+    paddle_url: str | list[str]
     if isinstance(raw_paddle_urls, list):
         paddle_url = [u.format(version=paddle_version) for u in raw_paddle_urls]
     else:
@@ -371,11 +376,11 @@ def package_target(build_target, args, releases_dir, base_gui_dist, base_cli_dis
         create_final_archive(final_app_path, build_target)
         create_final_archive(final_cli_path, build_target)
 
-    if platform.system() == "Windows" and args.windows_installer and args.windows_installer.lower() == 'true':
+    if sys.platform == "win32" and args.windows_installer and args.windows_installer.lower() == 'true':
         create_windows_installer(final_app_path, args)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="VideOCR Build Script", formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument(
         "--target",

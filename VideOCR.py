@@ -18,6 +18,8 @@
 #     nuitka-project: --copyright="timminator"
 #     nuitka-project: --windows-icon-from-ico=Installer/VideOCR.ico
 
+from __future__ import annotations
+
 import ast
 import configparser
 import contextlib
@@ -28,37 +30,39 @@ import json
 import math
 import os
 import pathlib
-import platform
 import queue
 import re
 import subprocess
+import sys
 import threading
 import time
 import tkinter.font as tkFont
 import urllib.request
 import webbrowser
+from typing import IO, Any, cast
 
 import cv2
-import psutil
-import PySimpleGUI as sg
+import numpy as np
+import psutil  # type: ignore
+import PySimpleGUI as sg  # type: ignore
 from pymediainfo import MediaInfo
 from wakepy import keep
 
-if platform.system() == "Windows":
-    import PyTaskbar
-    from winotify import Notification, audio
+if sys.platform == "win32":
+    import PyTaskbar  # type: ignore
+    from winotify import Notification, audio  # type: ignore
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('VideOCR')
 else:
-    from plyer import notification
+    from plyer import notification  # type: ignore
 
 from _version import __version__
 
 
 # -- Save errors to log file ---
-def log_error(message: str, log_name="error_log.txt"):
+def log_error(message: str, log_name: str = "error_log.txt") -> str:
     """Logs error messages to a platform-appropriate log file location."""
-    if platform.system() == "Windows":
-        log_dir = os.path.join(os.getenv('LOCALAPPDATA'), "VideOCR")
+    if sys.platform == "win32":
+        log_dir = os.path.join(os.getenv('LOCALAPPDATA') or os.path.expanduser('~'), "VideOCR")
     else:
         log_dir = os.path.join(os.path.expanduser('~'), ".config", "VideOCR")
 
@@ -73,28 +77,25 @@ def log_error(message: str, log_name="error_log.txt"):
 
 
 # --- Make application DPI aware ---
-def make_dpi_aware():
+def make_dpi_aware() -> None:
     """Makes the application DPI aware on Windows to prevent scaling issues."""
-    if platform.system() == "Windows":
+    if sys.platform == "win32":
         try:
             ctypes.windll.shcore.SetProcessDpiAwareness(True)
         except AttributeError:
             log_error("Could not set DPI awareness.")
 
 
-make_dpi_aware()
-
-
 # --- Determine DPI scaling factor ---
-def get_dpi_scaling():
+def get_dpi_scaling() -> float:
     """Determines DPI scaling factor for the current OS."""
-    def round_to_quarter_step(scale):
+    def round_to_quarter_step(scale: float) -> float:
         dpi_scaling_factors = [1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0]
         return min(dpi_scaling_factors, key=lambda x: abs(x - scale))
 
-    if platform.system() == "Windows":
+    if sys.platform == "win32":
         try:
-            dpi = ctypes.windll.shcore.GetScaleFactorForDevice(0)  # 0 = primary monitor
+            dpi = int(ctypes.windll.shcore.GetScaleFactorForDevice(0))  # 0 = primary monitor
             return dpi / 100.0
         except Exception:
             return 1.0
@@ -115,22 +116,10 @@ def get_dpi_scaling():
             return 1.0
 
 
-dpi_scale = get_dpi_scaling()
-
-
-# --- Check for Taskbar progress support --
-def supports_taskbar_progress():
-    """Checks if the current OS supports progress indication via the Taskbar."""
-    return platform.system() == "Windows"
-
-
-taskbar_progress_supported = supports_taskbar_progress()
-
-
 # --- Send notification --
-def send_notification(title, message):
+def send_notification(title: str, message: str) -> None:
     """Sends a notification via winotify on Windows and via Plyer on Linux."""
-    if platform.system() == "Windows":
+    if sys.platform == "win32":
         try:
             toast = Notification(
                 app_id="VideOCR",
@@ -155,10 +144,10 @@ def send_notification(title, message):
 
 
 # --- Determine VideOCR location ---
-def find_videocr_program():
+def find_videocr_program() -> str | None:
     """Determines the path to the videocr-cli executable (.exe or .bin)."""
     program_name = 'videocr-cli'
-    extension = ".exe" if platform.system() == "Windows" else ".bin"
+    extension = ".exe" if sys.platform == "win32" else ".bin"
 
     for entry in os.listdir(APP_DIR):
         if entry.startswith("videocr-cli-"):
@@ -166,7 +155,6 @@ def find_videocr_program():
             if os.path.exists(potential_path):
                 return potential_path
 
-    # Should never be reached
     return None
 
 
@@ -291,7 +279,7 @@ SUBTITLE_ALIGNMENT_LIST = [
 ]
 
 # --- Post-Action Master List ---
-if platform.system() == "Windows":
+if sys.platform == "win32":
     POST_ACTION_KEYS = ['action_none', 'action_sleep', 'action_hibernate', 'action_shutdown', 'action_lock']
 else:
     POST_ACTION_KEYS = ['action_none', 'action_sleep', 'action_shutdown']
@@ -333,19 +321,21 @@ resized_frame_width = 0
 resized_frame_height = 0
 image_offset_x = 0
 image_offset_y = 0
+dpi_scale = get_dpi_scaling()
 graph_size = (int(640 * dpi_scale), int(360 * dpi_scale))
 current_image_bytes = None
+prog = None
 previous_taskbar_state = None
-LANG = {}
-current_wake_lock = None
-batch_queue = []
-gui_queue = queue.Queue()
+LANG: dict[str, str] = {}
+current_wake_lock: Any = None
+batch_queue: list[dict[str, Any]] = []
+gui_queue: queue.Queue[tuple[str, Any]] = queue.Queue()
 
 
 # --- i18n Language Functions ---
-def get_available_languages():
+def get_available_languages() -> dict[str, str]:
     """Scans the 'languages' directory and returns a dict mapping native names to language codes."""
-    langs = {}
+    langs: dict[str, str] = {}
     if not os.path.isdir(LANGUAGES_DIR):
         log_error(f"Languages directory not found at {LANGUAGES_DIR}")
         return {'English': 'en'}
@@ -359,31 +349,33 @@ def get_available_languages():
     return langs if langs else {'English': 'en'}
 
 
-def load_language(lang_code):
+def load_language(lang_code: str) -> None:
     """Loads a language JSON file into a dictionary. Falls back to 'en'."""
     global LANG
 
-    def load_file(code):
+    def load_file(code: str) -> dict[str, str] | None:
         lang_path = os.path.join(LANGUAGES_DIR, f"{code}.json")
         if os.path.exists(lang_path):
             try:
                 with open(lang_path, encoding='utf-8') as f:
-                    return json.load(f)
+                    return cast(dict[str, str], json.load(f))
             except json.JSONDecodeError as e:
                 log_error(f"Syntax error in language file {code}.json: {e}")
         return None
 
-    LANG = load_file(lang_code)
-    if LANG is None:
+    loaded = load_file(lang_code)
+    if loaded is None:
         log_error(f"Language file for '{lang_code}' not found or invalid. Falling back to English.")
-        LANG = load_file('en')
-        if LANG is None:
+        loaded = load_file('en')
+        if loaded is None:
             log_error("CRITICAL: English language file 'en.json' is missing or invalid.")
             sg.popup_error("Critical Error: Default language file 'en.json' is missing or corrupt.\nPlease reinstall the application.", title="Fatal Error")
-            exit()
+            sys.exit()
+
+    LANG = loaded
 
 
-def update_gui_text(window, is_paused=False):
+def update_gui_text(window: sg.Window, is_paused: bool = False) -> None:
     """Updates all text elements in the GUI based on the loaded LANG dictionary."""
     if not LANG:
         return
@@ -533,9 +525,9 @@ def update_gui_text(window, is_paused=False):
 
 
 # --- Helper Functions ---
-def kill_process_tree(pid):
+def kill_process_tree(pid: int) -> None:
     """Kills the process with the given PID and its descendants."""
-    if platform.system() == "Windows":
+    if sys.platform == "win32":
         try:
             subprocess.run(['taskkill', '/F', '/T', '/PID', str(pid)], check=True, capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
         except subprocess.CalledProcessError as e:
@@ -553,7 +545,7 @@ def kill_process_tree(pid):
             log_error(f"An unexpected error occurred during process kill: {e}")
 
 
-def format_time(seconds):
+def format_time(seconds: float | int) -> str:
     """Formats total seconds into HH:MM:SS or MM:SS string."""
     seconds = int(seconds)
     h = seconds // 3600
@@ -565,7 +557,7 @@ def format_time(seconds):
         return f"{m:02d}:{s:02d}"
 
 
-def format_seconds(seconds):
+def format_seconds(seconds: float | int | None) -> str:
     """Converts seconds to '1h 05m' or '05m 30s' format."""
     if seconds is None or seconds < 0:
         return "--:--"
@@ -576,7 +568,7 @@ def format_seconds(seconds):
     return f"{m:02d}m {s:02d}s"
 
 
-def update_time_display(window, current_ms, total_ms):
+def update_time_display(window: sg.Window, current_ms: float, total_ms: float) -> None:
     """Updates the time text elements."""
     time_text_format = LANG.get('time_text_format', 'Time: {} / {}')
 
@@ -590,7 +582,7 @@ def update_time_display(window, current_ms, total_ms):
         window["-TIME_TEXT-"].update(time_text_empty)
 
 
-def _parse_and_validate_time_parts(time_str):
+def _parse_and_validate_time_parts(time_str: str | None) -> tuple[int, int, int] | None:
     """Internal helper to parse MM:SS or HH:MM:SS and validate parts."""
     if not time_str:
         return None
@@ -616,7 +608,7 @@ def _parse_and_validate_time_parts(time_str):
         return None
 
 
-def is_valid_time_format(time_str: str) -> bool:
+def is_valid_time_format(time_str: str | None) -> bool:
     """Checks if a string is in MM:SS or HH:MM:SS format with valid ranges."""
     if not time_str:
         return True
@@ -624,7 +616,7 @@ def is_valid_time_format(time_str: str) -> bool:
     return _parse_and_validate_time_parts(time_str) is not None
 
 
-def time_string_to_seconds(time_str):
+def time_string_to_seconds(time_str: str | None) -> int | None:
     """Converts MM:SS or HH:MM:SS string to total seconds. Returns None if invalid."""
     if not time_str:
         return None
@@ -638,7 +630,7 @@ def time_string_to_seconds(time_str):
     return h * 3600 + m * 60 + s
 
 
-def parse_srt_time_to_seconds(time_str):
+def parse_srt_time_to_seconds(time_str: str) -> float:
     """Parses a timestamp string like '00:00:01,500' or '00:01:00' into seconds (float)."""
     try:
         parts = time_str.replace(',', '.').split(':')
@@ -649,7 +641,7 @@ def parse_srt_time_to_seconds(time_str):
     return 0.0
 
 
-def center_popup(parent_window, popup_window):
+def center_popup(parent_window: sg.Window, popup_window: sg.Window) -> None:
     """Center a popup relative to the parent window."""
     x0, y0 = parent_window.current_location()
     w0, h0 = parent_window.current_size_accurate()
@@ -659,7 +651,7 @@ def center_popup(parent_window, popup_window):
     popup_window.move(x1, y1)
 
 
-def custom_popup(parent_window, title, message, icon=None, modal=True):
+def custom_popup(parent_window: sg.Window, title: str, message: str, icon: str | bytes | None = None, modal: bool = True) -> None:
     """Create and show a centered popup relative to the parent window."""
     layout = [
         [sg.Text(message)],
@@ -680,7 +672,7 @@ def custom_popup(parent_window, title, message, icon=None, modal=True):
     popup_window.close()
 
 
-def update_popup(parent_window, version_info, current_version, icon=None):
+def update_popup(parent_window: sg.Window, version_info: dict[str, str], current_version: str, icon: str | bytes | None = None) -> None:
     """Creates and shows a centered popup to notify the user of a new version relative to the parent window."""
     url = version_info['url']
     new_version = version_info['version']
@@ -711,7 +703,7 @@ def update_popup(parent_window, version_info, current_version, icon=None):
     update_window.close()
 
 
-def custom_popup_yes_no(parent_window, title, message, icon=None):
+def custom_popup_yes_no(parent_window: sg.Window, title: str, message: str, icon: str | bytes | None = None) -> str:
     """Creates and shows a centered Yes/No popup relative to the parent window."""
     layout = [
         [sg.Text(message)],
@@ -742,7 +734,7 @@ def custom_popup_yes_no(parent_window, title, message, icon=None):
     return choice
 
 
-def popup_post_action_countdown(parent_window, action_text, icon=None):
+def popup_post_action_countdown(parent_window: sg.Window, action_text: str, icon: str | bytes | None = None) -> bool:
     """Displays a countdown popup relative to the parent window."""
     timeout_seconds = 60
 
@@ -789,7 +781,7 @@ def popup_post_action_countdown(parent_window, action_text, icon=None):
     return should_proceed
 
 
-def check_for_updates(window, manual_check=False):
+def check_for_updates(window: sg.Window, manual_check: bool = False) -> None:
     """Checks GitHub for a new release."""
     try:
         headers = {'User-Agent': 'VideOCR-GUI'}
@@ -814,7 +806,7 @@ def check_for_updates(window, manual_check=False):
             window.write_event_value('-UPDATE_CHECK_FAILED-', None)
 
 
-def update_subtitle_pos_combo(window, selected_internal_pos=None):
+def update_subtitle_pos_combo(window: sg.Window, selected_internal_pos: str | None = None) -> None:
     """Updates the Subtitle Position combo box with translated values and sets the selected item."""
     pos_to_select = selected_internal_pos if selected_internal_pos is not None else DEFAULT_INTERNAL_SUBTITLE_POSITION
 
@@ -825,12 +817,12 @@ def update_subtitle_pos_combo(window, selected_internal_pos=None):
     window['-SUBTITLE_POS_COMBO-'].update(value=display_pos, values=translated_pos_names, size=(38, 4))
 
 
-def get_alignment_index(key):
+def get_alignment_index(key: str) -> int:
     """Returns the index for a given alignment key"""
     return next((i for i, (_, v) in enumerate(SUBTITLE_ALIGNMENT_LIST) if v == key), 0)
 
 
-def update_alignment_combos(window, selected_index1=None, selected_index2=None):
+def update_alignment_combos(window: sg.Window, selected_index1: int | None = None, selected_index2: int | None = None) -> None:
     internal_to_display_map = {internal_val: LANG.get(lang_key, internal_val) for lang_key, internal_val in SUBTITLE_ALIGNMENT_LIST}
     translated_names = list(internal_to_display_map.values())
 
@@ -843,7 +835,7 @@ def update_alignment_combos(window, selected_index1=None, selected_index2=None):
     window['--subtitle_alignment2'].update(value=display_val2, values=translated_names)
 
 
-def update_alignment_controls(window, values):
+def update_alignment_controls(window: sg.Window, values: dict[str, Any]) -> None:
     """Updates the subtitle alignment combo boxes based on current settings."""
     is_checked = values.get('enable_subtitle_alignment', False)
     is_dual_zone = values.get('--use_dual_zone', False)
@@ -851,7 +843,7 @@ def update_alignment_controls(window, values):
     window['--subtitle_alignment2'].update(disabled=not (is_checked and is_dual_zone))
 
 
-def update_post_action_combo(window, selected_index=0):
+def update_post_action_combo(window: sg.Window, selected_index: int = 0) -> None:
     """Refreshes the Post Action combo text and selects by numeric index."""
     display_values = [LANG.get(key, DEFAULT_ACTION_TEXTS[key]) for key in POST_ACTION_KEYS]
     window['-POST_ACTION-'].update(values=display_values)
@@ -862,7 +854,7 @@ def update_post_action_combo(window, selected_index=0):
         window['-POST_ACTION-'].update(value=display_values[0])
 
 
-def get_translated_status(internal_status):
+def get_translated_status(internal_status: str) -> str:
     """Translates internal status codes to display language."""
     lang_key = INTERNAL_STATUS_TO_LANG_KEY.get(internal_status)
     if lang_key:
@@ -871,7 +863,7 @@ def get_translated_status(internal_status):
 
 
 # --- Settings Save/Load Functions ---
-def get_default_settings():
+def get_default_settings() -> dict[str, Any]:
     """Returns a dictionary of default settings."""
     return {
     '--language': 'en',
@@ -909,7 +901,7 @@ def get_default_settings():
     }
 
 
-def save_settings(window, values):
+def save_settings(window: sg.Window, values: dict[str, Any]) -> None:
     """Saves current settings from GUI elements to the config file."""
     config = configparser.ConfigParser()
     config.add_section(CONFIG_SECTION)
@@ -917,7 +909,7 @@ def save_settings(window, values):
     settings_to_save = {key: values.get(key, get_default_settings().get(key)) for key in get_default_settings() if key != '--saved_crop_boxes'}
 
     display_name_to_internal_map = {LANG.get(lang_key, lang_key): internal_val for lang_key, internal_val in SUBTITLE_POSITIONS_LIST}
-    selected_display_name = values.get('-SUBTITLE_POS_COMBO-')
+    selected_display_name = values.get('-SUBTITLE_POS_COMBO-', "")
     internal_pos_value = display_name_to_internal_map.get(selected_display_name, DEFAULT_INTERNAL_SUBTITLE_POSITION)
     settings_to_save['-SUBTITLE_POS_COMBO-'] = internal_pos_value
 
@@ -930,11 +922,11 @@ def save_settings(window, values):
 
     align_display_to_internal_map = {LANG.get(lang_key, internal_val): internal_val for lang_key, internal_val in SUBTITLE_ALIGNMENT_LIST}
     for key in ['--subtitle_alignment', '--subtitle_alignment2']:
-        selected_display = values.get(key)
+        selected_display = values.get(key, "")
         internal_val = align_display_to_internal_map.get(selected_display, DEFAULT_SUBTITLE_ALIGNMENT)
         settings_to_save[key] = internal_val
 
-    crop_boxes_to_save = []
+    crop_boxes_to_save: list[dict[str, Any]] = []
     if original_frame_width == 0 and original_frame_height == 0:
         crop_boxes_to_save = getattr(window, 'saved_crop_boxes_from_config', [])
     else:
@@ -962,7 +954,7 @@ def save_settings(window, values):
         log_error(f"Error saving settings to {CONFIG_FILE}: {e}")
 
 
-def load_settings(window):
+def load_settings(window: sg.Window) -> None:
     """
     Loads settings from the config file and updates GUI elements.
     Creates a default config if the file doesn't exist.
@@ -1022,6 +1014,7 @@ def load_settings(window):
                 for key, elem_type in settings_to_load:
                     if config.has_option(CONFIG_SECTION, key):
                         try:
+                            value: Any = None
                             if elem_type == 'checkbox':
                                 value = config.getboolean(CONFIG_SECTION, key)
                             elif elem_type == 'combo_lang':
@@ -1075,7 +1068,7 @@ def load_settings(window):
             log_error(f"Error creating default config file {CONFIG_FILE}: {e}")
 
 
-def generate_output_path(video_path, values, default_dir=DEFAULT_DOCUMENTS_DIR):
+def generate_output_path(video_path: str, values: dict[str, Any], default_dir: str = DEFAULT_DOCUMENTS_DIR) -> pathlib.Path:
     """Generates a unique output file path for the SRT file based on video path, settings and language."""
     video_file_path = pathlib.Path(video_path)
     video_filename_stem = video_file_path.stem
@@ -1104,7 +1097,7 @@ def generate_output_path(video_path, values, default_dir=DEFAULT_DOCUMENTS_DIR):
     return output_path
 
 
-def get_video_metadata(video_path):
+def get_video_metadata(video_path: str) -> tuple[int, int, float]:
     """Retrieves video metadata using pymediainfo."""
     try:
         media_info = MediaInfo.parse(video_path)
@@ -1115,7 +1108,7 @@ def get_video_metadata(video_path):
                 video_track = track
 
         if not video_track:
-            return 0, 0, 0.0, 0.0
+            return 0, 0, 0.0
 
         width = int(video_track.width) if video_track.width else 0
         height = int(video_track.height) if video_track.height else 0
@@ -1131,7 +1124,7 @@ def get_video_metadata(video_path):
         return 0, 0, 0.0
 
 
-def get_video_frame(video_path, timestamp_ms, display_size):
+def get_video_frame(video_path: str, timestamp_ms: float, display_size: tuple[int, int]) -> tuple[io.BytesIO | None, int, int, int, int]:
     """Reads a specific frame from a video file using cv2 by seeking to timestamp_ms."""
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
@@ -1141,40 +1134,41 @@ def get_video_frame(video_path, timestamp_ms, display_size):
     ret, frame = cap.read()
     cap.release()
 
-    if not ret:
+    if not ret or frame is None:
         return None, 0, 0, 0, 0
 
-    h, w = frame.shape[:2]
+    frame_arr = cast(np.ndarray[Any, Any], frame)
+    h, w = frame_arr.shape[:2]
     scale = min(display_size[0] / w, display_size[1] / h)
     new_w, new_h = int(w * scale), int(h * scale)
 
     if new_w <= 0 or new_h <= 0:
         return None, 0, 0, 0, 0
 
-    resized_frame = cv2.resize(frame, (new_w, new_h))
+    resized_frame = cv2.resize(frame_arr, (new_w, new_h))
 
     offset_x = (display_size[0] - new_w) // 2
     offset_y = (display_size[1] - new_h) // 2
 
     is_success, buffer = cv2.imencode(".png", resized_frame)
-    if not is_success:
+    if not is_success or buffer is None:
         return None, 0, 0, 0, 0
 
-    return io.BytesIO(buffer), new_w, new_h, offset_x, offset_y
+    return io.BytesIO(buffer.tobytes()), new_w, new_h, offset_x, offset_y
 
 
-def handle_progress(match, label_format_key, last_percentage, log_threshold, taskbar_base=0, show_taskbar_progress=True):
+def handle_progress(match: re.Match[str], label_format_key: str, last_percentage: float, log_threshold: int, taskbar_base: int | None = 0, show_taskbar_progress: bool = True) -> float:
     """Handles progress parsing, ETA calculation, and GUI updates."""
     if not hasattr(handle_progress, "last_key"):
-        handle_progress.last_key = None
+        handle_progress.last_key = None  # type: ignore
     if not hasattr(handle_progress, "start_time"):
-        handle_progress.start_time = None
+        handle_progress.start_time = None  # type: ignore
     if not hasattr(handle_progress, "last_update_time"):
-        handle_progress.last_update_time = 0
+        handle_progress.last_update_time = 0  # type: ignore
     if not hasattr(handle_progress, "start_percent"):
-        handle_progress.start_percent = 0.0
+        handle_progress.start_percent = 0.0  # type: ignore
     if not hasattr(handle_progress, "last_taskbar_val"):
-        handle_progress.last_taskbar_val = -1
+        handle_progress.last_taskbar_val = -1  # type: ignore
 
     current_time = time.time()
     is_time_based = label_format_key in ("progress_seek", "progress_step1")
@@ -1209,13 +1203,13 @@ def handle_progress(match, label_format_key, last_percentage, log_threshold, tas
 
         current_item_display = str(current_item)
 
-    if handle_progress.last_key != label_format_key:
-        handle_progress.last_key = label_format_key
-        handle_progress.start_time = current_time
-        handle_progress.last_update_time = 0
-        handle_progress.start_percent = current_percent
+    if handle_progress.last_key != label_format_key:  # type: ignore
+        handle_progress.last_key = label_format_key  # type: ignore
+        handle_progress.start_time = current_time  # type: ignore
+        handle_progress.last_update_time = 0  # type: ignore
+        handle_progress.start_percent = current_percent  # type: ignore
 
-    time_delta = current_time - handle_progress.last_update_time
+    time_delta = current_time - handle_progress.last_update_time  # type: ignore
     percent_threshold = last_percentage + 0.1
 
     should_update = False
@@ -1225,7 +1219,7 @@ def handle_progress(match, label_format_key, last_percentage, log_threshold, tas
     if not should_update:
         return last_percentage
 
-    handle_progress.last_update_time = current_time
+    handle_progress.last_update_time = current_time  # type: ignore
 
     if label_format_key == "progress_seek":
         prefix = LANG.get('progress_seek', 'Seeking:')
@@ -1251,8 +1245,8 @@ def handle_progress(match, label_format_key, last_percentage, log_threshold, tas
             gui_queue.put(('-VIDEOCR_OUTPUT-', log_msg + "\n"))
 
     eta_str = ""
-    elapsed = current_time - handle_progress.start_time
-    percent_done_this_phase = current_percent - handle_progress.start_percent
+    elapsed = current_time - handle_progress.start_time  # type: ignore
+    percent_done_this_phase = current_percent - handle_progress.start_percent  # type: ignore
 
     if percent_done_this_phase > 0:
         rate = percent_done_this_phase / elapsed
@@ -1268,19 +1262,19 @@ def handle_progress(match, label_format_key, last_percentage, log_threshold, tas
         'eta': eta_str
     }))
 
-    if taskbar_progress_supported and show_taskbar_progress and taskbar_base is not None:
+    if show_taskbar_progress and taskbar_base is not None:
         if label_format_key in ("progress_step1", "progress_step2"):
             step_progress = max(1, int(current_percent * 0.5))
             progress_value = taskbar_base + step_progress
 
-            if last_percentage < 0 or handle_progress.last_taskbar_val != progress_value:
+            if last_percentage < 0 or handle_progress.last_taskbar_val != progress_value:  # type: ignore
                 gui_queue.put(('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': progress_value}))
-                handle_progress.last_taskbar_val = progress_value
+                handle_progress.last_taskbar_val = progress_value  # type: ignore
 
     return current_percent
 
 
-def read_pipe(pipe, output_list):
+def read_pipe(pipe: IO[str], output_list: list[str]) -> None:
     """Reads lines from a pipe and appends them to a list."""
     try:
         for line in iter(pipe.readline, ''):
@@ -1289,10 +1283,10 @@ def read_pipe(pipe, output_list):
         pipe.close()
 
 
-def scan_video_folder(folder_path):
+def scan_video_folder(folder_path: str) -> list[str]:
     """Scans a folder for common video files and returns a sorted list of full paths."""
     video_extensions = {'.mp4', '.avi', '.mkv', '.mov', '.webm', '.flv', '.wmv', '.ts', '.m2ts'}
-    video_files = []
+    video_files: list[str] = []
     if not os.path.isdir(folder_path):
         return []
     for entry in os.listdir(folder_path):
@@ -1304,12 +1298,12 @@ def scan_video_folder(folder_path):
 
 
 # --- Argument Extraction and Validation ---
-def get_processing_args(values, window):
+def get_processing_args(values: dict[str, Any], window: sg.Window) -> tuple[dict[str, Any] | None, list[str] | None]:
     """
     Validates inputs and generates the argument dictionary for the CLI.
     Returns (args_dict, None) if successful, or (None, errors_list) if validation fails.
     """
-    errors = []
+    errors: list[str] = []
 
     time_start = values.get('--time_start', '').strip()
     time_end = values.get('--time_end', '').strip()
@@ -1322,7 +1316,7 @@ def get_processing_args(values, window):
     time_start_seconds = time_string_to_seconds(time_start)
     time_end_seconds = time_string_to_seconds(time_end)
 
-    video_duration_seconds = 0
+    video_duration_seconds = 0.0
     if video_duration_ms > 0:
         video_duration_seconds = video_duration_ms / 1000.0
 
@@ -1359,7 +1353,7 @@ def get_processing_args(values, window):
         if not value_str:
             continue
 
-        range_str_parts = []
+        range_str_parts: list[str] = []
         if min_val is not None:
             range_str_parts.append(f">={min_val}")
         if max_val is not None:
@@ -1381,7 +1375,7 @@ def get_processing_args(values, window):
     if errors:
         return None, errors
 
-    args = {}
+    args: dict[str, Any] = {}
     args['video_path'] = video_path
 
     selected_lang_name = values.get('-LANG_COMBO-', DEFAULT_DISPLAY_LANGUAGE)
@@ -1389,7 +1383,7 @@ def get_processing_args(values, window):
     if lang_abbr:
         args['lang'] = lang_abbr
 
-    selected_display_name = values.get('-SUBTITLE_POS_COMBO-')
+    selected_display_name = values.get('-SUBTITLE_POS_COMBO-', "")
     display_name_to_internal_map = {LANG.get(lang_key, lang_key): internal_val for lang_key, internal_val in SUBTITLE_POSITIONS_LIST}
     pos_value = display_name_to_internal_map.get(selected_display_name)
     if pos_value:
@@ -1408,11 +1402,11 @@ def get_processing_args(values, window):
     if values.get('enable_subtitle_alignment'):
         align_display_to_internal_map = {LANG.get(lang_key, internal_val): internal_val for lang_key, internal_val in SUBTITLE_ALIGNMENT_LIST}
 
-        align1_display = values.get('--subtitle_alignment')
+        align1_display = values.get('--subtitle_alignment', "")
         args['subtitle_alignment'] = align_display_to_internal_map.get(align1_display, DEFAULT_SUBTITLE_ALIGNMENT)
 
         if use_dual_zone:
-            align2_display = values.get('--subtitle_alignment2')
+            align2_display = values.get('--subtitle_alignment2', "")
             args['subtitle_alignment2'] = align_display_to_internal_map.get(align2_display, DEFAULT_SUBTITLE_ALIGNMENT)
 
     # Handle send_notification specifically to store it as a boolean and not a string
@@ -1444,7 +1438,7 @@ def get_processing_args(values, window):
     return args, None
 
 
-def run_videocr(args_dict, window):
+def run_videocr(args_dict: dict[str, Any], window: sg.Window) -> bool:
     """Runs the videocr-cli tool in a separate process and streams output."""
     if not VIDEOCR_PATH:
         error_msg = LANG.get('error_cli_not_found', "\nError: videocr-cli not found. Please check the path.\n")
@@ -1486,10 +1480,13 @@ def run_videocr(args_dict, window):
     gui_queue.put(('-PROGRESS-SMOOTH-', {'text': LANG.get('status_starting', "Starting subtitle extraction..."), 'percent': None}))
 
     process = None
+    creationflags = 0
+    if sys.platform == "win32":
+        creationflags = subprocess.CREATE_NO_WINDOW
 
     try:
-        stdout_lines = []
-        stderr_lines = []
+        stdout_lines: list[str] = []
+        stderr_lines: list[str] = []
 
         process = subprocess.Popen(command,
                                    stdout=subprocess.PIPE,
@@ -1498,8 +1495,8 @@ def run_videocr(args_dict, window):
                                    encoding='utf-8',
                                    errors='replace',
                                    bufsize=1,
-                                   creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
-                                   start_new_session=(os.name != 'nt')
+                                   creationflags=creationflags,
+                                   start_new_session=(sys.platform != "win32")
                                    )
 
         gui_queue.put(('-PROCESS_STARTED-', process.pid))
@@ -1561,7 +1558,7 @@ def run_videocr(args_dict, window):
 
                 match_seek = SEEK_PROGRESS_PATTERN.search(line)
                 if match_seek:
-                    if taskbar_progress_supported and not taskbar_progress_started:
+                    if not taskbar_progress_started:
                         gui_queue.put(('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': 1}))
                         taskbar_progress_started = True
                     last_reported_percentage_seek = handle_progress(
@@ -1615,7 +1612,7 @@ def run_videocr(args_dict, window):
         return False
 
 
-def start_queue(window, queue_data):
+def start_queue(window: sg.Window, queue_data: list[dict[str, Any]]) -> None:
     """Common logic to start the batch processor."""
     window.is_processing = True
 
@@ -1635,7 +1632,7 @@ def start_queue(window, queue_data):
     threading.Thread(target=run_batch_thread, args=(window, queue_data), daemon=True).start()
 
 
-def run_batch_thread(window, queue_data):
+def run_batch_thread(window: sg.Window, queue_data: list[dict[str, Any]]) -> None:
     """Worker thread that dynamically pulls the next 'Pending' job from the queue."""
     success_count = 0
     last_processed_args = None
@@ -1688,7 +1685,7 @@ def run_batch_thread(window, queue_data):
     gui_queue.put(('-BATCH-FINISHED-', None))
 
 
-def update_queue_tab_count(window, queue):
+def update_queue_tab_count(window: sg.Window, queue: list[dict[str, Any]]) -> None:
     """Updates the Queue tab title. Counts Pending, Processing, Cancelled, Paused."""
     active_count = len([j for j in queue if j['status'] in ('Pending', 'Processing', 'Cancelled', 'Paused')])
 
@@ -1704,9 +1701,9 @@ def update_queue_tab_count(window, queue):
         log_error(f"Failed to update tab title: {e}")
 
 
-def refresh_batch_table(window):
+def refresh_batch_table(window: sg.Window) -> None:
     """Refreshes the batch table with translated status text."""
-    data = []
+    data: list[list[str]] = []
     for item in batch_queue:
         display_status = get_translated_status(item['status'])
         data.append([item['filename'], item['output'], display_status])
@@ -1715,7 +1712,7 @@ def refresh_batch_table(window):
     update_queue_tab_count(window, batch_queue)
 
 
-def set_process_pause_state(pid, pause=True):
+def set_process_pause_state(pid: int, pause: bool = True) -> bool:
     """
     Pauses (suspends) or Resumes the process with the given PID
     and its entire child process tree.
@@ -1746,7 +1743,7 @@ def set_process_pause_state(pid, pause=True):
         return False
 
 
-def set_system_awake(should_be_awake: bool):
+def set_system_awake(should_be_awake: bool) -> None:
     """Acquires or releases the system wake lock safely."""
     global current_wake_lock
 
@@ -1767,7 +1764,7 @@ def set_system_awake(should_be_awake: bool):
                 current_wake_lock = None
 
 
-def execute_post_completion_action(window, icon=None):
+def execute_post_completion_action(window: sg.Window, icon: str | bytes | None = None) -> None:
     """Executes the selected system action based on the Combo box index."""
     if getattr(window, 'cancelled_by_user', False):
         return
@@ -1789,27 +1786,25 @@ def execute_post_completion_action(window, icon=None):
     log_msg = LANG.get('log_post_action', "Executing post-completion action: {}").format(display_text)
     window['-OUTPUT-'].update(f'\n{log_msg}\n', append=True)
 
-    system_os = platform.system()
-
     if action_key == 'action_shutdown':
-        if system_os == "Windows":
+        if sys.platform == "win32":
             os.system("shutdown /s /t 0")
         else:
             os.system("systemctl poweroff")
     elif action_key == 'action_sleep':
-        if system_os == "Windows":
+        if sys.platform == "win32":
             ctypes.windll.powrprof.SetSuspendState(False, False, False)
         else:
             os.system("systemctl suspend")
     elif action_key == 'action_hibernate':
-        if system_os == "Windows":
+        if sys.platform == "win32":
             ctypes.windll.powrprof.SetSuspendState(True, False, False)
     elif action_key == 'action_lock':
-        if system_os == "Windows":
+        if sys.platform == "win32":
             ctypes.windll.user32.LockWorkStation()
 
 
-def update_run_and_cancel_button_state(window, queue):
+def update_run_and_cancel_button_state(window: sg.Window, queue: list[dict[str, Any]]) -> None:
     """Updates the Run and Cancel button text based on whether there are PENDING items."""
     has_pending = any(item['status'] == 'Pending' for item in queue)
 
@@ -1821,10 +1816,10 @@ def update_run_and_cancel_button_state(window, queue):
         window['-BTN-CANCEL-'].update(text=LANG.get('btn_cancel', "Cancel"))
 
 
-def update_taskbar(state=None, progress=None):
+def update_taskbar(state: str | None = None, progress: int | None = None) -> None:
     """Updates the taskbar progress and state, checking for OS support."""
-    global previous_taskbar_state
-    if not taskbar_progress_supported:
+    global previous_taskbar_state, prog
+    if prog is None:
         return
 
     if state and state != previous_taskbar_state:
@@ -1835,13 +1830,13 @@ def update_taskbar(state=None, progress=None):
         prog.setProgress(progress)
 
 
-def check_crop_validity(video_path, args):
+def check_crop_validity(video_path: str, args: dict[str, Any]) -> tuple[bool, str | None]:
     """Checks if the crop coordinates in 'args' fit within the video dimensions."""
     width, height, _ = get_video_metadata(video_path)
     if width == 0 or height == 0:
         return False, "Could not determine video dimensions."
 
-    def check_zone(x, y, w, h, zone_name=""):
+    def check_zone(x: int, y: int, w: int, h: int, zone_name: str = "") -> str | None:
         if x >= width:
             return LANG.get('err_crop_x_out', "{} X ({}) is outside video width ({}).").format(zone_name, x, width)
         if y >= height:
@@ -1871,12 +1866,12 @@ available_languages = get_available_languages()
 ui_language_display_names = sorted(list(available_languages.keys()))
 
 
-def GhostButton():
+def GhostButton() -> sg.Element:
     """
     Windows: Creates an invisible button to force row height.
     Linux: Returns a 0x0 dummy element so it doesn't affect layout.
     """
-    if platform.system() == "Linux":
+    if sys.platform == "linux":
         # Return a dummy element with 0 size and 0 padding, invisible button looks worse unfortunately
         return sg.Text("", size=(0, 0), pad=(0, 0), border_width=0)
 
@@ -2068,7 +2063,7 @@ layout = [
     ], key='-TABGROUP-', enable_events=True, expand_x=True, expand_y=True)]
 ]
 
-if platform.system() == "Windows":
+if sys.platform == "win32":
     ICON_PATH = os.path.join(APP_DIR, 'VideOCR.ico')
 else:
     ICON_PATH = os.path.join(APP_DIR, 'VideOCR.png')
@@ -2076,7 +2071,7 @@ else:
 y_offset = 0
 decorations_height = 0
 
-if platform.system() == "Windows":
+if sys.platform == "win32":
     SM_CYCAPTION = 4
     SM_CYFRAME = 33
     SM_CXPADDEDBORDER = 92
@@ -2091,9 +2086,9 @@ if platform.system() == "Windows":
     decorations_height = caption + (frame * 2) + padding - (border * 2)
 
 
-def get_work_area():
+def get_work_area() -> tuple[int, int]:
     """Returns the exact usable screen width and height, excluding the taskbar."""
-    if platform.system() == "Windows":
+    if sys.platform == "win32":
         class RECT(ctypes.Structure):
             _fields_ = [
                 ('left', ctypes.c_long),
@@ -2113,6 +2108,8 @@ def get_work_area():
         width, height = sg.Window.get_screen_size()
         return width, int(height * 0.90)
 
+
+make_dpi_aware()
 
 window = sg.Window("VideOCR", layout, relative_location=(0, y_offset), icon=ICON_PATH, finalize=True, resizable=True)
 
@@ -2143,7 +2140,7 @@ load_settings(window)
 
 update_gui_text(window)
 
-if taskbar_progress_supported:
+if sys.platform == 'win32':
     prog = PyTaskbar.Progress(int(window.TKroot.wm_frame(), 16))
     prog.init()
     prog.setState('normal')
@@ -2152,7 +2149,7 @@ graph = window["-GRAPH-"]
 
 
 # --- Initialize crop box state in the window object ---
-def reset_crop_state():
+def reset_crop_state() -> None:
     """Resets all variables related to crop boxes."""
     global graph
     for fig_id in getattr(window, 'drawn_rect_ids', []):
@@ -2169,7 +2166,7 @@ def reset_crop_state():
 reset_crop_state()
 
 
-def redraw_canvas_and_boxes():
+def redraw_canvas_and_boxes() -> None:
     """Erases the graph, redraws the current frame and all finalized crop boxes."""
     global graph, current_image_bytes, image_offset_x, image_offset_y, resized_frame_width, resized_frame_height
 
@@ -2209,12 +2206,12 @@ window.bind('<Map>', '-WINDOW_RESTORED-')
 issues_link_element = window['-GITHUB_ISSUES_LINK-']
 
 
-def on_issues_enter(event):
+def on_issues_enter(event: Any) -> None:
     """Callback when mouse enters the Issues link text."""
     issues_link_element.Widget.config(cursor="hand2")
 
 
-def on_issues_leave(event):
+def on_issues_leave(event: Any) -> None:
     """Callback when mouse leaves the Issues link text."""
     issues_link_element.Widget.config(cursor="")
 
@@ -2226,12 +2223,12 @@ issues_link_element.Widget.bind("<Leave>", on_issues_leave)
 releases_link_element = window['-GITHUB_RELEASES_LINK-']
 
 
-def on_releases_enter(event):
+def on_releases_enter(event: Any) -> None:
     """Callback when mouse enters the Releases link text."""
     releases_link_element.Widget.config(cursor="hand2")
 
 
-def on_releases_leave(event):
+def on_releases_leave(event: Any) -> None:
     """Callback when mouse leaves the Releases link text."""
     releases_link_element.Widget.config(cursor="")
 
@@ -2603,7 +2600,7 @@ while True:
                 # --- Auto-load crop box if setting is enabled ---
                 if values.get('--save_crop_box') and hasattr(window, 'saved_crop_boxes_from_config') and window.saved_crop_boxes_from_config:
                     loaded_boxes_data = window.saved_crop_boxes_from_config
-                    new_crop_boxes_to_apply = []
+                    new_crop_boxes_to_apply: list[dict[str, Any]] = []
 
                     for box_data in loaded_boxes_data:
                         rel_coords = box_data.get('coords', {})
@@ -2781,8 +2778,9 @@ while True:
             continue
 
         args, errors = get_processing_args(values, window)
-        if errors:
-            custom_popup(window, "Validation Error", "\n".join(errors), icon=ICON_PATH)
+        if errors or args is None:
+            errors_to_display = errors if errors is not None else []
+            custom_popup(window, "Validation Error", "\n".join(errors_to_display), icon=ICON_PATH)
             continue
 
         target_output_full = args['output']
@@ -2835,7 +2833,7 @@ while True:
         original_duration_ms = video_duration_ms
 
         added_count = 0
-        skipped_videos = []
+        skipped_videos: list[str] = []
 
         current_queue_outputs = {j['args']['output'] for j in batch_queue}
 
@@ -2863,8 +2861,9 @@ while True:
             video_duration_ms = duration_ms
 
             args, errors = get_processing_args(values, window)
-            if errors:
-                skipped_videos.append(f"{os.path.basename(v_path)}: {errors[0]}")
+            if errors or args is None:
+                errors_to_display = errors if errors is not None else []
+                skipped_videos.append(f"{os.path.basename(v_path)}: {errors_to_display[0]}")
                 continue
 
             is_valid, err_msg = check_crop_validity(v_path, args)
@@ -2922,9 +2921,10 @@ while True:
                 continue
 
             args, errors = get_processing_args(values, window)
-            if errors:
+            if errors or args is None:
+                errors_to_display = errors if errors is not None else ["Unknown validation error"]
                 window['-OUTPUT-'].update(LANG.get('val_err_header', "Validation Errors:\n"), append=True)
-                for error in errors:
+                for error in errors_to_display:
                     window['-OUTPUT-'].update(f"- {error}\n", append=True)
                 window.refresh()
                 continue
@@ -3126,9 +3126,9 @@ while True:
                     if gui_key in window.AllKeysDict:
                         window[gui_key].update(arg_val)
 
-                new_boxes = []
+                new_boxes: list[dict[str, Any]] = []
 
-                def restore_box(cx, cy, cw, ch, orig_w, orig_h, res_w, res_h):
+                def restore_box(cx: float, cy: float, cw: float, ch: float, orig_w: int, orig_h: int, res_w: int, res_h: int) -> dict[str, Any]:
                     sx = res_w / orig_w if orig_w > 0 else 0
                     sy = res_h / orig_h if orig_h > 0 else 0
 
