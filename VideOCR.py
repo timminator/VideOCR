@@ -146,11 +146,9 @@ def find_videocr_program() -> str | None:
     program_name = 'videocr-cli'
     extension = ".exe" if sys.platform == "win32" else ".bin"
 
-    for entry in os.listdir(APP_DIR):
-        if entry.startswith("videocr-cli-"):
-            potential_path = os.path.join(APP_DIR, entry, f'{program_name}{extension}')
-            if os.path.exists(potential_path):
-                return potential_path
+    root_path = os.path.join(APP_DIR, f'{program_name}{extension}')
+    if os.path.exists(root_path):
+        return root_path
 
     return None
 
@@ -172,7 +170,7 @@ DEFAULT_SSIM_THRESHOLD = 92
 DEFAULT_OCR_IMAGE_MAX_WIDTH = 800
 DEFAULT_FRAMES_TO_SKIP = 1
 DEFAULT_TIME_START = "0:00"
-KEY_SEEK_STEP = 0.1
+KEY_SEEK_STEP = 1
 CONFIG_FILE = os.path.join(APP_DIR, 'videocr_gui_config.ini')
 CONFIG_SECTION = 'Settings'
 try:

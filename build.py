@@ -342,14 +342,21 @@ def package_target(build_target: str, args: argparse.Namespace, releases_dir: Pa
     cli_final_name = f"videocr-cli-{base_target_name}-v{APP_VERSION}{cuda_suffix}{release_tag}{os_suffix}"
     final_app_folder_name = f"VideOCR-{base_target_name}-v{APP_VERSION}{cuda_suffix}{release_tag}{os_suffix}"
 
-    # Move the temp CLI folder to its final standalone location in Releases
+    # Create the Standalone CLI release
     final_cli_path = releases_dir / cli_final_name
-    print(f"Moving standalone CLI to '{final_cli_path}'")
-    shutil.move(str(temp_cli_dist), final_cli_path)
+    print(f"Creating standalone CLI at '{final_cli_path}'")
+    shutil.copytree(temp_cli_dist, final_cli_path)
 
-    # Copy the final CLI folder into the GUI folder
-    print(f"Copying CLI into GUI folder as '{cli_final_name}'")
-    shutil.copytree(final_cli_path, temp_gui_dist / cli_final_name)
+    # Merge CLI into GUI
+    print(f"Merging CLI files into GUI root for {final_app_folder_name}...")
+    for item in temp_cli_dist.rglob('*'):
+        relative_path = item.relative_to(temp_cli_dist)
+        target_path = temp_gui_dist / relative_path
+
+        if item.is_dir():
+            target_path.mkdir(exist_ok=True)
+        else:
+            shutil.copy2(item, target_path)
 
     # Copy Linux installer scripts if applicable
     if os_name == "Linux":
