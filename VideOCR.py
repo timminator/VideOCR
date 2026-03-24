@@ -113,6 +113,27 @@ def get_dpi_scaling() -> float:
             return 1.0
 
 
+def get_gui_scaling_multiplier() -> float | None:
+    """Reads the custom GUI scaling multiplier from the config file."""
+    if os.path.exists(CONFIG_FILE):
+        temp_config = configparser.ConfigParser()
+        try:
+            temp_config.read(CONFIG_FILE)
+            if temp_config.has_option(CONFIG_SECTION, 'gui_scaling'):
+                val = temp_config.get(CONFIG_SECTION, 'gui_scaling')
+                if val != 'System Default':
+                    return float(val)
+        except Exception:
+            pass
+    return None
+
+
+def get_scaled_graph_size(custom_scale: float | None, base_w: int, base_h: int) -> tuple[int, int]:
+    """Calculates graph size using a custom scale, falling back to OS DPI if None."""
+    scale = custom_scale if custom_scale is not None else get_dpi_scaling()
+    return int(base_w * scale), int(base_h * scale)
+
+
 # --- Send notification --
 def send_notification(title: str, message: str) -> None:
     """Sends a notification via winotify on Windows and via Plyer on Linux."""
@@ -306,6 +327,17 @@ DEFAULT_STATUS_TEXTS = {
     'status_paused': 'Paused'
 }
 
+# --- GUI Scaling Data ---
+GUI_SCALING_LIST = [
+    ('system_default', 'System Default'),
+    ('scale_1_0', '1.0'),
+    ('scale_1_25', '1.25'),
+    ('scale_1_5', '1.5'),
+    ('scale_1_75', '1.75'),
+    ('scale_2_0', '2.0')
+]
+DEFAULT_GUI_SCALING = 'System Default'
+
 # --- Global Variables ---
 video_path = None
 original_frame_width = 0
@@ -316,8 +348,8 @@ resized_frame_width = 0
 resized_frame_height = 0
 image_offset_x = 0
 image_offset_y = 0
-dpi_scale = get_dpi_scaling()
-graph_size = (int(640 * dpi_scale), int(360 * dpi_scale))
+gui_scale_multiplier = get_gui_scaling_multiplier()
+graph_size = get_scaled_graph_size(custom_scale=gui_scale_multiplier, base_w=672, base_h=378)
 current_image_bytes = None
 prog = None
 previous_taskbar_state = None
@@ -447,17 +479,21 @@ def update_gui_text(window: sg.Window, is_paused: bool = False) -> None:
         '--post_processing': {'text': 'chk_post_processing', 'tooltip': 'tip_post_processing'},
         '--use_server_model': {'text': 'chk_server_model', 'tooltip': 'tip_server_model'},
         '-LBL-VIDEOCR_SETTINGS-': {'text': 'lbl_videocr_settings'},
+        '-LBL-UI_LANG-': {'text': 'lbl_ui_lang', 'tooltip': 'tip_ui_lang'},
+        '-UI_LANG_COMBO-': {'tooltip': 'tip_ui_lang'},
+        '-LBL-GUI_SCALING-': {'text': 'lbl_gui_scaling', 'tooltip': 'tip_gui_scaling'},
+        'gui_scaling': {'tooltip': 'tip_gui_scaling'},
         '--save_crop_box': {'text': 'chk_save_crop_box', 'tooltip': 'tip_save_crop_box'},
         '--save_in_video_dir': {'text': 'chk_save_in_video_dir', 'tooltip': 'tip_save_in_video_dir'},
         '-LBL-OUTPUT_DIR-': {'text': 'lbl_output_dir', 'tooltip': 'tip_output_dir'},
         '-BTN-FOLDER_BROWSE-': {'text': 'btn_browse_folder'},
         '-LBL-SEEK_STEP-': {'text': 'lbl_seek_step', 'tooltip': 'tip_seek_step'},
+        '--keyboard_seek_step': {'tooltip': 'tip_seek_step'},
         '--send_notification': {'text': 'chk_send_notification', 'tooltip': 'tip_send_notification'},
         '--check_for_updates': {'text': 'chk_check_updates', 'tooltip': 'tip_check_updates'},
         'prevent_system_sleep': {'text': 'chk_prevent_sleep', 'tooltip': 'tip_prevent_sleep'},
         '--normalize_to_simplified_chinese': {'text': 'chk_normalize_chinese', 'tooltip': 'tip_normalize_chinese'},
         '-BTN-CHECK_UPDATE_MANUAL-': {'text': 'btn_check_now'},
-        '-LBL-UI_LANG-': {'text': 'lbl_ui_lang'},
 
         # Tab 3
         '-TAB-ABOUT-': {'text': 'tab_about'},
@@ -517,6 +553,9 @@ def update_gui_text(window: sg.Window, is_paused: bool = False) -> None:
     current_idx1 = window['--subtitle_alignment'].Widget.current()
     current_idx2 = window['--subtitle_alignment2'].Widget.current()
     update_alignment_combos(window, current_idx1, current_idx2)
+
+    current_scale_idx = window['gui_scaling'].Widget.current()
+    update_gui_scaling_combo(window, current_scale_idx)
 
 
 # --- Helper Functions ---
@@ -849,6 +888,23 @@ def update_post_action_combo(window: sg.Window, selected_index: int = 0) -> None
         window['-POST_ACTION-'].update(value=display_values[0])
 
 
+def get_gui_scaling_index(key: str) -> int:
+    """Returns the index for a given GUI scaling key"""
+    return next((i for i, (_, v) in enumerate(GUI_SCALING_LIST) if v == key), 0)
+
+
+def update_gui_scaling_combo(window: sg.Window, selected_index: int | None = None) -> None:
+    """Updates the GUI Scaling combo box with translated values."""
+    internal_to_display_map = {internal_val: LANG.get(lang_key, internal_val) for lang_key, internal_val in GUI_SCALING_LIST}
+    translated_names = list(internal_to_display_map.values())
+
+    idx = selected_index if selected_index is not None else 0
+    display_val = translated_names[idx] if 0 <= idx < len(translated_names) else translated_names[0]
+
+    if 'gui_scaling' in window.AllKeysDict:
+        window['gui_scaling'].update(value=display_val, values=translated_names)
+
+
 def get_translated_status(internal_status: str) -> str:
     """Translates internal status codes to display language."""
     lang_key = INTERNAL_STATUS_TO_LANG_KEY.get(internal_status)
@@ -893,6 +949,7 @@ def get_default_settings() -> dict[str, Any]:
     '--check_for_updates': True,
     'prevent_system_sleep': True,
     '--normalize_to_simplified_chinese': True,
+    'gui_scaling': 'System Default',
     }
 
 
@@ -920,6 +977,10 @@ def save_settings(window: sg.Window, values: dict[str, Any]) -> None:
         selected_display = values.get(key, "")
         internal_val = align_display_to_internal_map.get(selected_display, DEFAULT_SUBTITLE_ALIGNMENT)
         settings_to_save[key] = internal_val
+
+    scale_display_to_internal_map = {LANG.get(lang_key, internal_val): internal_val for lang_key, internal_val in GUI_SCALING_LIST}
+    selected_scale_display = values.get('gui_scaling', "")
+    settings_to_save['gui_scaling'] = scale_display_to_internal_map.get(selected_scale_display, DEFAULT_GUI_SCALING)
 
     crop_boxes_to_save: list[dict[str, Any]] = []
     if original_frame_width == 0 and original_frame_height == 0:
@@ -976,6 +1037,9 @@ def load_settings(window: sg.Window) -> None:
                 saved_align1 = config.get(CONFIG_SECTION, '--subtitle_alignment', fallback=DEFAULT_SUBTITLE_ALIGNMENT)
                 saved_align2 = config.get(CONFIG_SECTION, '--subtitle_alignment2', fallback=DEFAULT_SUBTITLE_ALIGNMENT)
                 update_alignment_combos(window, get_alignment_index(saved_align1), get_alignment_index(saved_align2))
+
+                saved_scaling = config.get(CONFIG_SECTION, 'gui_scaling', fallback=DEFAULT_GUI_SCALING)
+                update_gui_scaling_combo(window, get_gui_scaling_index(saved_scaling))
 
                 settings_to_load = [
                     ('-LANG_COMBO-', 'combo_lang'),
@@ -1051,6 +1115,7 @@ def load_settings(window: sg.Window) -> None:
         update_subtitle_pos_combo(window)
         update_post_action_combo(window)
         update_alignment_combos(window)
+        update_gui_scaling_combo(window)
 
         default_settings = get_default_settings()
         config.add_section(CONFIG_SECTION)
@@ -2060,6 +2125,7 @@ tab2_content = [
     [
         sg.Column([
             [sg.Text("UI Language:", size=(30, 1), key='-LBL-UI_LANG-'), GhostButton()],
+            [sg.Text("GUI Scaling:", size=(30, 1), key='-LBL-GUI_SCALING-'), GhostButton()],
             [sg.Checkbox("Save Crop Box Selection", default=True, key="--save_crop_box", enable_events=True), GhostButton()],
             [sg.Checkbox("Save SRT in Video Directory", default=True, key="--save_in_video_dir", enable_events=True), GhostButton()],
             [sg.Text("Output Directory:", size=(30, 1), key='-LBL-OUTPUT_DIR-'), GhostButton()],
@@ -2069,7 +2135,8 @@ tab2_content = [
             [sg.Checkbox("Check for Updates On Startup", default=True, key="--check_for_updates", enable_events=True), GhostButton()],
         ], pad=(0, None)),
         sg.Column([
-            [sg.Combo(ui_language_display_names, key='-UI_LANG_COMBO-', size=(32, 1), readonly=True, enable_events=True), GhostButton()],
+            [sg.Combo(ui_language_display_names, key='-UI_LANG_COMBO-', size=(32, 1), readonly=True, enable_events=True, expand_x=True), GhostButton()],
+            [sg.Combo([], key='gui_scaling', size=(32, 1), readonly=True, enable_events=True, expand_x=True), GhostButton()],
             [GhostButton()],
             [GhostButton()],
             [sg.Input(DEFAULT_DOCUMENTS_DIR, key="--default_output_dir", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, size=(34, 1), enable_events=True), GhostButton()],
@@ -2077,8 +2144,9 @@ tab2_content = [
             [GhostButton()],
             [GhostButton()],
             [sg.Button("Check Now", key="-BTN-CHECK_UPDATE_MANUAL-")],
-        ], pad=(0, None), expand_x=True),
+        ], pad=(0, None)),
         sg.Column([
+            [GhostButton()],
             [GhostButton()],
             [GhostButton()],
             [GhostButton()],
@@ -2087,7 +2155,7 @@ tab2_content = [
             [GhostButton()],
             [GhostButton()],
             [GhostButton()],
-        ], pad=(0, None)),
+        ], pad=(0, None), expand_x=True),
     ]
 ]
 tab2_layout = [[sg.Column(tab2_content,
@@ -2169,6 +2237,13 @@ def get_work_area() -> tuple[int, int]:
 
 
 make_dpi_aware()
+
+if gui_scale_multiplier is not None:
+    # Standard OS 100% zoom is 96 DPI. Tkinter 1.0 scaling is 72 DPI.
+    # Base Tkinter scaling for 100% is therefore 96 / 72 = 1.333...
+    sg.set_options(scaling=gui_scale_multiplier * (96 / 72))
+else:
+    sg.set_options(scaling=None)
 
 window = sg.Window("VideOCR", layout, relative_location=(0, y_offset), icon=ICON_PATH, finalize=True, resizable=True)
 
@@ -2339,6 +2414,7 @@ KEYS_TO_AUTOSAVE = [
     'prevent_system_sleep',
     '--normalize_to_simplified_chinese',
     '-POST_ACTION-',
+    'gui_scaling',
 ]
 
 window.is_drawing = False
@@ -2516,6 +2592,26 @@ while True:
 
             if video_path:
                 update_time_display(window, current_time_ms, video_duration_ms)
+
+    # --- Handle UI scaling change ---
+    elif event == 'gui_scaling':
+        title = LANG.get('title_restart', "Restart Required")
+        message = LANG.get('msg_restart_scaling', "The scaling factor has been updated.\nWould you like to restart the application now to apply this change?")
+        restart_choice = custom_popup_yes_no(window, title, message, icon=ICON_PATH)
+
+        if restart_choice == 'Yes':
+            video_manager.close()
+            set_system_awake(False)
+
+            process_to_kill = getattr(window, '_videocr_process_pid', None)
+            if process_to_kill:
+                try:
+                    kill_process_tree(process_to_kill)
+                except Exception as e:
+                    log_error(f"Exception during restart process kill: {e}")
+
+        subprocess.Popen([sys.executable, *sys.argv])
+        break
 
     # --- File/Folder Handling ---
     elif event == '-BTN-OPEN-FILE-':
