@@ -52,7 +52,7 @@ class Capture:
             self.stream.thread_type = 'FRAME'
             self.frame_iterator = self.container.decode(self.stream)
             return self
-        except av.AVError as e:  # type: ignore
+        except av.error.FFmpegError as e:
             raise OSError(f'Can not open video {self.path}.') from e
 
     def __exit__(self, exc_type: type[BaseException] | None, exc_value: BaseException | None, traceback: TracebackType | None) -> None:

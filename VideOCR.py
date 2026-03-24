@@ -1,7 +1,6 @@
 # Compilation instructions
 # nuitka-project: --standalone
 # nuitka-project: --enable-plugin=tk-inter
-# nuitka-project: --nofollow-import-to=PIL
 # nuitka-project: --windows-console-mode=disable
 # nuitka-project: --include-windows-runtime-dlls=yes
 # nuitka-project: --include-data-files=Installer/*.ico=VideOCR.ico
@@ -41,11 +40,9 @@ import urllib.request
 import webbrowser
 from typing import IO, Any, cast
 
-import cv2
-import numpy as np
+import av
 import psutil  # type: ignore
 import PySimpleGUI as sg  # type: ignore
-from pymediainfo import MediaInfo
 from wakepy import keep
 
 if sys.platform == "win32":
@@ -1097,64 +1094,128 @@ def generate_output_path(video_path: str, values: dict[str, Any], default_dir: s
     return output_path
 
 
-def get_video_metadata(video_path: str) -> tuple[int, int, float]:
-    """Retrieves video metadata using pymediainfo."""
-    try:
-        media_info = MediaInfo.parse(video_path)
-        video_track = None
+class VideoHandler:
+    def __init__(self) -> None:
+        self.container: av.container.InputContainer | None = None
+        self.stream: av.video.stream.VideoStream | None = None
+        self.path: str | None = None
+        self.width: int = 0
+        self.height: int = 0
+        self.duration_ms: int = 0
 
-        for track in media_info.tracks:
-            if track.track_type == "Video":
-                video_track = track
+        self.last_pts: int | None = None
 
-        if not video_track:
-            return 0, 0, 0.0
+        self.graph: av.filter.Graph | None = None
+        self.buffer_node: Any = None
+        self.sink_node: Any = None
+        self.last_display_size: tuple[int, int] = (0, 0)
+        self.current_new_w: int = 0
+        self.current_new_h: int = 0
 
-        width = int(video_track.width) if video_track.width else 0
-        height = int(video_track.height) if video_track.height else 0
+    def _get_cached_properties(self) -> dict[str, int]:
+        """Returns internal properties without re-parsing the file."""
+        return {'width': self.width, 'height': self.height, 'duration_ms': self.duration_ms}
 
-        duration_ms = 0.0
-        if video_track.duration:
-            duration_ms = float(video_track.duration)
+    def _setup_filter_graph(self, template_frame: av.VideoFrame, display_size: tuple[int, int]) -> None:
+        """Initializes the FFmpeg filter graph for fast resizing and format conversion."""
+        scale = min(display_size[0] / self.width, display_size[1] / self.height)
+        self.current_new_w, self.current_new_h = int(self.width * scale) & ~1, int(self.height * scale) & ~1
 
-        return width, height, duration_ms
+        self.graph = av.filter.Graph()
+        self.buffer_node = self.graph.add_buffer(template=cast(Any, template_frame))
+        scale_node = self.graph.add("scale", f"{self.current_new_w}:{self.current_new_h}:flags=bicubic")
+        self.sink_node = self.graph.add("buffersink")
 
-    except Exception as e:
-        log_error(f"Error reading metadata for {video_path}: {e}")
-        return 0, 0, 0.0
+        self.buffer_node.link_to(scale_node)
+        scale_node.link_to(self.sink_node)
+        self.graph.configure()
+        self.last_display_size = display_size
 
+    def open(self, path: str) -> dict[str, int]:
+        if self.path == path and self.container:
+            return self._get_cached_properties()
 
-def get_video_frame(video_path: str, timestamp_ms: float, display_size: tuple[int, int]) -> tuple[io.BytesIO | None, int, int, int, int]:
-    """Reads a specific frame from a video file using cv2 by seeking to timestamp_ms."""
-    cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():
-        return None, 0, 0, 0, 0
+        self.close()
+        try:
+            self.container = av.open(path)
+            self.stream = self.container.streams.video[0]
+            self.stream.thread_type = 'FRAME'
+            self.path = path
+            self.width = int(self.stream.width)
+            self.height = int(self.stream.height)
 
-    cap.set(cv2.CAP_PROP_POS_MSEC, timestamp_ms)
-    ret, frame = cap.read()
-    cap.release()
+            if self.container.duration is not None:
+                self.duration_ms = int(self.container.duration / 1000.0)
+            elif self.stream.duration is not None and self.stream.time_base is not None:
+                self.duration_ms = int(self.stream.duration * float(self.stream.time_base) * 1000.0)
 
-    if not ret or frame is None:
-        return None, 0, 0, 0, 0
+            return self._get_cached_properties()
 
-    frame_arr = cast(np.ndarray[Any, Any], frame)
-    h, w = frame_arr.shape[:2]
-    scale = min(display_size[0] / w, display_size[1] / h)
-    new_w, new_h = int(w * scale), int(h * scale)
+        except (av.error.FFmpegError, Exception) as e:
+            log_error(f"VideoHandler Open Error: {e}")
+            self.close()
+            return {'width': 0, 'height': 0, 'duration_ms': 0}
 
-    if new_w <= 0 or new_h <= 0:
-        return None, 0, 0, 0, 0
+    def get_frame(self, timestamp_ms: float, display_size: tuple[int, int]) -> tuple[io.BytesIO | None, int, int, int, int]:
+        """Seeks or decodes forward to provide a frame at the requested timestamp."""
+        if not self.container or not self.stream:
+            return None, 0, 0, 0, 0
 
-    resized_frame = cv2.resize(frame_arr, (new_w, new_h))
+        try:
+            if self.stream.time_base is None:
+                raise ValueError("Stream time_base is None")
 
-    offset_x = (display_size[0] - new_w) // 2
-    offset_y = (display_size[1] - new_h) // 2
+            tb = float(self.stream.time_base)
+            start_offset = self.stream.start_time if self.stream.start_time is not None else 0
+            target_pts = max(int(timestamp_ms / 1000.0 / tb), start_offset)
+            seek_threshold = int(1.5 / tb)
 
-    is_success, buffer = cv2.imencode(".png", resized_frame)
-    if not is_success or buffer is None:
-        return None, 0, 0, 0, 0
+            should_seek = True
+            if self.last_pts is not None:
+                if self.last_pts <= target_pts <= (self.last_pts + seek_threshold):
+                    should_seek = False
 
-    return io.BytesIO(buffer.tobytes()), new_w, new_h, offset_x, offset_y
+            if should_seek:
+                self.container.seek(target_pts, stream=self.stream)
+                self.last_pts = None
+
+            frame: av.VideoFrame | None = None
+            for f in self.container.decode(self.stream):
+                if f.pts is not None and f.pts >= target_pts:
+                    frame = f
+                    self.last_pts = f.pts
+                    break
+
+            if not frame:
+                return None, 0, 0, 0, 0
+
+            if self.graph is None or self.last_display_size != display_size:
+                self._setup_filter_graph(frame, display_size)
+
+            off_x = (display_size[0] - self.current_new_w) // 2
+            off_y = (display_size[1] - self.current_new_h) // 2
+
+            self.buffer_node.push(frame)
+            processed_frame: av.VideoFrame = self.sink_node.pull()
+
+            img_byte_arr = io.BytesIO()
+            processed_frame.to_image().save(img_byte_arr, format='PNG')  # type: ignore
+
+            return io.BytesIO(img_byte_arr.getvalue()), self.current_new_w, self.current_new_h, off_x, off_y
+
+        except Exception as e:
+            log_error(f"VideoHandler Seek Error: {e}")
+            return None, 0, 0, 0, 0
+
+    def close(self) -> None:
+        """Closes the video container and resets all persistent objects and cached metadata."""
+        if self.container:
+            self.container.close()
+        self.container = self.stream = self.path = self.graph = self.buffer_node = self.sink_node = None
+        self.width = self.height = 0
+        self.duration_ms = 0
+        self.last_display_size = (0, 0)
+        self.current_new_w = self.current_new_h = 0
 
 
 def handle_progress(match: re.Match[str], label_format_key: str, last_percentage: float, log_threshold: int, taskbar_base: int | None = 0, show_taskbar_progress: bool = True) -> float:
@@ -1832,7 +1893,7 @@ def update_taskbar(state: str | None = None, progress: int | None = None) -> Non
 
 def check_crop_validity(video_path: str, args: dict[str, Any]) -> tuple[bool, str | None]:
     """Checks if the crop coordinates in 'args' fit within the video dimensions."""
-    width, height, _ = get_video_metadata(video_path)
+    width, height, _ = video_manager.open(video_path).values()
     if width == 0 or height == 0:
         return False, "Could not determine video dimensions."
 
@@ -2145,6 +2206,8 @@ if sys.platform == 'win32':
     prog.init()
     prog.setState('normal')
 
+video_manager = VideoHandler()
+
 graph = window["-GRAPH-"]
 
 
@@ -2424,6 +2487,7 @@ while True:
                     window['--output'].update(str(output_path))
 
     if event == sg.WIN_CLOSED:
+        video_manager.close()
         set_system_awake(False)
 
         process_to_kill = getattr(window, '_videocr_process_pid', None)
@@ -2558,7 +2622,7 @@ while True:
         reset_crop_state()
         graph.erase()
 
-        orig_w, orig_h, duration_ms = get_video_metadata(video_path)
+        orig_w, orig_h, duration_ms = video_manager.open(video_path).values()
 
         if orig_w > 0 and orig_h > 0 and duration_ms > 0:
             original_frame_width = orig_w
@@ -2566,7 +2630,7 @@ while True:
             video_duration_ms = duration_ms
             current_time_ms = 0.0
 
-            img_bytes, res_w, res_h, off_x, off_y = get_video_frame(video_path, 0, graph_size)
+            img_bytes, res_w, res_h, off_x, off_y = video_manager.get_frame(0, graph_size)
 
             if img_bytes:
                 resized_frame_width = res_w
@@ -2660,7 +2724,7 @@ while True:
         new_time_ms = float(values["-SLIDER-"])
         if abs(new_time_ms - current_time_ms) > 50:
             current_time_ms = new_time_ms
-            img_bytes, res_w, res_h, off_x, off_y = get_video_frame(video_path, current_time_ms, graph_size)
+            img_bytes, res_w, res_h, off_x, off_y = video_manager.get_frame(current_time_ms, graph_size)
 
             if img_bytes:
                 resized_frame_width, resized_frame_height = res_w, res_h
@@ -2853,7 +2917,7 @@ while True:
                 skipped_videos.append(f"{os.path.basename(v_path)} ({LANG.get('reason_dup_path', 'Duplicate Output path')})")
                 continue
 
-            _, _, duration_ms = get_video_metadata(v_path)
+            _, _, duration_ms = video_manager.open(v_path).values()
             if duration_ms <= 0:
                 skipped_videos.append(f"{os.path.basename(v_path)} ({LANG.get('reason_metadata', 'Metadata Error')})")
                 continue
@@ -3092,8 +3156,8 @@ while True:
             reset_crop_state()
             graph.erase()
 
-            orig_w, orig_h, duration_ms = get_video_metadata(v_path)
-            img_bytes, res_w, res_h, off_x, off_y = get_video_frame(v_path, 0, graph_size)
+            orig_w, orig_h, duration_ms = video_manager.open(v_path).values()
+            img_bytes, res_w, res_h, off_x, off_y = video_manager.get_frame(0, graph_size)
 
             if img_bytes and duration_ms > 0:
                 video_path = v_path
