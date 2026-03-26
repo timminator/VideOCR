@@ -715,7 +715,7 @@ def update_popup(parent_window: sg.Window, version_info: dict[str, str], current
         [sg.Text(LANG.get('update_available_1', 'A new version of VideOCR ({}) is available!').format(new_version))],
         [sg.Text(LANG.get('update_available_2', 'You are currently using version {}.').format(current_version))],
         [sg.Text(LANG.get('update_available_3', 'Click the link below to visit the download page:'))],
-        [sg.Text(url, font=('Arial', 11, 'underline'), enable_events=True, key='-UPDATE_LINK-')],
+        [sg.Text(url, font=("Arial", scale_font_size(11), 'underline'), enable_events=True, key='-UPDATE_LINK-')],
         [sg.Push(), sg.Button(LANG.get('btn_dismiss', 'Dismiss'), key='Dismiss'), sg.Push()]
     ]
     update_window = sg.Window(LANG.get('update_title', "Update Available"), popup_layout, alpha_channel=0, finalize=True, modal=True, icon=icon)
@@ -773,9 +773,9 @@ def popup_post_action_countdown(parent_window: sg.Window, action_text: str, icon
     timeout_seconds = 60
 
     layout = [
-        [sg.Text(LANG.get('title_countdown', "Action Required"), font=("Arial", 12, "bold"), pad=(0, 10))],
+        [sg.Text(LANG.get('title_countdown', "Action Required"), font=("Arial", scale_font_size(12), "bold"), pad=(0, 10))],
         [sg.Text(LANG.get('lbl_action_countdown', "System will execute '{}' in {} seconds.").format(action_text, timeout_seconds),
-                 key='-LBL-COUNTDOWN-', font=("Arial", 10), pad=(10, 10))],
+                 key='-LBL-COUNTDOWN-', font=("Arial", scale_font_size(10)), pad=(10, 10))],
         [sg.Push(),
          sg.Button(LANG.get('btn_proceed', "Proceed Now"), key='-BTN-PROCEED-', size=(12, 1)),
          sg.Button(LANG.get('btn_cancel', "Cancel"), key='-BTN-CANCEL-', size=(10, 1)),
@@ -1990,24 +1990,45 @@ available_languages = get_available_languages()
 ui_language_display_names = sorted(list(available_languages.keys()))
 
 
-def GhostButton() -> sg.Element:
-    """
-    Windows: Creates an invisible button to force row height.
-    Linux: Returns a 0x0 dummy element so it doesn't affect layout.
-    """
-    if sys.platform == "linux":
-        # Return a dummy element with 0 size and 0 padding, invisible button looks worse unfortunately
-        return sg.Text("", size=(0, 0), pad=(0, 0), border_width=0)
+# Apply Global GUI Options before defining layout so all elements inherit them
+if gui_scale_multiplier is not None:
+    # Standard OS 100% zoom is 96 DPI. Tkinter 1.0 scaling is 72 DPI.
+    # Base Tkinter scaling for 100% is therefore 96 / 72 = 1.333...
+    sg.set_options(scaling=gui_scale_multiplier * (96 / 72))
 
-    return sg.Button(
-        "",
-        size=(0, 1),
-        button_color=(sg.theme_background_color(), sg.theme_background_color()),
-        border_width=0,
-        disabled=True,
-        focus=False,
-        # Default padding is (5,3) + border width of the button we set to 0 to compensate for it
-        pad=((0, 0), (3 + sg.theme_border_width(), 3 + sg.theme_border_width()))
+    # Manually scale fonts on Linux
+    if sys.platform != "win32":
+        default_font_name = sg.DEFAULT_FONT[0]
+        default_font_size = sg.DEFAULT_FONT[1]
+        scaled_font_size = int(default_font_size * gui_scale_multiplier)
+        sg.set_options(font=(default_font_name, scaled_font_size))
+else:
+    sg.set_options(scaling=None)
+
+
+def scale_font_size(base_size: int) -> int:
+    """Scales a hardcoded font size integer for Linux to match Windows DPI behavior."""
+    if sys.platform != "win32" and gui_scale_multiplier is not None:
+        return int(base_size * gui_scale_multiplier)
+    return base_size
+
+
+_strut_counter = 0
+
+
+def VerticalStrut() -> sg.Element:
+    """
+    Cross-platform: Creates an empty Canvas for a strict 0-width vertical strut.
+    Starts at 0 height and is resized dynamically after window creation to sync row heights.
+    """
+    global _strut_counter
+    _strut_counter += 1
+
+    return sg.Canvas(
+        size=(0, 0),
+        background_color=sg.theme_background_color(),
+        pad=(0, 3),  # Default top/bottom padding for elements is 3
+        key=f"-STRUT_{_strut_counter}-"
     )
 
 
@@ -2017,19 +2038,19 @@ sg.theme("Darkgrey13")
 tab1_content = [
     [
         sg.Column([
-            [sg.Text("Source:", size=(15, 1), key='-LBL-SOURCE-'),
-            sg.Combo([], key="-VIDEO-LIST-", size=(38, 1), enable_events=True, readonly=True, disabled=True, expand_x=True), GhostButton()],
-            [sg.Text("Output SRT:", size=(15, 1), key='-LBL-OUTPUT_SRT-'),
-            sg.Input(key="--output", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, disabled=True, size=(40, 1)), GhostButton()],
-            [sg.Text("Subtitle Language:", size=(15, 1), key='-LBL-SUB_LANG-'),
-            sg.Combo(language_display_names, default_value=DEFAULT_DISPLAY_LANGUAGE, key="-LANG_COMBO-", size=(38, 1), readonly=True, enable_events=True, expand_x=True), GhostButton()],
-            [sg.Text("Subtitle Position:", size=(15, 1), key='-LBL-SUB_POS-'),
-            sg.Combo([], key="-SUBTITLE_POS_COMBO-", size=(38, 4), readonly=True, enable_events=True, expand_x=True), GhostButton()],
+            [sg.Text("Source:", size=(17, 1), key='-LBL-SOURCE-'),
+            sg.Combo([], key="-VIDEO-LIST-", size=(38, 1), enable_events=True, readonly=True, disabled=True, expand_x=True), VerticalStrut()],
+            [sg.Text("Output SRT:", size=(17, 1), key='-LBL-OUTPUT_SRT-'),
+            sg.Input(key="--output", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, disabled=True, size=(40, 1)), VerticalStrut()],
+            [sg.Text("Subtitle Language:", size=(17, 1), key='-LBL-SUB_LANG-'),
+            sg.Combo(language_display_names, default_value=DEFAULT_DISPLAY_LANGUAGE, key="-LANG_COMBO-", size=(38, 1), readonly=True, enable_events=True, expand_x=True), VerticalStrut()],
+            [sg.Text("Subtitle Position:", size=(17, 1), key='-LBL-SUB_POS-'),
+            sg.Combo([], key="-SUBTITLE_POS_COMBO-", size=(38, 4), readonly=True, enable_events=True, expand_x=True), VerticalStrut()],
         ], pad=(0, None)),
         sg.Column([
             [sg.Button("Open File...", key="-BTN-OPEN-FILE-"), sg.Button("Open Folder...", key="-BTN-OPEN-FOLDER-")],
             [sg.Button('Save As...', key="-SAVE_AS_BTN-", disabled=True)],
-            [sg.Text(''), GhostButton()],
+            [sg.Text(''), VerticalStrut()],
             [sg.Push(), sg.Button("How to Use", key="-BTN-HELP-")],
         ], pad=(0, None), expand_x=True)
     ],
@@ -2060,6 +2081,7 @@ tab1_content = [
      sg.Combo([], key='-POST_ACTION-', readonly=True, enable_events=True, size=(20, 1))]
 ]
 tab1_layout = [[sg.Column(tab1_content,
+                           key='-TAB1_COL-',
                            size_subsample_height=1,
                            scrollable=True,
                            vertical_scroll_only=True,
@@ -2068,7 +2090,7 @@ tab1_layout = [[sg.Column(tab1_content,
 
 # -- Tab Batch: Queue Management --
 tab_batch_content = [
-    [sg.Text("Queue", font=('Arial', 12, 'bold'), key='-LBL-QUEUE-TITLE-')],
+    [sg.Text("Queue", font=("Arial", scale_font_size(12), "bold"), key='-LBL-QUEUE-TITLE-')],
     [sg.Table(values=[], headings=['Video File', 'Output File', 'Status'], key='-BATCH-TABLE-',
               col_widths=[25, 25, 15], auto_size_columns=False, justification='left',
               expand_x=True, expand_y=True, enable_events=True, select_mode=sg.TABLE_SELECT_MODE_BROWSE)],
@@ -2087,7 +2109,7 @@ tab_batch_content = [
 tab_batch_layout = [[sg.Column(tab_batch_content, expand_x=True, expand_y=True)]]
 
 tab2_content = [
-    [sg.Text("OCR Settings:", font=('Arial', 10, 'bold'), key='-LBL-OCR_SETTINGS-')],
+    [sg.Text("OCR Settings:", font=("Arial", scale_font_size(10), "bold"), key='-LBL-OCR_SETTINGS-')],
     [sg.Text("Start Time (e.g., 0:00 or 1:23:45):", size=(38, 1), key='-LBL-TIME_START-'),
      sg.Input(DEFAULT_TIME_START, key="--time_start", size=(15, 1), enable_events=True)],
     [sg.Text("End Time (e.g., 0:10 or 2:34:56):", size=(38, 1), key='-LBL-TIME_END-'),
@@ -2121,44 +2143,45 @@ tab2_content = [
     [sg.Checkbox("Normalize Traditional to Simplified Chinese", default=True, key="--normalize_to_simplified_chinese", enable_events=True)],
     [sg.Checkbox("Use Server Model", default=False, key="--use_server_model", enable_events=True)],
     [sg.HorizontalSeparator()],
-    [sg.Text("VideOCR Settings:", font=('Arial', 10, 'bold'), key='-LBL-VIDEOCR_SETTINGS-')],
+    [sg.Text("VideOCR Settings:", font=("Arial", scale_font_size(10), "bold"), key='-LBL-VIDEOCR_SETTINGS-')],
     [
         sg.Column([
-            [sg.Text("UI Language:", size=(30, 1), key='-LBL-UI_LANG-'), GhostButton()],
-            [sg.Text("GUI Scaling:", size=(30, 1), key='-LBL-GUI_SCALING-'), GhostButton()],
-            [sg.Checkbox("Save Crop Box Selection", default=True, key="--save_crop_box", enable_events=True), GhostButton()],
-            [sg.Checkbox("Save SRT in Video Directory", default=True, key="--save_in_video_dir", enable_events=True), GhostButton()],
-            [sg.Text("Output Directory:", size=(30, 1), key='-LBL-OUTPUT_DIR-'), GhostButton()],
-            [sg.Text("Keyboard Seek Step (seconds):", size=(30, 1), key='-LBL-SEEK_STEP-'), GhostButton()],
-            [sg.Checkbox("Send Notification", default=True, key="--send_notification", enable_events=True), GhostButton()],
-            [sg.Checkbox("Prevent System Sleep", default=True, key="prevent_system_sleep", enable_events=True), GhostButton()],
-            [sg.Checkbox("Check for Updates On Startup", default=True, key="--check_for_updates", enable_events=True), GhostButton()],
+            [sg.Text("UI Language:", size=(30, 1), key='-LBL-UI_LANG-'), VerticalStrut()],
+            [sg.Text("GUI Scaling:", size=(30, 1), key='-LBL-GUI_SCALING-'), VerticalStrut()],
+            [sg.Checkbox("Save Crop Box Selection", default=True, key="--save_crop_box", enable_events=True), VerticalStrut()],
+            [sg.Checkbox("Save SRT in Video Directory", default=True, key="--save_in_video_dir", enable_events=True), VerticalStrut()],
+            [sg.Text("Output Directory:", size=(30, 1), key='-LBL-OUTPUT_DIR-'), VerticalStrut()],
+            [sg.Text("Keyboard Seek Step (seconds):", size=(30, 1), key='-LBL-SEEK_STEP-'), VerticalStrut()],
+            [sg.Checkbox("Send Notification", default=True, key="--send_notification", enable_events=True), VerticalStrut()],
+            [sg.Checkbox("Prevent System Sleep", default=True, key="prevent_system_sleep", enable_events=True), VerticalStrut()],
+            [sg.Checkbox("Check for Updates On Startup", default=True, key="--check_for_updates", enable_events=True), VerticalStrut()],
         ], pad=(0, None)),
         sg.Column([
-            [sg.Combo(ui_language_display_names, key='-UI_LANG_COMBO-', size=(32, 1), readonly=True, enable_events=True, expand_x=True), GhostButton()],
-            [sg.Combo([], key='gui_scaling', size=(32, 1), readonly=True, enable_events=True, expand_x=True), GhostButton()],
-            [GhostButton()],
-            [GhostButton()],
-            [sg.Input(DEFAULT_DOCUMENTS_DIR, key="--default_output_dir", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, size=(34, 1), enable_events=True), GhostButton()],
-            [sg.Input(KEY_SEEK_STEP, key="--keyboard_seek_step", size=(10, 1), enable_events=True), GhostButton()],
-            [GhostButton()],
-            [GhostButton()],
+            [sg.Combo(ui_language_display_names, key='-UI_LANG_COMBO-', size=(32, 1), readonly=True, enable_events=True, expand_x=True), VerticalStrut()],
+            [sg.Combo([], key='gui_scaling', size=(32, 1), readonly=True, enable_events=True, expand_x=True), VerticalStrut()],
+            [VerticalStrut()],
+            [VerticalStrut()],
+            [sg.Input(DEFAULT_DOCUMENTS_DIR, key="--default_output_dir", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, size=(34, 1), enable_events=True), VerticalStrut()],
+            [sg.Input(KEY_SEEK_STEP, key="--keyboard_seek_step", size=(10, 1), enable_events=True), VerticalStrut()],
+            [VerticalStrut()],
+            [VerticalStrut()],
             [sg.Button("Check Now", key="-BTN-CHECK_UPDATE_MANUAL-")],
         ], pad=(0, None)),
         sg.Column([
-            [GhostButton()],
-            [GhostButton()],
-            [GhostButton()],
-            [GhostButton()],
+            [VerticalStrut()],
+            [VerticalStrut()],
+            [VerticalStrut()],
+            [VerticalStrut()],
             [sg.Button("Open Folder...", key="-BTN-FOLDER_BROWSE-", disabled=True)],
-            [GhostButton()],
-            [GhostButton()],
-            [GhostButton()],
-            [GhostButton()],
+            [VerticalStrut()],
+            [VerticalStrut()],
+            [VerticalStrut()],
+            [VerticalStrut()],
         ], pad=(0, None), expand_x=True),
     ]
 ]
 tab2_layout = [[sg.Column(tab2_content,
+                           key='-TAB2_COL-',
                            size_subsample_height=1,
                            scrollable=True,
                            vertical_scroll_only=True,
@@ -2168,14 +2191,14 @@ tab2_layout = [[sg.Column(tab2_content,
 tab3_layout = [
     [sg.Column([
         [sg.Text("")],
-        [sg.Text("VideOCR", font=('Arial', 16, 'bold'))],
-        [sg.Text(f"Version: {PROGRAM_VERSION}", font=('Arial', 11), key='-LBL-ABOUT_VERSION-')],
+        [sg.Text("VideOCR", font=("Arial", scale_font_size(16), "bold"))],
+        [sg.Text(f"Version: {PROGRAM_VERSION}", font=("Arial", scale_font_size(11)), key='-LBL-ABOUT_VERSION-')],
         [sg.Text("")],
-        [sg.Text("Get the newest version here:", font=('Arial', 11), key='-LBL-GET_NEWEST-')],
-        [sg.Text("https://github.com/timminator/VideOCR/releases", font=('Arial', 11, 'underline'), enable_events=True, key="-GITHUB_RELEASES_LINK-")],
+        [sg.Text("Get the newest version here:", font=("Arial", scale_font_size(11)), key='-LBL-GET_NEWEST-')],
+        [sg.Text("https://github.com/timminator/VideOCR/releases", font=("Arial", scale_font_size(11), 'underline'), enable_events=True, key="-GITHUB_RELEASES_LINK-")],
         [sg.Text("")],
-        [sg.Text("Found a bug or have a suggestion? Feel free to open an issue at:", font=('Arial', 11), key='-LBL-BUG_REPORT-')],
-        [sg.Text("https://github.com/timminator/VideOCR/issues", font=('Arial', 11, 'underline'), enable_events=True, key="-GITHUB_ISSUES_LINK-")],
+        [sg.Text("Found a bug or have a suggestion? Feel free to open an issue at:", font=("Arial", scale_font_size(11)), key='-LBL-BUG_REPORT-')],
+        [sg.Text("https://github.com/timminator/VideOCR/issues", font=("Arial", scale_font_size(11), 'underline'), enable_events=True, key="-GITHUB_ISSUES_LINK-")],
         [sg.Text("")],
         [sg.HorizontalSeparator()],
     ], element_justification='c', expand_x=True, expand_y=True)]
@@ -2236,17 +2259,49 @@ def get_work_area() -> tuple[int, int]:
         return width, int(height * 0.90)
 
 
-make_dpi_aware()
+def stretch_scrollable_col(col_key: str) -> None:
+    """
+    Unlocks a PySimpleGUI scrollable column, stretches its hidden canvas viewport
+    to fit the dynamically resized contents, and restores its original propagation state.
+    """
+    col: sg.Element = window[col_key]
 
-if gui_scale_multiplier is not None:
-    # Standard OS 100% zoom is 96 DPI. Tkinter 1.0 scaling is 72 DPI.
-    # Base Tkinter scaling for 100% is therefore 96 / 72 = 1.333...
-    sg.set_options(scaling=gui_scale_multiplier * (96 / 72))
-else:
-    sg.set_options(scaling=None)
+    if hasattr(col, 'TKColFrame') and col.TKColFrame:
+        original_propagate: bool = col.TKColFrame.pack_propagate()
+
+        col.TKColFrame.pack_propagate(True)
+
+        for child in col.TKColFrame.winfo_children():
+            if child.winfo_class() == 'Canvas':
+                scrollregion = child.cget("scrollregion")
+                if scrollregion:
+                    true_inner_height: int = int(scrollregion.split()[3])
+
+                    child.config(height=true_inner_height)
+                    col.TKColFrame.config(height=true_inner_height)
+                break
+
+        col.TKColFrame.pack_propagate(original_propagate)
+
+
+make_dpi_aware()
 
 window = sg.Window("VideOCR", layout, relative_location=(0, y_offset), icon=ICON_PATH, finalize=True, resizable=True)
 
+# Resize vertical struts and resize window with new total height
+scaled_btn_height = window["-BTN-OPEN-FILE-"].Widget.winfo_reqheight()
+for key in window.key_dict:
+    if isinstance(key, str) and key.startswith("-STRUT_"):
+        window[key].Widget.config(height=scaled_btn_height)
+
+window.refresh()
+window['-TAB1_COL-'].contents_changed()
+window['-TAB2_COL-'].contents_changed()
+stretch_scrollable_col('-TAB1_COL-')
+stretch_scrollable_col('-TAB2_COL-')
+window.refresh()
+
+# Reposition window
 work_width, work_height = get_work_area()
 screen_width, screen_height = sg.Window.get_screen_size()
 current_width, current_height = window.size
@@ -2610,8 +2665,15 @@ while True:
                 except Exception as e:
                     log_error(f"Exception during restart process kill: {e}")
 
-        subprocess.Popen([sys.executable, *sys.argv])
-        break
+            if sys.argv[0].endswith('.py') or sys.argv[0].endswith('.pyw'):
+                # Uncompiled: Needs the python interpreter + script name
+                restart_cmd = [sys.executable] + sys.argv
+            else:
+                # Compiled: sys.argv[0] is already the compiled executable
+                restart_cmd = sys.argv
+
+            subprocess.Popen(restart_cmd)
+            break
 
     # --- File/Folder Handling ---
     elif event == '-BTN-OPEN-FILE-':
@@ -2996,7 +3058,7 @@ while True:
         current_queue_outputs = {j['args']['output'] for j in batch_queue}
 
         init_text = LANG.get('msg_scanning_init', "Initializing scan...")
-        prog_layout = [[sg.Text(init_text, key='-TXT-', text_color='white', background_color='#2d2d2d', font=('Arial', 12), pad=(20, 20))]]
+        prog_layout = [[sg.Text(init_text, key='-TXT-', text_color='white', background_color='#2d2d2d', font=("Arial", scale_font_size(12)), pad=(20, 20))]]
         progress_window = sg.Window(LANG.get('title_progress', "Progress"), prog_layout, no_titlebar=True, keep_on_top=True, background_color='#2d2d2d', finalize=True, modal=True)
         center_popup(window, progress_window)
 
