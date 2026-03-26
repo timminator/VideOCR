@@ -41,8 +41,10 @@ import webbrowser
 from typing import IO, Any, cast
 
 import av
+import numpy as np
 import psutil  # type: ignore
 import PySimpleGUI as sg  # type: ignore
+from PIL import Image
 from wakepy import keep
 
 if sys.platform == "win32":
@@ -1175,6 +1177,18 @@ class VideoHandler:
         self.current_new_w: int = 0
         self.current_new_h: int = 0
 
+        self._supports_threads = True
+
+    def _frame_to_array(self, frame: av.VideoFrame, fmt: str) -> np.ndarray[Any, Any]:
+        """Converts a frame to an array, safely falls back if threads arg is unsupported."""
+        if self._supports_threads:
+            try:
+                return frame.to_ndarray(format=fmt, threads=1)
+            except TypeError:
+                self._supports_threads = False
+
+        return frame.to_ndarray(format=fmt)
+
     def _get_cached_properties(self) -> dict[str, int]:
         """Returns internal properties without re-parsing the file."""
         return {'width': self.width, 'height': self.height, 'duration_ms': self.duration_ms}
@@ -1219,7 +1233,7 @@ class VideoHandler:
             self.close()
             return {'width': 0, 'height': 0, 'duration_ms': 0}
 
-    def get_frame(self, timestamp_ms: float, display_size: tuple[int, int]) -> tuple[io.BytesIO | None, int, int, int, int]:
+    def get_frame(self, timestamp_ms: float, display_size: tuple[int, int], brightness_threshold: int | None = None) -> tuple[io.BytesIO | None, int, int, int, int]:
         """Seeks or decodes forward to provide a frame at the requested timestamp."""
         if not self.container or not self.stream:
             return None, 0, 0, 0, 0
@@ -1261,8 +1275,20 @@ class VideoHandler:
             self.buffer_node.push(frame)
             processed_frame: av.VideoFrame = self.sink_node.pull()
 
+            img_np = self._frame_to_array(processed_frame, fmt='rgb24')
+
+            if brightness_threshold is not None:
+                gray = (
+                    (img_np[..., 0].astype(np.uint16) * 77 +
+                    img_np[..., 1].astype(np.uint16) * 150 +
+                    img_np[..., 2].astype(np.uint16) * 29) >> 8
+                ).astype(np.uint8)
+                mask = gray > brightness_threshold
+                img_np *= mask[..., None]
+
+            pil_img = Image.fromarray(img_np)
             img_byte_arr = io.BytesIO()
-            processed_frame.to_image().save(img_byte_arr, format='PNG')  # type: ignore
+            pil_img.save(img_byte_arr, format='PNG')
 
             return io.BytesIO(img_byte_arr.getvalue()), self.current_new_w, self.current_new_h, off_x, off_y
 
@@ -1560,6 +1586,19 @@ def get_processing_args(values: dict[str, Any], window: sg.Window) -> tuple[dict
     args['output'] = str(out_path)
 
     return args, None
+
+
+def get_valid_brightness_threshold(value: Any) -> int | None:
+    """Validates that the brightness threshold is an integer between 0 and 255."""
+    if value is None or str(value).strip() == '':
+        return None
+    try:
+        val = int(str(value).strip())
+        if 0 <= val <= 255:
+            return val
+    except (ValueError, TypeError):
+        pass
+    return None
 
 
 def run_videocr(args_dict: dict[str, Any], window: sg.Window) -> bool:
@@ -2556,6 +2595,17 @@ while True:
         if values is not None:
             save_settings(window, values)
 
+        if event == '--brightness_threshold':
+            if video_path and video_duration_ms > 0:
+                bt = get_valid_brightness_threshold(values.get('--brightness_threshold'))
+                img_bytes, res_w, res_h, off_x, off_y = video_manager.get_frame(current_time_ms, graph_size, brightness_threshold=bt)
+
+                if img_bytes:
+                    resized_frame_width, resized_frame_height = res_w, res_h
+                    image_offset_x, image_offset_y = off_x, off_y
+                    current_image_bytes = img_bytes.getvalue()
+                    redraw_canvas_and_boxes()
+
         if event in ('enable_subtitle_alignment', '--use_dual_zone'):
             update_alignment_controls(window, values)
 
@@ -2786,7 +2836,8 @@ while True:
             video_duration_ms = duration_ms
             current_time_ms = 0.0
 
-            img_bytes, res_w, res_h, off_x, off_y = video_manager.get_frame(0, graph_size)
+            bt = get_valid_brightness_threshold(values.get('--brightness_threshold'))
+            img_bytes, res_w, res_h, off_x, off_y = video_manager.get_frame(0, graph_size, brightness_threshold=bt)
 
             if img_bytes:
                 resized_frame_width = res_w
@@ -2880,7 +2931,8 @@ while True:
         new_time_ms = float(values["-SLIDER-"])
         if abs(new_time_ms - current_time_ms) > 50:
             current_time_ms = new_time_ms
-            img_bytes, res_w, res_h, off_x, off_y = video_manager.get_frame(current_time_ms, graph_size)
+            bt = get_valid_brightness_threshold(values.get('--brightness_threshold'))
+            img_bytes, res_w, res_h, off_x, off_y = video_manager.get_frame(current_time_ms, graph_size, brightness_threshold=bt)
 
             if img_bytes:
                 resized_frame_width, resized_frame_height = res_w, res_h
@@ -3313,7 +3365,8 @@ while True:
             graph.erase()
 
             orig_w, orig_h, duration_ms = video_manager.open(v_path).values()
-            img_bytes, res_w, res_h, off_x, off_y = video_manager.get_frame(0, graph_size)
+            bt = get_valid_brightness_threshold(args.get('brightness_threshold'))
+            img_bytes, res_w, res_h, off_x, off_y = video_manager.get_frame(0, graph_size, brightness_threshold=bt)
 
             if img_bytes and duration_ms > 0:
                 video_path = v_path
