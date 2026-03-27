@@ -2075,7 +2075,7 @@ tab1_content = [
         ], pad=(0, None), expand_x=True)
     ],
     [sg.Graph(canvas_size=graph_size, graph_bottom_left=(0, graph_size[1]), graph_top_right=(graph_size[0], 0),
-              key="-GRAPH-", change_submits=True, drag_submits=True, enable_events=True, background_color='black')],
+              key="-GRAPH-", change_submits=True, drag_submits=True, enable_events=True, motion_events=True, background_color='black')],
     [sg.Text("Seek:", key='-LBL-SEEK-'), sg.Slider(range=(0, 0), key="-SLIDER-", orientation='h', size=(45, 15), expand_x=True, enable_events=True, disable_number_display=True, disabled=True)],
     [
         sg.Push(),
@@ -2369,6 +2369,8 @@ def reset_crop_state() -> None:
     window.start_point_img = None
     window.end_point_img = None
     window.crop_boxes = []
+    window.resize_state = None
+    window.hover_state = None
     crop_not_set_text = LANG.get('crop_not_set', "Not Set")
     window['-CROP_COORDS-'].update(crop_not_set_text)
     window["-BTN-CLEAR_CROP-"].update(disabled=True)
@@ -2404,6 +2406,45 @@ def redraw_canvas_and_boxes() -> None:
 
         rect_id = graph.draw_rectangle(start_graph, end_graph, line_color='red')
         window.drawn_rect_ids.append(rect_id)
+
+
+def get_resize_hit(x: int | float, y: int | float, boxes: list[dict[str, Any]], tolerance: int = 8) -> tuple[int | None, str | None, str]:
+    """Checks if coordinates are near the edges/corners, or inside the center of any crop box."""
+    for idx, box in enumerate(boxes):
+        start, end = box['img_points']
+        x1, y1 = min(start[0], end[0]), min(start[1], end[1])
+        x2, y2 = max(start[0], end[0]), max(start[1], end[1])
+
+        near_left = abs(x - x1) <= tolerance and y1 <= y <= y2
+        near_right = abs(x - x2) <= tolerance and y1 <= y <= y2
+        near_top = abs(y - y1) <= tolerance and x1 <= x <= x2
+        near_bottom = abs(y - y2) <= tolerance and x1 <= x <= x2
+
+        # Corners
+        if near_left and near_top:
+            return idx, 'top-left', 'size_nw_se'
+        if near_right and near_bottom:
+            return idx, 'bottom-right', 'size_nw_se'
+        if near_left and near_bottom:
+            return idx, 'bottom-left', 'size_ne_sw'
+        if near_right and near_top:
+            return idx, 'top-right', 'size_ne_sw'
+
+        # Edges
+        if near_left:
+            return idx, 'left', 'size_we'
+        if near_right:
+            return idx, 'right', 'size_we'
+        if near_top:
+            return idx, 'top', 'size_ns'
+        if near_bottom:
+            return idx, 'bottom', 'size_ns'
+
+        # Inside box
+        if x1 < x < x2 and y1 < y < y2:
+            return idx, 'center', 'fleur'
+
+    return None, None, 'crosshair'
 
 
 # --- Bind keyboard events to the graph element ---
@@ -2954,21 +2995,73 @@ while True:
 
         if not (image_offset_x <= graph_x < image_offset_x + resized_frame_width and
                 image_offset_y <= graph_y < image_offset_y + resized_frame_height):
-            if window.start_point_img is None:
+            if window.start_point_img is None and window.resize_state is None:
                 continue
 
         img_x = graph_x - image_offset_x
         img_y = graph_y - image_offset_y
 
-        if window.start_point_img is None:
-            max_boxes = 2 if values.get('--use_dual_zone') else 1
-            if len(window.crop_boxes) >= max_boxes:
-                reset_crop_state()
-                redraw_canvas_and_boxes()
-                save_settings(window, values)
+        # Initiating a click
+        if window.start_point_img is None and window.resize_state is None:
+            if window.hover_state:
+                window.resize_state = window.hover_state.copy()
+                window.resize_state['last_x'] = img_x
+                window.resize_state['last_y'] = img_y
+            else:
+                max_boxes = 2 if values.get('--use_dual_zone') else 1
+                if len(window.crop_boxes) >= max_boxes:
+                    reset_crop_state()
+                    window.hover_state = None
+                    window.resize_state = None
+                    redraw_canvas_and_boxes()
+                    save_settings(window, values)
 
-            window.start_point_img = (img_x, img_y)
+                window.start_point_img = (img_x, img_y)
+                window.end_point_img = None
 
+        # Resizing
+        elif window.resize_state:
+            idx = window.resize_state['idx']
+            edge = window.resize_state['edge']
+            box = window.crop_boxes[idx]
+
+            p1, p2 = box['img_points']
+            x1, y1 = min(p1[0], p2[0]), min(p1[1], p2[1])
+            x2, y2 = max(p1[0], p2[0]), max(p1[1], p2[1])
+
+            if edge == 'center':
+                # Move Box
+                dx = img_x - window.resize_state['last_x']
+                dy = img_y - window.resize_state['last_y']
+
+                box_w = x2 - x1
+                box_h = y2 - y1
+
+                x1 = max(0, min(resized_frame_width - box_w, x1 + dx))
+                y1 = max(0, min(resized_frame_height - box_h, y1 + dy))
+                x2 = x1 + box_w
+                y2 = y1 + box_h
+
+                window.resize_state['last_x'] = img_x
+                window.resize_state['last_y'] = img_y
+            else:
+                # Edge Resizing
+                img_x_c = max(0, min(resized_frame_width, img_x))
+                img_y_c = max(0, min(resized_frame_height, img_y))
+
+                if 'left' in edge:
+                    x1 = img_x_c
+                if 'right' in edge:
+                    x2 = img_x_c
+                if 'top' in edge:
+                    y1 = img_y_c
+                if 'bottom' in edge:
+                    y2 = img_y_c
+
+            box['img_points'] = ((x1, y1), (x2, y2))
+            redraw_canvas_and_boxes()
+
+        # Drawing
         else:
             window.end_point_img = (img_x, img_y)
 
@@ -2978,11 +3071,51 @@ while True:
             end_graph_temp = (img_x + image_offset_x, img_y + image_offset_y)
             graph.draw_rectangle(start_graph_temp, end_graph_temp, line_color='red')
 
-    # --- Graph Interaction ---
+    # --- Graph Interaction Release ---
     elif event == "-GRAPH-+UP":
         window.is_drawing = False
 
-        if window.start_point_img and window.end_point_img:
+        # Finish Resizing
+        if window.resize_state:
+            idx = window.resize_state['idx']
+            box = window.crop_boxes[idx]
+            p1, p2 = box['img_points']
+
+            rect_x1_img = max(0, min(p1[0], p2[0]))
+            rect_y1_img = max(0, min(p1[1], p2[1]))
+            rect_x2_img = min(resized_frame_width, max(p1[0], p2[0]))
+            rect_y2_img = min(resized_frame_height, max(p1[1], p2[1]))
+
+            crop_x = math.floor(rect_x1_img * original_frame_width / resized_frame_width)
+            crop_y = math.floor(rect_y1_img * original_frame_height / resized_frame_height)
+            crop_w = math.ceil((rect_x2_img - rect_x1_img) * original_frame_width / resized_frame_width)
+            crop_h = math.ceil((rect_y2_img - rect_y1_img) * original_frame_height / resized_frame_height)
+
+            box['coords'] = {'crop_x': crop_x, 'crop_y': crop_y, 'crop_width': crop_w, 'crop_height': crop_h}
+            box['img_points'] = ((rect_x1_img, rect_y1_img), (rect_x2_img, rect_y2_img))
+
+            window.resize_state = None
+            redraw_canvas_and_boxes()
+
+            if not values.get('--use_dual_zone', False):
+                b = window.crop_boxes[0]
+                coord_text = f"({b['coords']['crop_x']}, {b['coords']['crop_y']}, {b['coords']['crop_width']}, {b['coords']['crop_height']})"
+            else:
+                coords_str_parts = []
+                zone_text = LANG.get('crop_zone_text', "Zone")
+                for i, b in enumerate(window.crop_boxes):
+                    coords_str_parts.append(f"{zone_text} {i + 1}: ({b['coords']['crop_x']}, {b['coords']['crop_y']}, {b['coords']['crop_width']}, {b['coords']['crop_height']})")
+                coord_text = "  |  ".join(coords_str_parts)
+
+            window['-CROP_COORDS-'].update(coord_text)
+            save_settings(window, values)
+
+        # Finish Drawing
+        elif window.start_point_img is not None:
+            if window.end_point_img is None:
+                window.start_point_img = None
+                redraw_canvas_and_boxes()
+                continue
 
             rect_x1_img = max(0, min(window.start_point_img[0], window.end_point_img[0]))
             rect_y1_img = max(0, min(window.start_point_img[1], window.end_point_img[1]))
@@ -3025,6 +3158,20 @@ while True:
             window["-BTN-CLEAR_CROP-"].update(disabled=False)
 
             save_settings(window, values)
+
+    # --- Graph Hover (Motion Events) ---
+    elif event == "-GRAPH-+MOVE":
+        if not video_path or resized_frame_width == 0:
+            continue
+
+        if not window.is_drawing and window.resize_state is None:
+            graph_x, graph_y = values["-GRAPH-"]
+            img_x = graph_x - image_offset_x
+            img_y = graph_y - image_offset_y
+
+            hit_idx, edge, cursor = get_resize_hit(img_x, img_y, window.crop_boxes)
+            window['-GRAPH-'].Widget.config(cursor=cursor)
+            window.hover_state = {'idx': hit_idx, 'edge': edge} if hit_idx is not None else None
 
     elif event == "-BTN-ADD-BATCH-":
         if not video_path:
