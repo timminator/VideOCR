@@ -167,14 +167,12 @@
     
     "progress_step1_prefix": "ขั้นตอนที่ 1/2:",
     "progress_step2": "ขั้นตอนที่ 2/2: ทำ OCR บนภาพ {current} จาก {total} ({percent}%)",
-    "progress_seek": "กำลังค้นหา:",
     "lbl_frame": "เฟรม",
     "cli_starting_ocr": "เริ่มต้น PaddleOCR...",
     "cli_generating_subs": "กำลังสร้างคำบรรยาย...",
     "log_reached_end": "ถึงเวลาที่กำหนดแล้ว กำลังหยุดทำงาน",
     "unknown": "ไม่ทราบ",
 
-    "eta_seek": "ETA การเลื่อน",
     "eta_step": "ETA ขั้นตอน",
 
     "fatal_error_header": "--- ข้อผิดพลาดร้ายแรง ---",

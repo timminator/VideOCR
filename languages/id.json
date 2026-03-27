@@ -167,14 +167,12 @@
     
     "progress_step1_prefix": "Langkah 1/2:",
     "progress_step2": "Langkah 2/2: Melakukan OCR pada gambar {current} dari {total} ({percent}%)",
-    "progress_seek": "Mencari:",
     "lbl_frame": "Frame",
     "cli_starting_ocr": "Memulai PaddleOCR...",
     "cli_generating_subs": "Membuat subtitle...",
     "log_reached_end": "Mencapai waktu akhir. Berhenti.",
     "unknown": "tidak diketahui",
 
-    "eta_seek": "ETA Lompat",
     "eta_step": "ETA Langkah",
 
     "fatal_error_header": "--- ERROR FATAL ---",

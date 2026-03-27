@@ -167,14 +167,12 @@
     
     "progress_step1_prefix": "1/2단계:",
     "progress_step2": "2/2단계: 이미지 {current} / {total}에서 OCR 수행됨 ({percent}%)",
-    "progress_seek": "탐색 중:",
     "lbl_frame": "프레임",
     "cli_starting_ocr": "PaddleOCR을 시작하고 있습니다...",
     "cli_generating_subs": "자막을 생성하고 있습니다...",
     "log_reached_end": "종료 시간에 도달했습니다. 중지합니다.",
     "unknown": "알 수 없음",
 
-    "eta_seek": "ETA 이동",
     "eta_step": "ETA 단계",
 
     "fatal_error_header": "--- 치명적 오류 ---",

@@ -167,14 +167,12 @@
 
     "progress_step1_prefix": "Step 1/2:",
     "progress_step2": "Step 2/2: Performed OCR on image {current} of {total} ({percent}%)",
-    "progress_seek": "Seeking:",
     "lbl_frame": "Frame",
     "cli_starting_ocr": "Starting PaddleOCR...",
     "cli_generating_subs": "Generating subtitles...",
     "log_reached_end": "Reached end time. Stopping.",
     "unknown": "unknown",
 
-    "eta_seek": "ETA Seeking",
     "eta_step": "ETA Step",
 
     "fatal_error_header": "--- FATAL ERROR ---",

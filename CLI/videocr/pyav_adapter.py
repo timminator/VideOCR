@@ -70,3 +70,11 @@ class Capture:
 
         except StopIteration:
             return False, None, 0.0
+
+    def seek(self, target_ms: float) -> None:
+        if not self.container or not self.stream or not self.stream.time_base:
+            return
+
+        target_pts = int((target_ms / 1000.0) / float(self.stream.time_base))
+        self.container.seek(target_pts, stream=self.stream)
+        self.frame_iterator = self.container.decode(self.stream)

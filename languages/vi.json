@@ -167,14 +167,12 @@
     
     "progress_step1_prefix": "Bước 1/2:",
     "progress_step2": "Bước 2/2: Đã thực hiện OCR trên hình ảnh {current} trên {total} ({percent}%)",
-    "progress_seek": "Đang tìm kiếm:",
     "lbl_frame": "Khung hình",
     "cli_starting_ocr": "Đang khởi động PaddleOCR...",
     "cli_generating_subs": "Đang tạo phụ đề...",
     "log_reached_end": "Đã đạt đến thời gian kết thúc. Đang dừng.",
     "unknown": "không xác định",
 
-    "eta_seek": "ETA Tua",
     "eta_step": "ETA Bước",
 
     "fatal_error_header": "--- LỖI NGHIÊM TRỌNG ---",

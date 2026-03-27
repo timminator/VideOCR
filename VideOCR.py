@@ -1243,8 +1243,9 @@ class VideoHandler:
                 raise ValueError("Stream time_base is None")
 
             tb = float(self.stream.time_base)
-            start_offset = self.stream.start_time if self.stream.start_time is not None else 0
-            target_pts = max(int(timestamp_ms / 1000.0 / tb), start_offset)
+            container_start_ms = (self.container.start_time / 1000.0) if self.container.start_time is not None else 0.0
+            target_ms = timestamp_ms + container_start_ms
+            target_pts = int(target_ms / 1000.0 / tb)
             seek_threshold = int(1.5 / tb)
 
             should_seek = True
@@ -1321,7 +1322,7 @@ def handle_progress(match: re.Match[str], label_format_key: str, last_percentage
         handle_progress.last_taskbar_val = -1  # type: ignore
 
     current_time = time.time()
-    is_time_based = label_format_key in ("progress_seek", "progress_step1")
+    is_time_based = label_format_key == "progress_step1"
 
     if is_time_based:
         curr_ts_str = match.group(1)
@@ -1371,12 +1372,7 @@ def handle_progress(match: re.Match[str], label_format_key: str, last_percentage
 
     handle_progress.last_update_time = current_time  # type: ignore
 
-    if label_format_key == "progress_seek":
-        prefix = LANG.get('progress_seek', 'Seeking:')
-        frame_lbl = LANG.get('lbl_frame', 'Frame')
-        msg_template = f"{prefix} {curr_ts_str} / {target_ts_str}, {frame_lbl}: {frame_num} ({{percent}}%)"
-        eta_prefix = LANG.get('eta_seek', 'ETA Seeking')
-    elif label_format_key == "progress_step1":
+    if label_format_key == "progress_step1":
         prefix = LANG.get('progress_step1_prefix', 'Step 1/2:')
         frame_lbl = LANG.get('lbl_frame', 'Frame')
         msg_template = f"{prefix} {curr_ts_str} / {target_ts_str}, {frame_lbl}: {frame_num} ({{percent}}%)"
@@ -1413,13 +1409,12 @@ def handle_progress(match: re.Match[str], label_format_key: str, last_percentage
     }))
 
     if show_taskbar_progress and taskbar_base is not None:
-        if label_format_key in ("progress_step1", "progress_step2"):
-            step_progress = max(1, int(current_percent * 0.5))
-            progress_value = taskbar_base + step_progress
+        step_progress = max(1, int(current_percent * 0.5))
+        progress_value = taskbar_base + step_progress
 
-            if last_percentage < 0 or handle_progress.last_taskbar_val != progress_value:  # type: ignore
-                gui_queue.put(('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': progress_value}))
-                handle_progress.last_taskbar_val = progress_value  # type: ignore
+        if last_percentage < 0 or handle_progress.last_taskbar_val != progress_value:  # type: ignore
+            gui_queue.put(('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': progress_value}))
+            handle_progress.last_taskbar_val = progress_value  # type: ignore
 
     return current_percent
 
@@ -1623,7 +1618,6 @@ def run_videocr(args_dict: dict[str, Any], window: sg.Window) -> bool:
     UNSUPPORTED_HARDWARE_ERROR_PATTERN = re.compile(r"Unsupported Hardware Error: (.*)")
     WARNING_HARDWARE_PATTERN = re.compile(r"Hardware Check Warning: (.*)")
     PADDLE_ERROR_PATTERN = re.compile(r"Error: PaddleOCR failed.")
-    SEEK_PROGRESS_PATTERN = re.compile(r"Seeking to start time\.\.\. Current: ([\d:]+) / ([\d:]+), Frame: (\d+)")
     STEP1_PROGRESS_PATTERN = re.compile(r"Step 1/2: Processing video\.\.\. Current: ([\d:]+) / ([\d:]+|Unknown), Frame: (\d+)")
     STEP2_PROGRESS_PATTERN = re.compile(r"Step 2/2: Performing OCR on image (\d+) of (\d+)")
     STARTING_OCR_PATTERN = re.compile(r"Starting PaddleOCR\.\.\.")
@@ -1632,12 +1626,9 @@ def run_videocr(args_dict: dict[str, Any], window: sg.Window) -> bool:
 
     last_reported_percentage_step1 = -1.0
     last_reported_percentage_step2 = -1.0
-    last_reported_percentage_seek = -1.0
 
     expecting_log_path = False
     paddle_error_message = ""
-
-    taskbar_progress_started = False
 
     gui_queue.put(('-VIDEOCR_OUTPUT-', LANG.get('status_starting', "Starting subtitle extraction...\n")))
     gui_queue.put(('-PROGRESS-SMOOTH-', {'text': LANG.get('status_starting', "Starting subtitle extraction..."), 'percent': None}))
@@ -1717,16 +1708,6 @@ def run_videocr(args_dict: dict[str, Any], window: sg.Window) -> bool:
                     last_reported_percentage_step2 = handle_progress(
                         match2, "progress_step2",
                         last_reported_percentage_step2, 5, taskbar_base=50)
-                    continue
-
-                match_seek = SEEK_PROGRESS_PATTERN.search(line)
-                if match_seek:
-                    if not taskbar_progress_started:
-                        gui_queue.put(('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': 1}))
-                        taskbar_progress_started = True
-                    last_reported_percentage_seek = handle_progress(
-                        match_seek, "progress_seek",
-                        last_reported_percentage_seek, 20, show_taskbar_progress=False)
                     continue
 
                 if REACHED_END_TIME_PATTERN.search(line):

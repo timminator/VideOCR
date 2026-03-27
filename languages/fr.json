@@ -167,14 +167,12 @@
 
     "progress_step1_prefix": "Étape 1/2 :",
     "progress_step2": "Étape 2/2 : OCR effectué sur l'image {current} sur {total} ({percent}%)",
-    "progress_seek": "Recherche :",
     "lbl_frame": "Image",
     "cli_starting_ocr": "Démarrage de PaddleOCR...",
     "cli_generating_subs": "Génération des sous-titres...",
     "log_reached_end": "Heure de fin atteinte. Arrêt.",
     "unknown": "inconnu",
 
-    "eta_seek": "ETA Nav.",
     "eta_step": "ETA Étape",
 
     "fatal_error_header": "--- ERREUR FATALE ---",

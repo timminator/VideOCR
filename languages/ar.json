@@ -167,14 +167,12 @@
 
     "progress_step1_prefix": "الخطوة 1/2:",
     "progress_step2": "الخطوة 2/2: تم تنفيذ OCR على الصورة {current} من {total} ({percent}%)",
-    "progress_seek": "جاري البحث:",
     "lbl_frame": "إطار",
     "cli_starting_ocr": "بدء PaddleOCR...",
     "cli_generating_subs": "إنشاء الترجمات...",
     "log_reached_end": "تم الوصول إلى وقت النهاية. جاري الإيقاف.",
     "unknown": "غير معروف",
 
-    "eta_seek": "ETA انتقال",
     "eta_step": "ETA الخطوة",
 
     "fatal_error_header": "--- خطأ فادح ---",

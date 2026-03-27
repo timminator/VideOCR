@@ -167,14 +167,12 @@
 
     "progress_step1_prefix": "步骤 1/2：",
     "progress_step2": "步骤 2/2：已对图像 {current} / {total} 进行 OCR ({percent}%)",
-    "progress_seek": "正在定位：",
     "lbl_frame": "帧",
     "cli_starting_ocr": "正在启动 PaddleOCR...",
     "cli_generating_subs": "正在生成字幕...",
     "log_reached_end": "已达到结束时间。正在停止。",
     "unknown": "未知",
 
-    "eta_seek": "ETA 跳转",
     "eta_step": "ETA 步骤",
 
     "fatal_error_header": "--- 致命错误 ---",

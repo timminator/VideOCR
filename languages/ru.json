@@ -167,14 +167,12 @@
     
     "progress_step1_prefix": "Шаг 1/2:",
     "progress_step2": "Шаг 2/2: Выполнен OCR на изображении {current} из {total} ({percent}%)",
-    "progress_seek": "Поиск:",
     "lbl_frame": "Кадр",
     "cli_starting_ocr": "Запуск PaddleOCR...",
     "cli_generating_subs": "Создание субтитров...",
     "log_reached_end": "Достигнуто время окончания. Остановка.",
     "unknown": "неизвестно",
 
-    "eta_seek": "ETA Переход",
     "eta_step": "ETA Шаг",
 
     "fatal_error_header": "--- ФАТАЛЬНАЯ ОШИБКА ---",

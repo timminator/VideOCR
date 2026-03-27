@@ -68,21 +68,21 @@ class Video:
         self.pred_frames_zone1 = []
         self.pred_frames_zone2 = []
 
-        target_start_ms = 0.0
-        target_start_str = "00:00:00"
+        user_start_ms = 0.0
         if time_start:
-            target_start_ms = utils.get_ms_from_time_str(time_start) + self.start_time_offset_ms
-            target_start_str = utils.get_srt_timestamp_from_ms(target_start_ms - self.start_time_offset_ms).split(',')[0]
+            user_start_ms = utils.get_ms_from_time_str(time_start)
+
+        target_start_ms = user_start_ms + self.start_time_offset_ms
 
         target_end_ms = None
-        if time_end:
-            target_end_ms = utils.get_ms_from_time_str(time_end) + self.start_time_offset_ms
+        target_end_str = "Unknown"
 
-        final_end_ms = target_end_ms if target_end_ms is not None else self.duration_ms
-        if final_end_ms > 0:
-            target_end_str = utils.get_srt_timestamp_from_ms(final_end_ms).split(',')[0]
-        else:
-            target_end_str = "Unknown"
+        if time_end:
+            user_end_ms = utils.get_ms_from_time_str(time_end)
+            target_end_ms = user_end_ms + self.start_time_offset_ms
+            target_end_str = utils.get_srt_timestamp_from_ms(user_end_ms).split(',')[0]
+        elif self.duration_ms > 0:
+            target_end_str = utils.get_srt_timestamp_from_ms(self.duration_ms).split(',')[0]
 
         for zone in crop_zones:
             if zone['y'] >= self.height:
@@ -163,12 +163,14 @@ class Video:
         def producer_thread() -> None:
             try:
                 with Capture(self.path) as v:
+                    is_seeking = user_start_ms > 0
+
+                    if is_seeking:
+                        v.seek(target_start_ms)
+
                     current_index = 0
                     modulo = frames_to_skip + 1
                     first_queued = False
-
-                    is_seeking = target_start_ms > 0
-                    force_process = False
 
                     while not stop_event.is_set():
                         success, raw_frame, timestamp_ms = v.read()
@@ -181,14 +183,9 @@ class Video:
                         # Check Start Time
                         if is_seeking:
                             if timestamp_ms < target_start_ms:
-                                if current_index % 15 == 0:
-                                    print(f"\rSeeking to start time... Current: {curr_str} / {target_start_str}, Frame: {current_index + 1}", end="", flush=True)
-                                current_index += 1
                                 continue
                             else:
-                                print(f"\rSeeking to start time... Current: {target_start_str} / {target_start_str}, Frame: {current_index + 1}", flush=True)
                                 is_seeking = False
-                                force_process = True
 
                         # Check End Time
                         if target_end_ms is not None and timestamp_ms > target_end_ms:
@@ -198,10 +195,9 @@ class Video:
                             start_index_queue.put(current_index)
                             first_queued = True
 
-                        should_process_frame = (current_index % modulo == 0) or force_process
+                        should_process_frame = (current_index % modulo == 0)
                         if should_process_frame:
                             raw_queue.put((current_index, timestamp_ms, raw_frame, curr_str))
-                            force_process = False
                         else:
                             raw_queue.put((current_index, timestamp_ms, None, curr_str))
 
@@ -738,9 +734,6 @@ class Video:
         return start_time, end_time
 
     def _get_subtitle_ms_times(self, sub: PredictedSubtitle) -> tuple[float, float]:
-        first_frame_ms = self.frame_timestamps.get(0, 0)
-        correction_delta = first_frame_ms - self.start_time_offset_ms
-
         start_time_ms = self.frame_timestamps.get(sub.index_start, 0)
         end_time_ms = self.frame_timestamps.get(sub.index_end + 1)
 
@@ -750,8 +743,8 @@ class Video:
             end_time_ms = last_frame_ms + self.avg_frame_duration_ms
 
         # Apply the correction to align with the container's start time
-        corrected_start_time_ms = start_time_ms - correction_delta
-        corrected_end_time_ms = end_time_ms - correction_delta
+        corrected_start_time_ms = start_time_ms - self.start_time_offset_ms
+        corrected_end_time_ms = end_time_ms - self.start_time_offset_ms
 
         return corrected_start_time_ms, corrected_end_time_ms
 

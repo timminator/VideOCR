@@ -167,14 +167,12 @@
     
     "progress_step1_prefix": "ステップ 1/2:",
     "progress_step2": "ステップ 2/2: 画像 {current} / {total} でOCRを実行しました ({percent}%)",
-    "progress_seek": "シーク:",
     "lbl_frame": "フレーム",
     "cli_starting_ocr": "PaddleOCRを開始しています...",
     "cli_generating_subs": "字幕を生成しています...",
     "log_reached_end": "終了時間に達しました。停止します。",
     "unknown": "不明",
 
-    "eta_seek": "ETA シーク",
     "eta_step": "ETA ステップ",
 
     "fatal_error_header": "--- 致命的エラー ---",

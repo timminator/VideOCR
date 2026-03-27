@@ -72,7 +72,6 @@ def frame_to_array(frame: av.VideoFrame, fmt: str) -> np.ndarray[Any, Any]:
     return frame.to_ndarray(format=fmt)
 
 
-# checks if two words are on the same line based on vertical overlap
 def is_on_same_line(word1: PredictedText, word2: PredictedText) -> bool:
     """Checks if two words are on the same line based on vertical overlap."""
     y_min1 = min(p[1] for p in word1.bounding_box)

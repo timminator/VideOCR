@@ -167,14 +167,12 @@
 
     "progress_step1_prefix": "Schritt 1/2:",
     "progress_step2": "Schritt 2/2: OCR auf Bild {current} von {total} durchgeführt ({percent}%)",
-    "progress_seek": "Vorspulen:",
     "lbl_frame": "Bild",
     "cli_starting_ocr": "Starte PaddleOCR...",
     "cli_generating_subs": "Erstelle Untertitel...",
     "log_reached_end": "Endzeit erreicht. Vorgang wird gestoppt.",
     "unknown": "unbekannt",
 
-    "eta_seek": "ETA Vorspulen",
     "eta_step": "ETA Schritt",
 
     "fatal_error_header": "--- FATALER FEHLER ---",

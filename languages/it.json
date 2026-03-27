@@ -167,14 +167,12 @@
 
     "progress_step1_prefix": "Fase 1/2:",
     "progress_step2": "Fase 2/2: OCR eseguito sul fotogramma {current} di {total} ({percent}%)",
-    "progress_seek": "Ricerca:",
     "lbl_frame": "Fotogramma",
     "cli_starting_ocr": "Avvio PaddleOCR...",
     "cli_generating_subs": "Generazione sottotitoli...",
     "log_reached_end": "Raggiunto l'orario di fine. Interruzione in corso.",
     "unknown": "sconosciuto",
 
-    "eta_seek": "ETA Avanz.",
     "eta_step": "ETA Fase",
 
     "fatal_error_header": "--- ERRORE FATALE ---",
