@@ -2380,7 +2380,7 @@ reset_crop_state()
 
 
 def redraw_canvas_and_boxes() -> None:
-    """Erases the graph, redraws the current frame and all finalized crop boxes."""
+    """Erases the graph, redraws the current frame, finalized crop boxes, and the active drawing box."""
     global graph, current_image_bytes, image_offset_x, image_offset_y, resized_frame_width, resized_frame_height
 
     graph.erase()
@@ -2388,9 +2388,44 @@ def redraw_canvas_and_boxes() -> None:
         graph.draw_image(data=current_image_bytes, location=(image_offset_x, image_offset_y))
 
     window.drawn_rect_ids.clear()
-    for crop_box in window.crop_boxes:
-        start_img, end_img = crop_box['img_points']
 
+    boxes_to_draw = [box['img_points'] for box in window.crop_boxes]
+
+    if window.start_point_img is not None and window.end_point_img is not None:
+        boxes_to_draw.append((window.start_point_img, window.end_point_img))
+
+    for start_img, end_img in boxes_to_draw:
+        rect_x1_img = min(start_img[0], end_img[0])
+        rect_y1_img = min(start_img[1], end_img[1])
+        rect_x2_img = max(start_img[0], end_img[0])
+        rect_y2_img = max(start_img[1], end_img[1])
+
+        draw_x1 = max(0, rect_x1_img)
+        draw_y1 = max(0, rect_y1_img)
+        draw_x2 = min(resized_frame_width - 1, rect_x2_img)
+        draw_y2 = min(resized_frame_height - 1, rect_y2_img)
+
+        start_graph = (draw_x1 + image_offset_x, draw_y1 + image_offset_y)
+        end_graph = (draw_x2 + image_offset_x, draw_y2 + image_offset_y)
+
+        rect_id = graph.draw_rectangle(start_graph, end_graph, line_color='red')
+        window.drawn_rect_ids.append(rect_id)
+
+
+def redraw_boxes() -> None:
+    """Deletes the rectangles and redraws them without erasing the graph."""
+    global graph, image_offset_x, image_offset_y, resized_frame_width, resized_frame_height
+
+    for rect_id in window.drawn_rect_ids:
+        graph.delete_figure(rect_id)
+    window.drawn_rect_ids.clear()
+
+    boxes_to_draw = [box['img_points'] for box in window.crop_boxes]
+
+    if window.start_point_img is not None and window.end_point_img is not None:
+        boxes_to_draw.append((window.start_point_img, window.end_point_img))
+
+    for start_img, end_img in boxes_to_draw:
         rect_x1_img = min(start_img[0], end_img[0])
         rect_y1_img = min(start_img[1], end_img[1])
         rect_x2_img = max(start_img[0], end_img[0])
@@ -2453,6 +2488,16 @@ window.bind('<Right>', '-GRAPH-<Right>')
 
 # --- Bind window restore event ---
 window.bind('<Map>', '-WINDOW_RESTORED-')
+
+
+# --- Failsafe for PySimpleGUI's overwrite event bug (-Graph-+UP with -GRAPH-+MOVE) on fast movements---
+def force_mouse_up(event: Any) -> None:
+    """Sets a silent flag so the main loop can manually override the +MOVE event back to +UP."""
+    if getattr(window, 'is_drawing', False):
+        window.needs_mouse_up = True
+
+
+window['-GRAPH-'].Widget.bind('<ButtonRelease-1>', force_mouse_up, add='+')
 
 # --- Cursor Change Logic for -GITHUB_ISSUES_LINK- ---
 issues_link_element = window['-GITHUB_ISSUES_LINK-']
@@ -2538,6 +2583,12 @@ window.is_drawing = False
 # --- Event Loop ---
 while True:
     event, values = window.read(timeout=50)
+
+    # --- Failsafe Event Override ---
+    if getattr(window, 'needs_mouse_up', False):
+        if event in [sg.TIMEOUT_EVENT, "-GRAPH-+MOVE"]:
+            window.needs_mouse_up = False
+            event = "-GRAPH-+UP"
 
     # --- POLL QUEUE ---
     # window.write_event_value is causing crashes while drawing graph elements. See https://github.com/PySimpleGUI/PySimpleGUI/issues/5750
@@ -3059,17 +3110,15 @@ while True:
                     y2 = img_y_c
 
             box['img_points'] = ((x1, y1), (x2, y2))
-            redraw_canvas_and_boxes()
+            redraw_boxes()
 
         # Drawing
         else:
-            window.end_point_img = (img_x, img_y)
+            img_x_c = max(0, min(resized_frame_width, img_x))
+            img_y_c = max(0, min(resized_frame_height, img_y))
 
-            redraw_canvas_and_boxes()
-
-            start_graph_temp = (window.start_point_img[0] + image_offset_x, window.start_point_img[1] + image_offset_y)
-            end_graph_temp = (img_x + image_offset_x, img_y + image_offset_y)
-            graph.draw_rectangle(start_graph_temp, end_graph_temp, line_color='red')
+            window.end_point_img = (img_x_c, img_y_c)
+            redraw_boxes()
 
     # --- Graph Interaction Release ---
     elif event == "-GRAPH-+UP":
@@ -3081,10 +3130,10 @@ while True:
             box = window.crop_boxes[idx]
             p1, p2 = box['img_points']
 
-            rect_x1_img = max(0, min(p1[0], p2[0]))
-            rect_y1_img = max(0, min(p1[1], p2[1]))
-            rect_x2_img = min(resized_frame_width, max(p1[0], p2[0]))
-            rect_y2_img = min(resized_frame_height, max(p1[1], p2[1]))
+            rect_x1_img = min(p1[0], p2[0])
+            rect_y1_img = min(p1[1], p2[1])
+            rect_x2_img = max(p1[0], p2[0])
+            rect_y2_img = max(p1[1], p2[1])
 
             crop_x = math.floor(rect_x1_img * original_frame_width / resized_frame_width)
             crop_y = math.floor(rect_y1_img * original_frame_height / resized_frame_height)
@@ -3117,10 +3166,10 @@ while True:
                 redraw_canvas_and_boxes()
                 continue
 
-            rect_x1_img = max(0, min(window.start_point_img[0], window.end_point_img[0]))
-            rect_y1_img = max(0, min(window.start_point_img[1], window.end_point_img[1]))
-            rect_x2_img = min(resized_frame_width, max(window.start_point_img[0], window.end_point_img[0]))
-            rect_y2_img = min(resized_frame_height, max(window.start_point_img[1], window.end_point_img[1]))
+            rect_x1_img = min(window.start_point_img[0], window.end_point_img[0])
+            rect_y1_img = min(window.start_point_img[1], window.end_point_img[1])
+            rect_x2_img = max(window.start_point_img[0], window.end_point_img[0])
+            rect_y2_img = max(window.start_point_img[1], window.end_point_img[1])
 
             window.start_point_img = None
             window.end_point_img = None
