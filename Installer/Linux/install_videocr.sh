@@ -6,6 +6,7 @@ EXEC="$APPDIR/VideOCR.bin"
 ICON="$APPDIR/VideOCR.png"
 DESKTOP_DIR="$HOME/.local/share/applications"
 DESKTOP_FILE="$DESKTOP_DIR/VideOCR.desktop"
+PORTABLE_FLAG="$APPDIR/portable_mode.txt"
 
 # Make sure the applications directory exists
 mkdir -p "$DESKTOP_DIR"
@@ -25,6 +26,11 @@ EOL
 
 chmod +x "$DESKTOP_FILE"
 update-desktop-database "$HOME/.local/share/applications" 2>/dev/null
+
+if [ -f "$PORTABLE_FLAG" ]; then
+    rm "$PORTABLE_FLAG"
+    echo "Removed portable flag. Settings will now be saved to ~/.config/VideOCR/"
+fi
 
 echo "Installed VideOCR desktop shortcut to:"
 echo "$DESKTOP_FILE"

@@ -264,6 +264,7 @@ def create_windows_installer(final_app_path: Path, args: argparse.Namespace) -> 
 
         iscc_sign_param = f'/Ssigntool=$q{args.signtool}$q {signtool_params}'
         command.append(iscc_sign_param)
+        command.append('/DUseSignTool')
 
     command.append(str(script_path))
 
@@ -379,12 +380,17 @@ def package_target(build_target: str, args: argparse.Namespace, releases_dir: Pa
 
     shutil.rmtree(work_dir)
 
+    if sys.platform == "win32" and args.windows_installer and args.windows_installer.lower() == 'true':
+        create_windows_installer(final_app_path, args)
+
+    print_header("Preparing Portable Standalone Build")
+    print("Injecting portable_mode.txt for standalone GUI archive...")
+    portable_flag_gui = final_app_path / "portable_mode.txt"
+    portable_flag_gui.touch()
+
     if args.archive and args.archive.lower() == 'true':
         create_final_archive(final_app_path, build_target)
         create_final_archive(final_cli_path, build_target)
-
-    if sys.platform == "win32" and args.windows_installer and args.windows_installer.lower() == 'true':
-        create_windows_installer(final_app_path, args)
 
 
 def main() -> None:

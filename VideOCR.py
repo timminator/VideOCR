@@ -60,10 +60,19 @@ from _version import __version__
 # -- Save errors to log file ---
 def log_error(message: str, log_name: str = "error_log.txt") -> str:
     """Logs error messages to a platform-appropriate log file location."""
-    if sys.platform == "win32":
-        log_dir = os.path.join(os.getenv('LOCALAPPDATA') or os.path.expanduser('~'), "VideOCR")
+    portable_flag = os.path.join(APP_DIR, 'portable_mode.txt')
+
+    if os.path.exists(portable_flag):
+        log_dir = APP_DIR
     else:
-        log_dir = os.path.join(os.path.expanduser('~'), ".config", "VideOCR")
+        if sys.platform == "win32":
+            log_dir = os.path.join(os.environ.get('LOCALAPPDATA') or os.path.join(str(pathlib.Path.home()), 'AppData', 'Local'), "VideOCR")
+        else:
+            xdg_state = os.environ.get("XDG_STATE_HOME")
+            if xdg_state:
+                log_dir = os.path.join(xdg_state, "VideOCR")
+            else:
+                log_dir = os.path.join(str(pathlib.Path.home()), ".local", "state", "VideOCR")
 
     os.makedirs(log_dir, exist_ok=True)
 
@@ -176,6 +185,28 @@ def find_videocr_program() -> str | None:
     return None
 
 
+# --- Determine Config file location ---
+def get_config_file_path() -> str:
+    """Determines the correct path for the config file depending on installation mode."""
+    portable_flag = os.path.join(APP_DIR, 'portable_mode.txt')
+
+    if os.path.exists(portable_flag):
+        config_dir = APP_DIR
+    else:
+        if sys.platform == "win32":
+            config_dir = os.path.join(os.environ.get('APPDATA') or os.path.join(str(pathlib.Path.home()), 'AppData', 'Roaming'), 'VideOCR')
+        else:
+            xdg_config = os.environ.get("XDG_CONFIG_HOME")
+            if xdg_config:
+                config_dir = os.path.join(xdg_config, "VideOCR")
+            else:
+                config_dir = os.path.join(str(pathlib.Path.home()), ".config", "VideOCR")
+
+        os.makedirs(config_dir, exist_ok=True)
+
+    return os.path.join(config_dir, 'videocr_gui_config.ini')
+
+
 # --- Configuration ---
 PROGRAM_VERSION = __version__
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -194,7 +225,7 @@ DEFAULT_OCR_IMAGE_MAX_WIDTH = 800
 DEFAULT_FRAMES_TO_SKIP = 1
 DEFAULT_TIME_START = "0:00"
 KEY_SEEK_STEP = 1
-CONFIG_FILE = os.path.join(APP_DIR, 'videocr_gui_config.ini')
+CONFIG_FILE = get_config_file_path()
 CONFIG_SECTION = 'Settings'
 try:
     DEFAULT_DOCUMENTS_DIR = str(pathlib.Path.home() / "Documents")
