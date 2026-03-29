@@ -371,6 +371,26 @@ GUI_SCALING_LIST = [
 ]
 DEFAULT_GUI_SCALING = 'System Default'
 
+# --- Cross-Platform Cursor Mapping ---
+if sys.platform == "win32":
+    CURSORS = {
+        'vertical': 'size_ns',
+        'horizontal': 'size_we',
+        'diag_nw_se': 'size_nw_se',
+        'diag_ne_sw': 'size_ne_sw',
+        'move': 'fleur',
+        'crosshair': 'crosshair',
+    }
+else:
+    CURSORS = {
+        'vertical': 'sb_v_double_arrow',
+        'horizontal': 'sb_h_double_arrow',
+        'diag_nw_se': 'bottom_right_corner',
+        'diag_ne_sw': 'bottom_left_corner',
+        'move': 'fleur',
+        'crosshair': 'crosshair',
+    }
+
 # --- Global Variables ---
 video_path = None
 original_frame_width = 0
@@ -2488,29 +2508,29 @@ def get_resize_hit(x: int | float, y: int | float, boxes: list[dict[str, Any]], 
 
         # Corners
         if near_left and near_top:
-            return idx, 'top-left', 'size_nw_se'
+            return idx, 'top-left', CURSORS['diag_nw_se']
         if near_right and near_bottom:
-            return idx, 'bottom-right', 'size_nw_se'
+            return idx, 'bottom-right', CURSORS['diag_nw_se']
         if near_left and near_bottom:
-            return idx, 'bottom-left', 'size_ne_sw'
+            return idx, 'bottom-left', CURSORS['diag_ne_sw']
         if near_right and near_top:
-            return idx, 'top-right', 'size_ne_sw'
+            return idx, 'top-right', CURSORS['diag_ne_sw']
 
         # Edges
         if near_left:
-            return idx, 'left', 'size_we'
+            return idx, 'left', CURSORS['horizontal']
         if near_right:
-            return idx, 'right', 'size_we'
+            return idx, 'right', CURSORS['horizontal']
         if near_top:
-            return idx, 'top', 'size_ns'
+            return idx, 'top', CURSORS['vertical']
         if near_bottom:
-            return idx, 'bottom', 'size_ns'
+            return idx, 'bottom', CURSORS['vertical']
 
         # Inside box
         if x1 < x < x2 and y1 < y < y2:
-            return idx, 'center', 'fleur'
+            return idx, 'center', CURSORS['move']
 
-    return None, None, 'crosshair'
+    return None, None, CURSORS['crosshair']
 
 
 # --- Bind keyboard events to the graph element ---
