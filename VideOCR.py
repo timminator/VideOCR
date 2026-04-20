@@ -214,6 +214,8 @@ LANGUAGES_DIR = os.path.join(APP_DIR, 'languages')
 VIDEOCR_PATH = find_videocr_program()
 DEFAULT_OUTPUT_SRT = ""
 DEFAULT_LANG = "en"
+DEFAULT_OCR_ENGINE = "PaddleOCR (Det. + Rec.)"
+DEFAULT_SUBTITLE_LANGUAGE = 'English'
 DEFAULT_SUBTITLE_POSITION = "center"
 DEFAULT_SUBTITLE_ALIGNMENT = "bottom-center"
 DEFAULT_CONF_THRESHOLD = 75
@@ -221,7 +223,7 @@ DEFAULT_SIM_THRESHOLD = 80
 DEFAULT_MAX_MERGE_GAP = 0.1
 DEFAULT_MIN_SUBTITLE_DURATION = 0.2
 DEFAULT_SSIM_THRESHOLD = 92
-DEFAULT_OCR_IMAGE_MAX_WIDTH = 800
+DEFAULT_OCR_IMAGE_MAX_WIDTH = 720
 DEFAULT_FRAMES_TO_SKIP = 1
 DEFAULT_TIME_START = "0:00"
 KEY_SEEK_STEP = 1
@@ -251,7 +253,7 @@ LANGUAGE_CODE_TO_NATIVE_NAME = {
 }
 
 # --- Language Data ---
-LANGUAGES_LIST = [
+PADDLEOCR_LANGUAGES_LIST = [
     ('Abaza', 'abq'), ('Adyghe', 'ady'), ('Afrikaans', 'af'), ('Albanian', 'sq'),
     ('Angika', 'ang'), ('Arabic', 'ar'), ('Avar', 'ava'), ('Azerbaijani', 'az'),
     ('Baluchi', 'bal'), ('Bashkir', 'ba'), ('Basque', 'eu'), ('Belarusian', 'be'),
@@ -282,9 +284,78 @@ LANGUAGES_LIST = [
     ('Uyghur', 'ug'), ('Uzbek', 'uz'), ('Vietnamese', 'vi'), ('Welsh', 'cy'),
     ('Sakha', 'sah'),
 ]
-LANGUAGES_LIST.sort(key=lambda x: x[0])
-language_display_names = [lang[0] for lang in LANGUAGES_LIST]
-language_abbr_lookup = {name: abbr for name, abbr in LANGUAGES_LIST}
+PADDLEOCR_LANGUAGES_LIST.sort(key=lambda x: x[0])
+paddle_display_names = [lang[0] for lang in PADDLEOCR_LANGUAGES_LIST]
+paddle_abbr_lookup = {name: abbr for name, abbr in PADDLEOCR_LANGUAGES_LIST}
+
+GOOGLE_LENS_LANGUAGES_LIST = [
+    ("Afrikaans", "af"), ("Albanian", "sq"), ("Arabic", "ar"), ("Armenian", "hy"),
+    ("Belarusian", "be"), ("Bengali", "bn"), ("Bulgarian", "bg"), ("Catalan", "ca"),
+    ("Chinese", "zh"), ("Croatian", "hr"), ("Czech", "cs"), ("Danish", "da"),
+    ("Dutch", "nl"), ("English", "en"), ("Estonian", "et"), ("Filipino", "fil"),
+    ("Finnish", "fi"), ("French", "fr"), ("German", "de"), ("Greek", "el"),
+    ("Gujarati", "gu"), ("Hebrew", "iw"), ("Hindi", "hi"), ("Hungarian", "hu"),
+    ("Icelandic", "is"), ("Indonesian", "id"), ("Italian", "it"), ("Japanese", "ja"),
+    ("Kannada", "kn"), ("Khmer", "km"), ("Korean", "ko"), ("Lao", "lo"),
+    ("Latvian", "lv"), ("Lithuanian", "lt"), ("Macedonian", "mk"), ("Malay", "ms"),
+    ("Malayalam", "ml"), ("Marathi", "mr"), ("Nepali", "ne"), ("Norwegian", "no"),
+    ("Persian", "fa"), ("Polish", "pl"), ("Portuguese", "pt"), ("Punjabi", "pa"),
+    ("Romanian", "ro"), ("Russian", "ru"), ("Russian (PETR1708)", "ru-PETR1708"),
+    ("Serbian", "sr"), ("Serbian (Latin)", "sr-Latn"), ("Slovak", "sk"), ("Slovenian", "sl"),
+    ("Spanish", "es"), ("Swedish", "sv"), ("Tagalog", "tl"), ("Tamil", "ta"),
+    ("Telugu", "te"), ("Thai", "th"), ("Turkish", "tr"), ("Ukrainian", "uk"),
+    ("Vietnamese", "vi"), ("Yiddish", "yi"), ("Amharic", "am"), ("Ancient Greek", "grc"),
+    ("Assamese", "as"), ("Azerbaijani", "az"), ("Azerbaijani (Cyrl)", "az-Cyrl"), ("Basque", "eu"),
+    ("Bosnian", "bs"), ("Burmese", "my"), ("Cebuano", "ceb"), ("Cherokee", "chr"),
+    ("Dhivehi", "dv"), ("Dzonkha", "dz"), ("Esperanto", "eo"), ("Galician", "gl"),
+    ("Georgian", "ka"), ("Haitian Creole", "ht"), ("Irish", "ga"), ("Javanese", "jv"),
+    ("Kazakh", "kk"), ("Kirghiz", "ky"), ("Latin", "la"), ("Maltese", "mt"),
+    ("Mongolian", "mn"), ("Oriya", "or"), ("Pashto", "ps"), ("Sanskrit", "sa"),
+    ("Sinhala", "si"), ("Swahili", "sw"), ("Syriac", "syr"), ("Tibetan", "bo"),
+    ("Tigirinya", "ti"), ("Urdu", "ur"), ("Uzbek", "uz"), ("Uzbek (Cyrl)", "uz-Cyrl"),
+    ("Welsh", "cy"), ("Zulu", "zu"), ("Acehnese", "ace"), ("Acholi", "ach"),
+    ("Adangme", "ada"), ("Akan", "ak"), ("Algonquinian", "alg"), ("Araucanian/Mapuche", "arn"),
+    ("Asturian", "ast"), ("Athabaskan", "ath"), ("Aymara", "ay"), ("Balinese", "ban"),
+    ("Bambara", "bm"), ("Bantu", "bnt"), ("Bashkir", "ba"), ("Batak", "btk"),
+    ("Bemba", "bem"), ("Bikol", "bik"), ("Bislama", "bi"), ("Breton", "br"),
+    ("Chechen", "ce"), ("Chinese (Simplified)", "zh-Hans"), ("Chinese (Traditional)", "zh-Hant"), ("Chinese (Hong Kong)", "zh-Hant-HK"),
+    ("Choctaw", "cho"), ("Chuvash", "cv"), ("Cree", "cr"), ("Creek", "mus"),
+    ("Crimean Tatar", "crh"), ("Dakota", "dak"), ("Duala", "dua"), ("Efik", "efi"),
+    ("English (British)", "en-GB"), ("Ewe", "ee"), ("Faroese", "fo"), ("Fijian", "fj"),
+    ("Fon", "fon"), ("French (Canadian)", "fr-CA"), ("Fulah", "ff"), ("Ga", "gaa"),
+    ("Ganda", "lg"), ("Gayo", "gay"), ("Gilbertese", "gil"), ("Gothic", "got"),
+    ("Guarani", "gn"), ("Hausa", "ha"), ("Hawaiian", "haw"), ("Herero", "hz"),
+    ("Hiligaynon", "hil"), ("Iban", "iba"), ("Igbo", "ig"), ("Iloko", "ilo"),
+    ("Kabyle", "kab"), ("Kachin", "kac"), ("Kalaallisut", "kl"), ("Kamba", "kam"),
+    ("Kanuri", "kr"), ("Kara-Kalpak", "kaa"), ("Khasi", "kha"), ("Kikuyu", "ki"),
+    ("Kinyarwanda", "rw"), ("Komi", "kv"), ("Kongo", "kg"), ("Kosraean", "kos"),
+    ("Kuanyama", "kj"), ("Lingala", "ln"), ("Low German", "nds"), ("Lozi", "loz"),
+    ("Luba-Katanga", "lu"), ("Luo", "luo"), ("Madurese", "mad"), ("Malagasy", "mg"),
+    ("Mandingo", "man"), ("Manx", "gv"), ("Maori", "mi"), ("Marshallese", "mh"),
+    ("Mende", "men"), ("Middle English", "enm"), ("Middle High German", "gmh"), ("Minangkabau", "min"),
+    ("Mohawk", "moh"), ("Mongo", "lol"), ("Nahuatl", "nah"), ("Navajo", "nv"),
+    ("Ndonga", "ng"), ("Niuean", "niu"), ("North Ndebele", "nd"), ("Northern Sotho", "nso"),
+    ("Nyanja", "ny"), ("Nyankole", "nyn"), ("Nyasa Tonga", "tog"), ("Nzima", "nzi"),
+    ("Occitan", "oc"), ("Ojibwa", "oj"), ("Old English", "ang"), ("Old French", "fro"),
+    ("Old High German", "goh"), ("Old Norse", "non"), ("Old Provencal", "pro"), ("Ossetic", "os"),
+    ("Pampanga", "pam"), ("Pangasinan", "pag"), ("Papiamento", "pap"), ("Portuguese (European)", "pt-PT"),
+    ("Quechua", "qu"), ("Romansh", "rm"), ("Romany", "rom"), ("Rundi", "rn"),
+    ("Sakha", "sah"), ("Samoan", "sm"), ("Sango", "sg"), ("Scots", "sco"),
+    ("Scottish Gaelic", "gd"), ("Shona", "sn"), ("Songhai", "son"), ("Southern Sotho", "st"),
+    ("Spanish (Latin American)", "es-419"), ("Sundanese", "su"), ("Swati", "ss"), ("Tahitian", "ty"),
+    ("Tajik", "tg"), ("Tatar", "tt"), ("Temne", "tem"), ("Tongan", "to"),
+    ("Tsonga", "ts"), ("Tswana", "tn"), ("Turkmen", "tk"), ("Udmurt", "udm"),
+    ("Venda", "ve"), ("Votic", "vot"), ("Western Frisian", "fy"), ("Wolof", "wo"),
+    ("Xhosa", "xh"), ("Yoruba", "yo"), ("Zapotec", "zap")
+]
+GOOGLE_LENS_LANGUAGES_LIST.sort(key=lambda x: x[0])
+lens_display_names = [lang[0] for lang in GOOGLE_LENS_LANGUAGES_LIST]
+lens_abbr_lookup = {name: abbr for name, abbr in GOOGLE_LENS_LANGUAGES_LIST}
+
+OCR_ENGINES = [
+    'PaddleOCR (Det. + Rec.)',
+    'PaddleOCR (Det.) + Google Lens (Rec.)'
+]
 
 # Mapping from PaddleOCR internal codes to standard ISO 639 codes for deviating abbreviations
 PADDLE_TO_ISO_MAP = {
@@ -302,8 +373,6 @@ PADDLE_TO_ISO_MAP = {
     'ava': 'av',
     'che': 'ce',
 }
-
-DEFAULT_DISPLAY_LANGUAGE = 'English'
 
 # --- Subtitle Position Data ---
 SUBTITLE_POSITIONS_LIST = [
@@ -468,6 +537,8 @@ def update_gui_text(window: sg.Window, is_paused: bool = False) -> None:
         '-TAB-VIDEO-': {'text': 'tab_video'},
         '-LBL-SOURCE-': {'text': 'lbl_source'},
         '-LBL-OUTPUT_SRT-': {'text': 'lbl_output_srt'},
+        '-LBL-OCR_ENGINE-': {'text': 'lbl_ocr_engine', 'tooltip': 'tip_ocr_engine'},
+        '-OCR_ENGINE_COMBO-': {'tooltip': 'tip_ocr_engine'},
         '-LBL-SUB_LANG-': {'text': 'lbl_sub_lang'},
         '-LBL-SUB_POS-': {'text': 'lbl_sub_pos', 'tooltip': 'tip_sub_pos'},
         '-SUBTITLE_POS_COMBO-': {'tooltip': 'tip_sub_pos'},
@@ -971,7 +1042,8 @@ def get_default_settings() -> dict[str, Any]:
     """Returns a dictionary of default settings."""
     return {
     '--language': 'en',
-    '-LANG_COMBO-': DEFAULT_DISPLAY_LANGUAGE,
+    '-OCR_ENGINE_COMBO-': DEFAULT_OCR_ENGINE,
+    '-LANG_COMBO-': DEFAULT_SUBTITLE_LANGUAGE,
     '-SUBTITLE_POS_COMBO-': DEFAULT_INTERNAL_SUBTITLE_POSITION,
     '-POST_ACTION-': 0,
     '--time_start': DEFAULT_TIME_START,
@@ -1094,6 +1166,12 @@ def load_settings(window: sg.Window) -> None:
                 saved_scaling = config.get(CONFIG_SECTION, 'gui_scaling', fallback=DEFAULT_GUI_SCALING)
                 update_gui_scaling_combo(window, get_gui_scaling_index(saved_scaling))
 
+                saved_engine = config.get(CONFIG_SECTION, '-OCR_ENGINE_COMBO-', fallback=DEFAULT_OCR_ENGINE)
+                window['-OCR_ENGINE_COMBO-'].update(value=saved_engine)
+
+                active_lang_list = lens_display_names if "Google Lens" in saved_engine else paddle_display_names
+                window['-LANG_COMBO-'].update(values=active_lang_list)
+
                 settings_to_load = [
                     ('-LANG_COMBO-', 'combo_lang'),
                     ('--time_start', 'input'),
@@ -1131,10 +1209,10 @@ def load_settings(window: sg.Window) -> None:
                                 value = config.getboolean(CONFIG_SECTION, key)
                             elif elem_type == 'combo_lang':
                                 value_str = config.get(CONFIG_SECTION, key)
-                                if value_str in language_display_names:
+                                if value_str in active_lang_list:
                                     value = value_str
                                 else:
-                                    value = DEFAULT_DISPLAY_LANGUAGE
+                                    value = DEFAULT_SUBTITLE_LANGUAGE
                             else:
                                 value = config.get(CONFIG_SECTION, key)
 
@@ -1196,9 +1274,14 @@ def generate_output_path(video_path: str, values: dict[str, Any], default_dir: s
         else:
             output_dir = pathlib.Path(output_dir_str)
 
-    selected_lang_name = values.get('-LANG_COMBO-', DEFAULT_DISPLAY_LANGUAGE)
-    paddle_code = language_abbr_lookup.get(selected_lang_name, 'en')
-    iso_code = PADDLE_TO_ISO_MAP.get(paddle_code, paddle_code)
+    selected_lang_name = values.get('-LANG_COMBO-', DEFAULT_SUBTITLE_LANGUAGE)
+    selected_engine_display = values.get('-OCR_ENGINE_COMBO-', "")
+
+    if "Google Lens" in selected_engine_display:
+        iso_code = lens_abbr_lookup.get(selected_lang_name, 'en')
+    else:
+        paddle_code = paddle_abbr_lookup.get(selected_lang_name, 'en')
+        iso_code = PADDLE_TO_ISO_MAP.get(paddle_code, paddle_code)
 
     base_output_path = output_dir / f"{video_filename_stem}.{iso_code}.srt"
     output_path = base_output_path
@@ -1359,7 +1442,7 @@ class VideoHandler:
         self.current_new_w = self.current_new_h = 0
 
 
-def handle_progress(match: re.Match[str], label_format_key: str, last_percentage: float, log_threshold: int, taskbar_base: int | None = 0, show_taskbar_progress: bool = True) -> float:
+def handle_progress(match: re.Match[str], label_format_key: str, last_percentage: float, log_threshold: int, step_num: int, show_taskbar_progress: bool = True) -> float:
     """Handles progress parsing, ETA calculation, and GUI updates."""
     if not hasattr(handle_progress, "last_key"):
         handle_progress.last_key = None  # type: ignore
@@ -1376,9 +1459,9 @@ def handle_progress(match: re.Match[str], label_format_key: str, last_percentage
     is_time_based = label_format_key == "progress_step1"
 
     if is_time_based:
-        curr_ts_str = match.group(1)
-        target_ts_str = match.group(2)
-        frame_num = match.group(3)
+        curr_ts_str = match.group(2)
+        target_ts_str = match.group(3)
+        frame_num = match.group(4)
 
         curr_sec = parse_srt_time_to_seconds(curr_ts_str)
         target_sec = parse_srt_time_to_seconds(target_ts_str)
@@ -1391,8 +1474,8 @@ def handle_progress(match: re.Match[str], label_format_key: str, last_percentage
         current_item_display = curr_ts_str
         display_total = target_ts_str
     else:
-        current_item = int(match.group(1))
-        total_str = match.group(2)
+        current_item = int(match.group(2))
+        total_str = match.group(3)
 
         if total_str == 'Unknown':
             total_items = 0
@@ -1423,15 +1506,29 @@ def handle_progress(match: re.Match[str], label_format_key: str, last_percentage
 
     handle_progress.last_update_time = current_time  # type: ignore
 
+    global_percent = ((step_num - 1) * (100.0 / 3.0)) + (current_percent / 3.0)
+
+    step_word = LANG.get('lbl_step', 'Step')
+    prefix = f"{step_word} {step_num}/3:"
+
     if label_format_key == "progress_step1":
-        prefix = LANG.get('progress_step1_prefix', 'Step 1/2:')
+        action_text = LANG.get('progress_step1_action', 'Processing video...')
         frame_lbl = LANG.get('lbl_frame', 'Frame')
-        msg_template = f"{prefix} {curr_ts_str} / {target_ts_str}, {frame_lbl}: {frame_num} ({{percent}}%)"
-        eta_prefix = f"{LANG.get('eta_step', 'ETA Step')} 1/2"
-    else:
-        raw_msg = LANG.get(label_format_key, "Step 2/2: Performed OCR on image {current} of {total} ({percent}%)")
-        msg_template = raw_msg.replace('{current}', current_item_display).replace('{total}', display_total)
-        eta_prefix = f"{LANG.get('eta_step', 'ETA Step')} 2/2"
+        msg_template = f"{prefix} {action_text} {curr_ts_str} / {target_ts_str}, {frame_lbl}: {frame_num} ({{percent}}%)"
+
+    elif label_format_key == "progress_step2":
+        default_raw = "Performing Text-Detection on image {current} of {total} ({percent}%)"
+        raw_msg = LANG.get('progress_step2_action', default_raw)
+        action_text = raw_msg.replace('{current}', current_item_display).replace('{total}', display_total)
+        msg_template = f"{prefix} {action_text}"
+
+    elif label_format_key == "progress_step3":
+        default_raw = "Performing OCR on image {current} of {total} ({percent}%)"
+        raw_msg = LANG.get('progress_step3_action', default_raw)
+        action_text = raw_msg.replace('{current}', current_item_display).replace('{total}', display_total)
+        msg_template = f"{prefix} {action_text}"
+
+    eta_prefix = f"{LANG.get('eta_step', 'ETA Step')} {step_num}/3"
 
     if log_threshold > 0:
         prev_step = -1 if last_percentage < 0 else int(last_percentage) // log_threshold
@@ -1459,9 +1556,8 @@ def handle_progress(match: re.Match[str], label_format_key: str, last_percentage
         'eta': eta_str
     }))
 
-    if show_taskbar_progress and taskbar_base is not None:
-        step_progress = max(1, int(current_percent * 0.5))
-        progress_value = taskbar_base + step_progress
+    if show_taskbar_progress:
+        progress_value = max(1, int(global_percent))
 
         if last_percentage < 0 or handle_progress.last_taskbar_val != progress_value:  # type: ignore
             gui_queue.put(('-TASKBAR_STATE_UPDATE-', {'state': 'normal', 'progress': progress_value}))
@@ -1574,8 +1670,14 @@ def get_processing_args(values: dict[str, Any], window: sg.Window) -> tuple[dict
     args: dict[str, Any] = {}
     args['video_path'] = video_path
 
-    selected_lang_name = values.get('-LANG_COMBO-', DEFAULT_DISPLAY_LANGUAGE)
-    lang_abbr = language_abbr_lookup.get(selected_lang_name)
+    selected_engine_display = values.get('-OCR_ENGINE_COMBO-', "")
+    if "Google Lens" in selected_engine_display:
+        args['ocr_engine'] = 'google_lens'
+        lang_abbr = lens_abbr_lookup.get(values.get('-LANG_COMBO-', DEFAULT_SUBTITLE_LANGUAGE))
+    else:
+        args['ocr_engine'] = 'paddleocr'
+        lang_abbr = paddle_abbr_lookup.get(values.get('-LANG_COMBO-', DEFAULT_SUBTITLE_LANGUAGE))
+
     if lang_abbr:
         args['lang'] = lang_abbr
 
@@ -1668,18 +1770,25 @@ def run_videocr(args_dict: dict[str, Any], window: sg.Window) -> bool:
 
     UNSUPPORTED_HARDWARE_ERROR_PATTERN = re.compile(r"Unsupported Hardware Error: (.*)")
     WARNING_HARDWARE_PATTERN = re.compile(r"Hardware Check Warning: (.*)")
-    PADDLE_ERROR_PATTERN = re.compile(r"Error: PaddleOCR failed.")
-    STEP1_PROGRESS_PATTERN = re.compile(r"Step 1/2: Processing video\.\.\. Current: ([\d:]+) / ([\d:]+|Unknown), Frame: (\d+)")
-    STEP2_PROGRESS_PATTERN = re.compile(r"Step 2/2: Performing OCR on image (\d+) of (\d+)")
-    STARTING_OCR_PATTERN = re.compile(r"Starting PaddleOCR\.\.\.")
+    PROCESS_ERROR_PATTERN = re.compile(r"Error: Process failed.")
+    STEP1_PROGRESS_PATTERN = re.compile(r"Step (\d+)/\d+: Processing video\.\.\. Current: ([\d:]+) / ([\d:]+|Unknown), Frame: (\d+)")
+    STEP_IMAGE_PROGRESS_PATTERN = re.compile(r"Step (\d+)/\d+: Performing (?:Text-Detection|OCR) on image (\d+) of (\d+)")
+    REPACKING_PATTERN = re.compile(r"Analyzing and repacking frame (\d+) of (\d+)")
+    STARTING_PADDLEOCR_PATTERN = re.compile(r"Starting PaddleOCR\.\.\.")
+    STARTING_LENS_PATTERN = re.compile(r"Starting Google Lens CLI\.\.\.")
+    INFO_PASS_PATTERN = re.compile(r"Running Text-Detection-Only pass on (\d+) filtered frame\(s\) stitched into (\d+) image grid\(s\)\.\.\.")
+    FILTERED_PATTERN = re.compile(r"Filtered out (\d+) redundant frame\(s\) via Text-Detection and tight-box SSIM analysis\.")
+    STITCHED_PATTERN = re.compile(r"Stitched (\d+) remaining frame\(s\) down to (\d+) image grid\(s\)\.")
     GENERATING_SUBTITLES_PATTERN = re.compile(r"Generating subtitles\.\.\.")
     REACHED_END_TIME_PATTERN = re.compile(r"Reached end time\. Stopping\.")
 
     last_reported_percentage_step1 = -1.0
     last_reported_percentage_step2 = -1.0
+    last_reported_percentage_step3 = -1.0
+    last_repacking_pct = -1.0
 
     expecting_log_path = False
-    paddle_error_message = ""
+    process_error_message = ""
 
     gui_queue.put(('-VIDEOCR_OUTPUT-', LANG.get('status_starting', "Starting subtitle extraction...\n")))
     gui_queue.put(('-PROGRESS-SMOOTH-', {'text': LANG.get('status_starting', "Starting subtitle extraction..."), 'percent': None}))
@@ -1719,15 +1828,14 @@ def run_videocr(args_dict: dict[str, Any], window: sg.Window) -> bool:
 
                 if expecting_log_path:
                     log_path = line.strip()
-                    full_error_output = f"\n{paddle_error_message}\n{log_path}\n"
+                    full_error_output = f"\n{process_error_message}\n{log_path}\n"
                     gui_queue.put(('-VIDEOCR_OUTPUT-', full_error_output))
                     expecting_log_path = False
-                    paddle_error_message = ""
+                    process_error_message = ""
                     continue
 
-                paddle_error_match = PADDLE_ERROR_PATTERN.search(line)
-                if paddle_error_match:
-                    paddle_error_message = line.strip()
+                if PROCESS_ERROR_PATTERN.search(line):
+                    process_error_message = line.strip()
                     expecting_log_path = True
                     continue
 
@@ -1749,27 +1857,82 @@ def run_videocr(args_dict: dict[str, Any], window: sg.Window) -> bool:
 
                 match1 = STEP1_PROGRESS_PATTERN.search(line)
                 if match1:
+                    step_num = int(match1.group(1))
                     last_reported_percentage_step1 = handle_progress(
                         match1, "progress_step1",
-                        last_reported_percentage_step1, 5, taskbar_base=0)
+                        last_reported_percentage_step1, 5, step_num)
                     continue
 
-                match2 = STEP2_PROGRESS_PATTERN.search(line)
+                match2 = STEP_IMAGE_PROGRESS_PATTERN.search(line)
                 if match2:
-                    last_reported_percentage_step2 = handle_progress(
-                        match2, "progress_step2",
-                        last_reported_percentage_step2, 5, taskbar_base=50)
+                    step_num = int(match2.group(1))
+
+                    if step_num == 2:
+                        last_reported_percentage_step2 = handle_progress(
+                            match2, "progress_step2",
+                            last_reported_percentage_step2, 5, step_num)
+                    elif step_num == 3:
+                        last_reported_percentage_step3 = handle_progress(
+                            match2, "progress_step3",
+                            last_reported_percentage_step3, 5, step_num)
+                    continue
+
+                info_pass_match = INFO_PASS_PATTERN.search(line)
+                if info_pass_match:
+                    frames = info_pass_match.group(1)
+                    grids = info_pass_match.group(2)
+                    raw_msg = LANG.get('cli_info_pass', "Running Text-Detection-Only pass on {} filtered frame(s) stitched into {} image grid(s)...")
+                    msg = raw_msg.format(frames, grids)
+                    gui_queue.put(('-VIDEOCR_OUTPUT-', msg + '\n'))
+                    gui_queue.put(('-PROGRESS-SMOOTH-', {'text': msg, 'percent': None}))
+                    continue
+
+                filtered_match = FILTERED_PATTERN.search(line)
+                if filtered_match:
+                    frames = filtered_match.group(1)
+                    raw_msg = LANG.get('cli_filtered', "Filtered out {} redundant frame(s) via Text-Detection and tight-box SSIM analysis.")
+                    msg = raw_msg.format(frames)
+                    gui_queue.put(('-VIDEOCR_OUTPUT-', msg + '\n'))
+                    gui_queue.put(('-PROGRESS-SMOOTH-', {'text': msg, 'percent': None}))
+                    continue
+
+                repack_match = REPACKING_PATTERN.search(line)
+                if repack_match:
+                    curr_frame = int(repack_match.group(1))
+                    tot_frame = int(repack_match.group(2))
+                    if tot_frame > 0:
+                        pct = (curr_frame / tot_frame) * 100
+                        if pct >= last_repacking_pct + 20.0 or curr_frame == tot_frame:
+                            raw_msg = LANG.get('cli_repacking', "Analyzing and repacking frame {} of {}")
+                            msg = f"{raw_msg.format(curr_frame, tot_frame)} ({int(pct)}%)"
+                            gui_queue.put(('-VIDEOCR_OUTPUT-', msg + "\n"))
+                            gui_queue.put(('-PROGRESS-SMOOTH-', {'text': msg, 'percent': None}))
+                            last_repacking_pct = pct
+                    continue
+
+                stitched_match = STITCHED_PATTERN.search(line)
+                if stitched_match:
+                    frames = stitched_match.group(1)
+                    grids = stitched_match.group(2)
+                    raw_msg = LANG.get('cli_stitched', "Stitched {} remaining frame(s) down to {} image grid(s).")
+                    msg = raw_msg.format(frames, grids)
+                    gui_queue.put(('-VIDEOCR_OUTPUT-', msg + '\n'))
+                    gui_queue.put(('-PROGRESS-SMOOTH-', {'text': msg, 'percent': None}))
                     continue
 
                 if REACHED_END_TIME_PATTERN.search(line):
                     gui_queue.put(('-VIDEOCR_OUTPUT-', LANG.get('log_reached_end', line) + '\n'))
                     gui_queue.put(('-PROGRESS-SMOOTH-', {'text': LANG.get('log_reached_end', line), 'percent': None}))
                     continue
-                if STARTING_OCR_PATTERN.search(line):
-                    gui_queue.put(('-VIDEOCR_OUTPUT-', LANG.get('cli_starting_ocr', line) + '\n'))
-                    gui_queue.put(('-PROGRESS-SMOOTH-', {'text': LANG.get('cli_starting_ocr', line), 'percent': None}))
+                if STARTING_PADDLEOCR_PATTERN.search(line):
+                    gui_queue.put(('-VIDEOCR_OUTPUT-', LANG.get('cli_starting_paddleocr', line) + '\n'))
+                    gui_queue.put(('-PROGRESS-SMOOTH-', {'text': LANG.get('cli_starting_paddleocr', line), 'percent': None}))
                     continue
-                elif GENERATING_SUBTITLES_PATTERN.search(line):
+                if STARTING_LENS_PATTERN.search(line):
+                    gui_queue.put(('-VIDEOCR_OUTPUT-', LANG.get('cli_starting_lens', line) + '\n'))
+                    gui_queue.put(('-PROGRESS-SMOOTH-', {'text': LANG.get('cli_starting_lens', line), 'percent': None}))
+                    continue
+                if GENERATING_SUBTITLES_PATTERN.search(line):
                     gui_queue.put(('-VIDEOCR_OUTPUT-', LANG.get('cli_generating_subs', line) + '\n'))
                     gui_queue.put(('-PROGRESS-SMOOTH-', {'text': LANG.get('cli_generating_subs', line), 'percent': None}))
                     continue
@@ -1782,7 +1945,7 @@ def run_videocr(args_dict: dict[str, Any], window: sg.Window) -> bool:
             full_stdout = "".join(stdout_lines)
             full_stderr = "".join(stderr_lines)
 
-            if ("Error: PaddleOCR failed" not in full_stdout and "Unsupported Hardware Error:" not in full_stdout):
+            if ("Error: Process failed" not in full_stdout and "Unsupported Hardware Error:" not in full_stdout):
                 log_message = (
                     f"The videocr-cli process crashed with exit code {exit_code}.\n\n"
                     f"--- COMMAND ---\n{' '.join(command)}\n\n"
@@ -2113,15 +2276,18 @@ tab1_content = [
             sg.Combo([], key="-VIDEO-LIST-", size=(38, 1), enable_events=True, readonly=True, disabled=True, expand_x=True), VerticalStrut()],
             [sg.Text("Output SRT:", size=(17, 1), key='-LBL-OUTPUT_SRT-'),
             sg.Input(key="--output", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, disabled=True, size=(40, 1)), VerticalStrut()],
+            [sg.Text("OCR Engine:", size=(17, 1), key='-LBL-OCR_ENGINE-'),
+            sg.Combo(OCR_ENGINES, default_value=DEFAULT_OCR_ENGINE, key="-OCR_ENGINE_COMBO-", size=(38, 1), readonly=True, enable_events=True, expand_x=True), VerticalStrut()],
             [sg.Text("Subtitle Language:", size=(17, 1), key='-LBL-SUB_LANG-'),
-            sg.Combo(language_display_names, default_value=DEFAULT_DISPLAY_LANGUAGE, key="-LANG_COMBO-", size=(38, 1), readonly=True, enable_events=True, expand_x=True), VerticalStrut()],
+            sg.Combo(paddle_display_names, default_value=DEFAULT_SUBTITLE_LANGUAGE, key="-LANG_COMBO-", size=(38, 1), readonly=True, enable_events=True, expand_x=True), VerticalStrut()],
             [sg.Text("Subtitle Position:", size=(17, 1), key='-LBL-SUB_POS-'),
             sg.Combo([], key="-SUBTITLE_POS_COMBO-", size=(38, 4), readonly=True, enable_events=True, expand_x=True), VerticalStrut()],
         ], pad=(0, None)),
         sg.Column([
             [sg.Button("Open File...", key="-BTN-OPEN-FILE-"), sg.Button("Open Folder...", key="-BTN-OPEN-FOLDER-")],
             [sg.Button('Save As...', key="-SAVE_AS_BTN-", disabled=True)],
-            [sg.Text(''), VerticalStrut()],
+            [sg.Button("Info", key="-BTN-OCR-INFO-")],
+            [VerticalStrut()],
             [sg.Push(), sg.Button("How to Use", key="-BTN-HELP-")],
         ], pad=(0, None), expand_x=True)
     ],
@@ -2596,6 +2762,7 @@ if not save_in_video_dir_checked_at_start:
 # --- Define the list of keys that, when changed, should trigger a settings save ---
 KEYS_TO_AUTOSAVE = [
     '-UI_LANG_COMBO-',
+    '-OCR_ENGINE_COMBO-',
     '-LANG_COMBO-',
     '-SUBTITLE_POS_COMBO-',
     '--time_start',
@@ -2754,14 +2921,22 @@ while True:
         elif event == '-LANG_COMBO-':
             if video_path:
                 current_out = values.get('--output', '')
-                selected_lang_name = values.get('-LANG_COMBO-', DEFAULT_DISPLAY_LANGUAGE)
-                paddle_code = language_abbr_lookup.get(selected_lang_name, 'en')
-                iso_code = PADDLE_TO_ISO_MAP.get(paddle_code, paddle_code)
+                selected_lang_name = values.get('-LANG_COMBO-', DEFAULT_SUBTITLE_LANGUAGE)
+                selected_engine_display = values.get('-OCR_ENGINE_COMBO-', DEFAULT_OCR_ENGINE)
+
+                if "Google Lens" in selected_engine_display:
+                    iso_code = lens_abbr_lookup.get(selected_lang_name, 'en')
+                else:
+                    paddle_code = paddle_abbr_lookup.get(selected_lang_name, 'en')
+                    iso_code = PADDLE_TO_ISO_MAP.get(paddle_code, paddle_code)
 
                 if current_out:
                     p = pathlib.Path(current_out)
                     directory = p.parent
-                    known_codes = set(language_abbr_lookup.values()).union(set(PADDLE_TO_ISO_MAP.values()))
+                    known_codes = set(paddle_abbr_lookup.values()).union(
+                        set(PADDLE_TO_ISO_MAP.values()),
+                        set(lens_abbr_lookup.values())
+                    )
                     base_name = None
 
                     if len(p.suffixes) >= 2 and p.suffixes[-1].lower() == '.srt' and p.suffixes[-2][1:] in known_codes:
@@ -2788,6 +2963,27 @@ while True:
                 else:
                     output_path = generate_output_path(video_path, values)
                     window['--output'].update(str(output_path))
+
+        elif event == '-OCR_ENGINE_COMBO-':
+            selected_engine = values['-OCR_ENGINE_COMBO-']
+            current_lang = values['-LANG_COMBO-']
+
+            if "Google Lens" in selected_engine:
+                new_values = lens_display_names
+            else:
+                new_values = paddle_display_names
+
+            if current_lang in new_values:
+                new_value = current_lang
+            else:
+                new_value = DEFAULT_SUBTITLE_LANGUAGE
+
+            window['-LANG_COMBO-'].update(values=new_values, value=new_value)
+
+            if video_path:
+                window.write_event_value('-LANG_COMBO-', new_value)
+
+            save_settings(window, values)
 
     if event == sg.WIN_CLOSED:
         video_manager.close()
@@ -2875,6 +3071,19 @@ while True:
         folder = sg.tk.filedialog.askdirectory()
         if folder:
             window['--default_output_dir'].update(folder)
+
+    elif event == '-BTN-OCR-INFO-':
+        custom_popup(window, LANG.get('engine_info', "OCR Engine Information"), LANG.get('engine_message', (
+            "PaddleOCR (Det. + Rec.):\n"
+            "• 100% local processing.\n"
+            "• Both text detection and recognition are done locally.\n\n"
+            "PaddleOCR (Det.) + Google Lens (Rec.):\n"
+            "• Hybrid processing.\n"
+            "• PaddleOCR handles text detection locally.\n"
+            "• Google Lens (online) handles text recognition.\n"
+            "• Requires an active internet connection.")),
+            icon=ICON_PATH
+        )
 
     elif event == '-NEW_VERSION_FOUND-':
         update_popup(
@@ -3618,11 +3827,28 @@ while True:
                 # --- RESTORE SETTINGS ---
                 window['--output'].update(args.get('output', ''))
 
-                saved_lang_abbr = args.get('lang', 'en')
-                disp_name = next((k for k, v in language_abbr_lookup.items() if v == saved_lang_abbr), 'English')
-                window['-LANG_COMBO-'].update(disp_name)
+                # Restore Engine selection
+                saved_engine = args.get('ocr_engine', 'paddleocr')
+                if saved_engine == 'google_lens':
+                    engine_display = OCR_ENGINES[1]
+                    active_lang_list = lens_display_names
+                    lookup = lens_abbr_lookup
+                else:
+                    engine_display = OCR_ENGINES[0]
+                    active_lang_list = paddle_display_names
+                    lookup = paddle_abbr_lookup
 
+                window['-OCR_ENGINE_COMBO-'].update(value=engine_display)
+
+                # Restore Language based on the restored engine
+                saved_lang_abbr = args.get('lang', 'en')
+                disp_name = next((k for k, v in lookup.items() if v == saved_lang_abbr), DEFAULT_SUBTITLE_LANGUAGE)
+                window['-LANG_COMBO-'].update(values=active_lang_list, value=disp_name)
+
+                # Restore remaining simple arguments
                 for arg_key, arg_val in args.items():
+                    if arg_key in ('ocr_engine', 'lang'):
+                        continue
                     gui_key = f"--{arg_key}"
                     if gui_key in window.AllKeysDict:
                         window[gui_key].update(arg_val)

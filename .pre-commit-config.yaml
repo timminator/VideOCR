@@ -9,7 +9,8 @@ repos:
     hooks:
       - id: mypy
         name: mypy
-        entry: mypy
+        entry: mypy .
+        pass_filenames: false
         language: system
         types: [python]
         args: ["--config-file=pyproject.toml"]

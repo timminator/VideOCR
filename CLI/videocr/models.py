@@ -9,7 +9,6 @@ from opencc import OpenCC
 from thefuzz import fuzz  # type: ignore
 
 from . import utils
-from .lang_dictionaries import ARABIC_LANGS
 
 
 @dataclass
@@ -29,8 +28,8 @@ class PredictedFrames:
     text: str
     _converter = OpenCC('t2s')
 
-    def __init__(self, index: int, pred_data: list[list[Any]], conf_threshold: float, zone_index: int,
-                 lang: str, normalize_to_simplified_chinese: bool) -> None:
+    def __init__(self, ocr_engine: str, index: int, pred_data: list[list[Any]], conf_threshold: float,
+                 zone_index: int, lang: str, normalize_to_simplified_chinese: bool) -> None:
         self.start_index = index
         self.end_index = index
         self.zone_index = zone_index
@@ -65,9 +64,8 @@ class PredictedFrames:
 
         lines_of_words.sort(key=lambda line: min(p[1] for p in line[0].bounding_box))
 
-        is_rtl = lang in ARABIC_LANGS
         for line in lines_of_words:
-            line.sort(key=lambda word: word.bounding_box[0][0], reverse=is_rtl)
+            line.sort(key=lambda word: word.bounding_box[0][0], reverse=utils.is_language_rtl(lang))
 
         self.lines = lines_of_words
 
@@ -78,9 +76,12 @@ class PredictedFrames:
         else:
             self.confidence = 0
 
-        self.text = '\n'.join(' '.join(word.text for word in line) for line in self.lines)
+        if ocr_engine == "google_lens":
+            self.text = '\n'.join(''.join(word.text for word in line) for line in self.lines)
+        else:
+            self.text = '\n'.join(' '.join(word.text for word in line) for line in self.lines)
 
-        if normalize_to_simplified_chinese and lang == "ch" and self.text:
+        if normalize_to_simplified_chinese and lang in ("ch", "zh-CN") and self.text:
             self.text = self._converter.convert(self.text)
 
 

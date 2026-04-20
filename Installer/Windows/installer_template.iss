@@ -169,7 +169,7 @@ begin
         DeleteFile(LegacyConfigPath);
     end;
 
-    if VersionCompare(OldVersion, '1.4.2') < 0 then
+    if VersionCompare(OldVersion, '1.5.0') < 0 then
     begin
       NewConfigPath := ExpandConstant('{userappdata}\\VideOCR\\videocr_gui_config.ini');
       if FileExists(NewConfigPath) then

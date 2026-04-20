@@ -8,6 +8,17 @@ DESKTOP_DIR="$HOME/.local/share/applications"
 DESKTOP_FILE="$DESKTOP_DIR/VideOCR.desktop"
 PORTABLE_FLAG="$APPDIR/portable_mode.txt"
 
+# Define config and log directories
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/VideOCR"
+LOG_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/VideOCR"
+
+# Check for and remove old configurations/logs to ensure a clean install
+if [ -d "$CONFIG_DIR" ] || [ -d "$LOG_DIR" ]; then
+    echo "Old version data found. Cleaning up old configuration and logs..."
+    rm -rf "$CONFIG_DIR"
+    rm -rf "$LOG_DIR"
+fi
+
 # Make sure the applications directory exists
 mkdir -p "$DESKTOP_DIR"
 

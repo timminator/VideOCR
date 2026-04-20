@@ -13,11 +13,11 @@
 
 ## ℹ 关于
 
-通过简单易用的图形界面，利用 [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) OCR引擎，从视频中提取硬编码（烧录）字幕。所有配置均可通过点击轻松完成。
+通过简单易用的图形界面从视频中提取硬编码（烧录）字幕。VideOCR 支持使用 **[PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)** 引擎进行 100% 本地处理，以及使用 **Google Lens** 进行高精度文本识别的混合云端处理。所有配置均可通过点击轻松完成。
 
-此仓库还提供了可与PaddleOCR结合使用的命令行版本VideOCR。
+此仓库还提供了可与支持的 OCR 引擎结合使用的命令行版本 VideOCR。
 
-最新版本集成了PaddleOCR的最新版本，OCR能力大幅提升。
+最新版本集成了 PaddleOCR 的最新版本用于本地处理，并引入了全新的 Google Lens 混合模式。
 
 ## 安装
 
@@ -64,7 +64,9 @@
 
 ## 性能说明
 
-在CPU上运行OCR过程可能较慢，建议搭配GPU使用。
+在 CPU 上运行本地 PaddleOCR 过程可能较慢，建议搭配 GPU 使用。
+
+或者，使用 google_lens 引擎可以将流程中最繁重的部分（文本识别）卸载到云端。对于没有强大 GPU 的用户来说，这是一个极佳且快速的选择（需要有效的网络连接）。
 
 ## 小贴士
 
@@ -88,17 +90,25 @@
 
   字幕文件（.srt）保存路径。
 
+- `ocr_engine`
+
+  选择用于文本检测和识别的 OCR 引擎。有效值为 `paddleocr`（默认）和 `google_lens`。
+  `paddleocr` 在本地执行 100% 的文本检测和识别处理。
+  `google_lens` 采用混合处理模式，在本地使用 PaddleOCR 进行文本检测，并使用 Google Lens 进行文本识别。注意：`google_lens` 模式需要有效的网络连接。
+
 - `lang`
 
-  字幕语言。支持的语言及缩写请参考[PaddleOCR文档](https://github.com/PaddlePaddle/PaddleOCR/blob/release/2.10/docs/ppocr/blog/multi_languages.en.md#5-support-languages-and-abbreviations)。
-  
+  字幕语言。支持的语言及缩写取决于您选择的 `ocr_engine`。
+  - 对于 `paddleocr`：请参考 [PaddleOCR文档](https://github.com/PaddlePaddle/PaddleOCR/blob/main/docs/version3.x/algorithm/PP-OCRv5/PP-OCRv5_multi_languages.md)。
+  - 对于 `google_lens`：请参考 [Google Lens文档](https://docs.cloud.google.com/vision/docs/languages?hl=zh-cn)。
+
 - `subtitle_position`
 
   指定字幕在视频中的对齐方式，有助于提升识别准确率。
 
 - `conf_threshold`
 
-  文字预测的置信度阈值。低于此值的文字将被忽略。默认值`75`适用于大多数场景。
+  文字预测的置信度阈值。低于此值的文字将被忽略。默认值 `75` 适用于大多数场景（仅适用 PaddleOCR）。
 
   若每行文字过少，可降低此值；若每行文字过多，可提高此值。
 
@@ -107,11 +117,11 @@
   字幕行的相似度阈值。基于[Levenshtein距离](https://en.wikipedia.org/wiki/Levenshtein_distance)，高于此阈值的字幕行将被合并。默认值`80`适用于大多数场景。
 
   若字幕行重复过多，可降低此值；若字幕行过少，可提高此值。
-  
+
 - `ssim_threshold`
 
-  若连续帧的SSIM超过此阈值，则跳过OCR。较低的值可减少OCR处理的帧数。在字幕区域裁剪较精确时，此值可降至85。
-  
+  若连续帧的SSIM超过此阈值，则该帧在第 1 步的初始过滤中将被视为相似帧并被丢弃。较低的值可显著减少需要进行OCR处理的图像数量。在字幕区域裁剪较精确的情况下，即使将此值降至 85 也能获得良好的效果。
+
 - `post_processing`
 
   启用后处理步骤，自动分析并修复缺失的空格（PaddleOCR常见问题）。目前仅支持英语、西班牙语、葡萄牙语、德语、意大利语和法语。详情请参考[wordninja-enhanced](https://github.com/timminator/wordninja-enhanced)仓库。
@@ -129,7 +139,7 @@
 - `use_fullframe`
 
   默认使用裁剪区域或底部三分之一帧进行OCR。设为`True`时，将使用完整帧。
-  
+
 - `crop_x(2)`, `crop_y(2)`, `crop_width(2)`, `crop_height(2)`
 
   指定OCR区域的像素范围。示例见下图：
@@ -149,16 +159,16 @@
 
 - `use_angle_cls`
 
-  设为`True`时，启用分类功能。
-  
+  设为 `True` 时，启用分类功能（仅适用 PaddleOCR）。
+
 - `brightness_threshold`
   
   若设置，亮度低于此阈值的像素将被置黑。有效范围为0（黑）至255（白）。适用于白色字幕的视频。
-  
+
 - `frames_to_skip`
 
   OCR前跳过的帧数。调整时需注意视频的fps。
-  
+
 - `min_subtitle_duration`
 
   短于此阈值的字幕将被忽略。
@@ -192,6 +202,7 @@
     - 进入目录并安装依赖：
       ```bash
       cd VideOCR
+      python -m pip install --upgrade pip
       pip install . --group all
       ```
     - 运行构建脚本：
