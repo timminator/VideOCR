@@ -2330,7 +2330,7 @@ tab_batch_content = [
     [sg.Text("Queue", font=("Arial", scale_font_size(12), "bold"), key='-LBL-QUEUE-TITLE-')],
     [sg.Table(values=[], headings=['Video File', 'Output File', 'Status'], key='-BATCH-TABLE-',
               col_widths=[25, 25, 15], auto_size_columns=False, justification='left',
-              expand_x=True, expand_y=True, enable_events=True, select_mode=sg.TABLE_SELECT_MODE_BROWSE)],
+              expand_x=True, expand_y=True, enable_events=True, select_mode=sg.TABLE_SELECT_MODE_EXTENDED)],
 
     [sg.Button("Start Queue", key="-BTN-BATCH-START-"),
      sg.Button("Stop Queue", key="-BTN-BATCH-STOP-", disabled=True),
@@ -2705,6 +2705,15 @@ window.bind('<Right>', '-GRAPH-<Right>')
 
 # --- Bind window restore event ---
 window.bind('<Map>', '-WINDOW_RESTORED-')
+
+# --- Track selection and bind keys to batch table ---
+window.batch_anchor = None
+window.batch_focus = None
+window.last_selection = []
+window.ignore_table_event = False
+
+window['-BATCH-TABLE-'].bind('<Shift-KeyPress-Down>', '-SHIFT-DOWN')
+window['-BATCH-TABLE-'].bind('<Shift-KeyPress-Up>', '-SHIFT-UP')
 
 
 # --- Failsafe for PySimpleGUI's overwrite event bug (-Graph-+UP with -GRAPH-+MOVE) on fast movements---
@@ -3743,35 +3752,105 @@ while True:
             refresh_batch_table(window)
             update_run_and_cancel_button_state(window, batch_queue)
 
+    elif event == '-BATCH-TABLE-':
+        if getattr(window, 'ignore_table_event', False):
+            window.ignore_table_event = False
+            window.last_selection = values['-BATCH-TABLE-']
+            continue
+
+        selected = values['-BATCH-TABLE-']
+        if not selected:
+            window.batch_anchor = None
+            window.batch_focus = None
+            window.last_selection = []
+            continue
+
+        last_sel = getattr(window, 'last_selection', [])
+        added = [x for x in selected if x not in last_sel]
+
+        if added:
+            if len(added) == 1:
+                window.batch_anchor = added[0]
+                window.batch_focus = added[0]
+            else:
+                anchor = getattr(window, 'batch_anchor', added[0])
+                window.batch_focus = max(added) if anchor < added[0] else min(added)
+        elif len(selected) == 1:
+            window.batch_anchor = selected[0]
+            window.batch_focus = selected[0]
+
+        if getattr(window, 'batch_focus', None) is not None:
+            tree_widget = window['-BATCH-TABLE-'].Widget
+            row_id = tree_widget.get_children()[window.batch_focus]
+            tree_widget.focus(row_id)
+
+        window.last_selection = selected
+
     elif event == "-BTN-BATCH-UP-":
         rows = values['-BATCH-TABLE-']
-        if rows and len(rows) == 1:
-            idx = rows[0]
-            if idx > 0:
-                batch_queue[idx], batch_queue[idx - 1] = batch_queue[idx - 1], batch_queue[idx]
+        if rows:
+            rows = sorted(rows)
+            if rows[0] > 0:
+                for idx in rows:
+                    batch_queue[idx], batch_queue[idx - 1] = batch_queue[idx - 1], batch_queue[idx]
                 refresh_batch_table(window)
-                window['-BATCH-TABLE-'].update(select_rows=[idx - 1])
+                window['-BATCH-TABLE-'].update(select_rows=[r - 1 for r in rows])
 
     elif event == "-BTN-BATCH-DOWN-":
         rows = values['-BATCH-TABLE-']
-        if rows and len(rows) == 1:
-            idx = rows[0]
-            if idx < len(batch_queue) - 1:
-                batch_queue[idx], batch_queue[idx + 1] = batch_queue[idx + 1], batch_queue[idx]
+        if rows:
+            rows = sorted(rows, reverse=True)
+            if rows[0] < len(batch_queue) - 1:
+                for idx in rows:
+                    batch_queue[idx], batch_queue[idx + 1] = batch_queue[idx + 1], batch_queue[idx]
                 refresh_batch_table(window)
-                window['-BATCH-TABLE-'].update(select_rows=[idx + 1])
+                window['-BATCH-TABLE-'].update(select_rows=[r + 1 for r in rows])
 
     elif event == "-BTN-BATCH-RESET-":
         rows = values['-BATCH-TABLE-']
-        if rows and len(rows) == 1:
-            idx = rows[0]
-            status = batch_queue[idx]['status']
+        if rows:
+            changed = False
+            for idx in rows:
+                status = batch_queue[idx]['status']
+                if status in ('Cancelled', 'Error', 'Completed'):
+                    batch_queue[idx]['status'] = 'Pending'
+                    changed = True
 
-            if status in ('Cancelled', 'Error', 'Completed'):
-                batch_queue[idx]['status'] = 'Pending'
-
+            if changed:
                 refresh_batch_table(window)
                 update_run_and_cancel_button_state(window, batch_queue)
+
+    elif event == '-BATCH-TABLE--SHIFT-DOWN':
+        if getattr(window, 'batch_anchor', None) is None or getattr(window, 'batch_focus', None) is None:
+            continue
+
+        focus = window.batch_focus
+        if focus < len(batch_queue) - 1:
+            focus += 1
+
+        window.batch_focus = focus
+        start, end = min(window.batch_anchor, focus), max(window.batch_anchor, focus)
+        new_sel = list(range(start, end + 1))
+
+        window.ignore_table_event = True
+        window['-BATCH-TABLE-'].update(select_rows=new_sel)
+        window.last_selection = new_sel
+
+    elif event == '-BATCH-TABLE--SHIFT-UP':
+        if getattr(window, 'batch_anchor', None) is None or getattr(window, 'batch_focus', None) is None:
+            continue
+
+        focus = window.batch_focus
+        if focus > 0:
+            focus -= 1
+
+        window.batch_focus = focus
+        start, end = min(window.batch_anchor, focus), max(window.batch_anchor, focus)
+        new_sel = list(range(start, end + 1))
+
+        window.ignore_table_event = True
+        window['-BATCH-TABLE-'].update(select_rows=new_sel)
+        window.last_selection = new_sel
 
     elif event == "-BTN-BATCH-EDIT-":
         rows = values['-BATCH-TABLE-']
