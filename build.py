@@ -289,8 +289,10 @@ def create_windows_installer(final_app_path: Path, args: argparse.Namespace) -> 
 
 
 # --- Main Build Logic ---
-def package_target(build_target: str, args: argparse.Namespace, releases_dir: Path, base_gui_dist: Path, base_cli_dist: Path, paddle_version: str, chrome_lens_version: str) -> None:
+def package_target(build_target: str, args: argparse.Namespace, releases_dir: Path, base_gui_dist: Path | None, base_cli_dist: Path, paddle_version: str, chrome_lens_version: str) -> None:
     """Packages a single distribution for the specified target using pre-compiled files."""
+
+    is_cli_only = args.cli_only.lower() == 'true'
 
     if "gpu" in build_target:
         display_target_name = build_target.replace("gpu-", "GPU-").replace("cuda", "CUDA-")
@@ -308,10 +310,13 @@ def package_target(build_target: str, args: argparse.Namespace, releases_dir: Pa
     work_dir.mkdir()
 
     print(f"Creating temporary work directories in '{work_dir}'...")
-    temp_gui_dist = work_dir / "gui_dist"
     temp_cli_dist = work_dir / "cli_dist"
-    shutil.copytree(base_gui_dist, temp_gui_dist)
     shutil.copytree(base_cli_dist, temp_cli_dist)
+
+    temp_gui_dist = None
+    if not is_cli_only and base_gui_dist:
+        temp_gui_dist = work_dir / "gui_dist"
+        shutil.copytree(base_gui_dist, temp_gui_dist)
 
     # Download and Extract Dependencies into the temporary CLI folder
     print_header(f"Downloading Dependencies for {display_target_name} target")
@@ -363,55 +368,58 @@ def package_target(build_target: str, args: argparse.Namespace, releases_dir: Pa
         base_target_name = build_target.upper()
 
     cli_final_name = f"videocr-cli-{base_target_name}-v{APP_VERSION}{cuda_suffix}{release_tag}{os_suffix}"
-    final_app_folder_name = f"VideOCR-{base_target_name}-v{APP_VERSION}{cuda_suffix}{release_tag}{os_suffix}"
-
-    # Create the Standalone CLI release
     final_cli_path = releases_dir / cli_final_name
     print(f"Creating standalone CLI at '{final_cli_path}'")
     shutil.copytree(temp_cli_dist, final_cli_path)
 
-    # Merge CLI into GUI
-    print(f"Merging CLI files into GUI root for {final_app_folder_name}...")
-    for item in temp_cli_dist.rglob('*'):
-        relative_path = item.relative_to(temp_cli_dist)
-        target_path = temp_gui_dist / relative_path
+    if not is_cli_only and temp_gui_dist:
+        final_app_folder_name = f"VideOCR-{base_target_name}-v{APP_VERSION}{cuda_suffix}{release_tag}{os_suffix}"
 
-        if item.is_dir():
-            target_path.mkdir(exist_ok=True)
-        else:
-            shutil.copy2(item, target_path)
+        # Merge CLI into GUI
+        print(f"Merging CLI files into GUI root for {final_app_folder_name}...")
+        for item in temp_cli_dist.rglob('*'):
+            relative_path = item.relative_to(temp_cli_dist)
+            target_path = temp_gui_dist / relative_path
 
-    # Copy Linux installer scripts if applicable
-    if os_name == "Linux":
-        print("Copying Linux installer scripts...")
-        installer_src = Path("Installer/Linux")
-        for script_name in ["install_videocr.sh", "uninstall_videocr.sh"]:
-            src_path = installer_src / script_name
-            dest_path = temp_gui_dist / script_name
-            if src_path.exists():
-                shutil.copy(src_path, dest_path)
-                os.chmod(dest_path, dest_path.stat().st_mode | stat.S_IEXEC)
-                print(f"Copied and set +x on {script_name}")
+            if item.is_dir():
+                target_path.mkdir(exist_ok=True)
             else:
-                print(f"WARNING: Installer script not found at {src_path}")
+                shutil.copy2(item, target_path)
 
-    # Move final GUI folder to Releases
-    final_app_path = releases_dir / final_app_folder_name
-    print(f"Moving final application to '{final_app_path}'")
-    shutil.move(str(temp_gui_dist), final_app_path)
+        # Copy Linux installer scripts if applicable
+        if os_name == "Linux":
+            print("Copying Linux installer scripts...")
+            installer_src = Path("Installer/Linux")
+            for script_name in ["install_videocr.sh", "uninstall_videocr.sh"]:
+                src_path = installer_src / script_name
+                dest_path = temp_gui_dist / script_name
+                if src_path.exists():
+                    shutil.copy(src_path, dest_path)
+                    os.chmod(dest_path, dest_path.stat().st_mode | stat.S_IEXEC)
+                    print(f"Copied and set +x on {script_name}")
+                else:
+                    print(f"WARNING: Installer script not found at {src_path}")
 
-    shutil.rmtree(work_dir)
+        # Move final GUI folder to Releases
+        final_app_path = releases_dir / final_app_folder_name
+        print(f"Moving final application to '{final_app_path}'")
+        shutil.move(str(temp_gui_dist), final_app_path)
 
-    if sys.platform == "win32" and args.windows_installer and args.windows_installer.lower() == 'true':
-        create_windows_installer(final_app_path, args)
+        shutil.rmtree(work_dir)
 
-    print_header("Preparing Portable Standalone Build")
-    print("Injecting portable_mode.txt for standalone GUI archive...")
-    portable_flag_gui = final_app_path / "portable_mode.txt"
-    portable_flag_gui.touch()
+        if sys.platform == "win32" and args.windows_installer and args.windows_installer.lower() == 'true':
+            create_windows_installer(final_app_path, args)
+
+        print_header("Preparing Portable Standalone Build")
+        print("Injecting portable_mode.txt for standalone GUI archive...")
+        portable_flag_gui = final_app_path / "portable_mode.txt"
+        portable_flag_gui.touch()
+    else:
+        shutil.rmtree(work_dir)
 
     if args.archive and args.archive.lower() == 'true':
-        create_final_archive(final_app_path, build_target)
+        if not is_cli_only:
+            create_final_archive(final_app_path, build_target)
         create_final_archive(final_cli_path, build_target)
 
 
@@ -422,6 +430,11 @@ def main() -> None:
         choices=["cpu", "gpu", "all"],
         default="cpu",
         help="The build target for PaddleOCR: 'cpu', 'gpu' (builds all GPU versions), or 'all'. Defaults to 'cpu'."
+    )
+    parser.add_argument(
+        "--cli-only",
+        default='false',
+        help="(Optional) Set to 'true' to skip building the GUI and only build the CLI."
     )
     parser.add_argument(
         "--signtool",
@@ -455,9 +468,12 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    is_cli_only = args.cli_only.lower() == 'true'
+
     # Prerequisite Checks
-    check_tkinter()
-    check_dbus()
+    if not is_cli_only:
+        check_tkinter()
+        check_dbus()
     check_7zip()
 
     paddle_version = get_latest_paddle_version()
@@ -472,18 +488,22 @@ def main() -> None:
 
     print_header("Compiling Binaries")
 
-    # Compile GUI
-    gui_script = "VideOCR.py"
-    gui_dist_folder = Path("VideOCR.dist")
-    if gui_dist_folder.exists():
-        shutil.rmtree(gui_dist_folder)
-    run_command([sys.executable, "-m", "nuitka", gui_script])
-    if not gui_dist_folder.is_dir():
-        print(f"ERROR: Nuitka failed to create the GUI dist folder: {gui_dist_folder}")
-        sys.exit(1)
-    gui_exe = gui_dist_folder / "VideOCR.exe"
-    if gui_exe.exists():
-        sign_file(args.signtool, args.sign_cert_name, gui_exe)
+    # Compile GUI conditionally
+    gui_dist_folder = None
+    if not is_cli_only:
+        gui_script = "VideOCR.py"
+        gui_dist_folder = Path("VideOCR.dist")
+        if gui_dist_folder.exists():
+            shutil.rmtree(gui_dist_folder)
+        run_command([sys.executable, "-m", "nuitka", gui_script])
+        if not gui_dist_folder.is_dir():
+            print(f"ERROR: Nuitka failed to create the GUI dist folder: {gui_dist_folder}")
+            sys.exit(1)
+        gui_exe = gui_dist_folder / "VideOCR.exe"
+        if gui_exe.exists():
+            sign_file(args.signtool, args.sign_cert_name, gui_exe)
+    else:
+        print("Skipping GUI compilation due to --cli-only flag.")
 
     # Compile CLI
     cli_folder = Path("CLI")
@@ -523,7 +543,8 @@ def main() -> None:
     # --- Final Cleanup ---
     print_header("Final Cleanup")
     print("Removing temporary compilation directories...")
-    shutil.rmtree(gui_dist_folder)
+    if gui_dist_folder:
+        shutil.rmtree(gui_dist_folder)
     shutil.rmtree(cli_dist_folder)
 
     print_header("All Builds Complete!")
