@@ -42,6 +42,7 @@ dev = [
 ]
 build = [
     "nuitka",
+    "patchelf; sys_platform == 'linux'",
     "requests",
 ]
 all = [
