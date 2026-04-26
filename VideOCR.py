@@ -1452,6 +1452,8 @@ def handle_progress(match: re.Match[str], label_format_key: str, last_percentage
         handle_progress.last_update_time = 0  # type: ignore
     if not hasattr(handle_progress, "start_percent"):
         handle_progress.start_percent = 0.0  # type: ignore
+    if not hasattr(handle_progress, "last_eta"):
+        handle_progress.last_eta = ""  # type: ignore
     if not hasattr(handle_progress, "last_taskbar_val"):
         handle_progress.last_taskbar_val = -1  # type: ignore
 
@@ -1515,13 +1517,11 @@ def handle_progress(match: re.Match[str], label_format_key: str, last_percentage
         action_text = LANG.get('progress_step1_action', 'Processing video...')
         frame_lbl = LANG.get('lbl_frame', 'Frame')
         msg_template = f"{prefix} {action_text} {curr_ts_str} / {target_ts_str}, {frame_lbl}: {frame_num} ({{percent}}%)"
-
     elif label_format_key == "progress_step2":
         default_raw = "Performing Text-Detection on image {current} of {total} ({percent}%)"
         raw_msg = LANG.get('progress_step2_action', default_raw)
         action_text = raw_msg.replace('{current}', current_item_display).replace('{total}', display_total)
         msg_template = f"{prefix} {action_text}"
-
     elif label_format_key == "progress_step3":
         default_raw = "Performing OCR on image {current} of {total} ({percent}%)"
         raw_msg = LANG.get('progress_step3_action', default_raw)
@@ -1538,15 +1538,16 @@ def handle_progress(match: re.Match[str], label_format_key: str, last_percentage
             log_msg = msg_template.format(percent=int(current_percent))
             gui_queue.put(('-VIDEOCR_OUTPUT-', log_msg + "\n"))
 
-    eta_str = ""
+    eta_str = handle_progress.last_eta  # type: ignore
     elapsed = current_time - handle_progress.start_time  # type: ignore
     percent_done_this_phase = current_percent - handle_progress.start_percent  # type: ignore
 
-    if percent_done_this_phase > 0:
+    if percent_done_this_phase > 0 and elapsed > 0:
         rate = percent_done_this_phase / elapsed
         remaining_percent = 100.0 - current_percent
         remaining_seconds = remaining_percent / rate
         eta_str = f"{eta_prefix}: {format_seconds(remaining_seconds)}"
+        handle_progress.last_eta = eta_str  # type: ignore
 
     display_text = msg_template.format(percent=f"{current_percent:.1f}")
 
