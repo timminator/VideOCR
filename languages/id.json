@@ -175,8 +175,7 @@
 
     "cli_info_pass": "Menjalankan tahapan Hanya-Deteksi-Teks pada {} frame terfilter yang disatukan menjadi {} kisi gambar...",
     "cli_filtered": "Memfilter {} frame redundan melalui Deteksi-Teks dan analisis SSIM kotak-ketat.",
-    "cli_repacking": "Menganalisis dan mengemas ulang frame {} dari {}",
-    "cli_stitched": "Menyatukan {} frame yang tersisa menjadi {} kisi gambar.",
+    "cli_analyzing": "Menganalisis frame {} dari {}",
     "cli_starting_lens": "Memulai Google Lens CLI...",
     "lbl_frame": "Frame",
     "cli_starting_paddleocr": "Memulai PaddleOCR...",

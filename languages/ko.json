@@ -175,8 +175,7 @@
 
     "cli_info_pass": "{}개의 이미지 그리드로 병합된 {}개의 필터링된 프레임에 대해 텍스트 감지 전용 패스를 실행하는 중...",
     "cli_filtered": "텍스트 감지 및 타이트 박스 SSIM 분석을 통해 {}개의 중복 프레임을 필터링했습니다.",
-    "cli_repacking": "프레임 {} / {} 분석 및 재포장 중",
-    "cli_stitched": "남은 {} 프레임을 {} 이미지 그리드로 병합했습니다.",
+    "cli_analyzing": "프레임 {} / {} 분석 중",
     "cli_starting_lens": "Google Lens CLI를 시작하는 중...",
     "lbl_frame": "프레임",
     "cli_starting_paddleocr": "PaddleOCR을 시작하는 중...",

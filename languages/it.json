@@ -175,8 +175,7 @@
 
     "cli_info_pass": "Esecuzione passaggio di solo rilevamento testo su {} fotogrammi filtrati e uniti in {} griglie di immagini...",
     "cli_filtered": "Filtrati {} fotogrammi ridondanti tramite Rilevamento Testo e analisi SSIM a riquadro stretto.",
-    "cli_repacking": "Analisi e ricomposizione del fotogramma {} di {}",
-    "cli_stitched": "Uniti i {} fotogrammi rimanenti in {} griglie di immagini.",
+    "cli_analyzing": "Analizzando il fotogramma {} di {}",
     "cli_starting_lens": "Avvio CLI di Google Lens...",
     "lbl_frame": "Fotogramma",
     "cli_starting_paddleocr": "Avvio PaddleOCR...",

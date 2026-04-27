@@ -1774,12 +1774,11 @@ def run_videocr(args_dict: dict[str, Any], window: sg.Window) -> bool:
     PROCESS_ERROR_PATTERN = re.compile(r"Error: Process failed.")
     STEP1_PROGRESS_PATTERN = re.compile(r"Step (\d+)/\d+: Processing video\.\.\. Current: ([\d:]+) / ([\d:]+|Unknown), Frame: (\d+)")
     STEP_IMAGE_PROGRESS_PATTERN = re.compile(r"Step (\d+)/\d+: Performing (?:Text-Detection|OCR) on image (\d+) of (\d+)")
-    REPACKING_PATTERN = re.compile(r"Analyzing and repacking frame (\d+) of (\d+)")
+    REPACKING_PATTERN = re.compile(r"Analyzing frame (\d+) of (\d+)")
     STARTING_PADDLEOCR_PATTERN = re.compile(r"Starting PaddleOCR\.\.\.")
     STARTING_LENS_PATTERN = re.compile(r"Starting Google Lens CLI\.\.\.")
     INFO_PASS_PATTERN = re.compile(r"Running Text-Detection-Only pass on (\d+) filtered frame\(s\) stitched into (\d+) image grid\(s\)\.\.\.")
     FILTERED_PATTERN = re.compile(r"Filtered out (\d+) redundant frame\(s\) via Text-Detection and tight-box SSIM analysis\.")
-    STITCHED_PATTERN = re.compile(r"Stitched (\d+) remaining frame\(s\) down to (\d+) image grid\(s\)\.")
     GENERATING_SUBTITLES_PATTERN = re.compile(r"Generating subtitles\.\.\.")
     REACHED_END_TIME_PATTERN = re.compile(r"Reached end time\. Stopping\.")
 
@@ -1904,21 +1903,11 @@ def run_videocr(args_dict: dict[str, Any], window: sg.Window) -> bool:
                     if tot_frame > 0:
                         pct = (curr_frame / tot_frame) * 100
                         if pct >= last_repacking_pct + 20.0 or curr_frame == tot_frame:
-                            raw_msg = LANG.get('cli_repacking', "Analyzing and repacking frame {} of {}")
+                            raw_msg = LANG.get('cli_analyzing', "Analyzing frame {} of {}")
                             msg = f"{raw_msg.format(curr_frame, tot_frame)} ({int(pct)}%)"
                             gui_queue.put(('-VIDEOCR_OUTPUT-', msg + "\n"))
                             gui_queue.put(('-PROGRESS-SMOOTH-', {'text': msg, 'percent': None}))
                             last_repacking_pct = pct
-                    continue
-
-                stitched_match = STITCHED_PATTERN.search(line)
-                if stitched_match:
-                    frames = stitched_match.group(1)
-                    grids = stitched_match.group(2)
-                    raw_msg = LANG.get('cli_stitched', "Stitched {} remaining frame(s) down to {} image grid(s).")
-                    msg = raw_msg.format(frames, grids)
-                    gui_queue.put(('-VIDEOCR_OUTPUT-', msg + '\n'))
-                    gui_queue.put(('-PROGRESS-SMOOTH-', {'text': msg, 'percent': None}))
                     continue
 
                 if REACHED_END_TIME_PATTERN.search(line):

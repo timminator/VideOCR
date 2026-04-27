@@ -562,8 +562,8 @@ class Video:
                 dt_scores = data["dt_scores"]
 
                 for poly, score in zip(dt_polys, dt_scores):
-                    adjusted_poly, best_m = utils.unstitch_polygon(poly, mapping)
-                    temp_polys_dict[best_m["frame_idx"]].append({"poly": adjusted_poly, "score": score})
+                    for adjusted_poly, m in utils.unstitch_polygon(poly, mapping):
+                        temp_polys_dict[m["frame_idx"]].append({"poly": adjusted_poly, "score": score})
 
                 for m in mapping:
                     polys_data = temp_polys_dict[m["frame_idx"]]
@@ -579,14 +579,13 @@ class Video:
             frames_deleted_count = 0
             next_print_target = 15
 
-            rec_stitched_dir = os.path.join(temp_dir, "rec_stitched")
-            os.makedirs(rec_stitched_dir, exist_ok=True)
+            rec_images_dir = os.path.join(temp_dir, "rec_images")
+            os.makedirs(rec_images_dir, exist_ok=True)
 
             empty_frames_meta: set[tuple[int, int]] = set()
             surviving_frames_meta: set[tuple[int, int]] = set()
-            rec_stitch_map: dict[str, list[dict[str, Any]]] = {}
+            rec_image_map: dict[str, dict[str, int]] = {}
             rec_counter = 0
-            rec_batches: dict[int, list[dict[str, Any]]] = {0: [], 1: []}
 
             drain_event.clear()
             rec_writers: list[threading.Thread] = []
@@ -617,7 +616,7 @@ class Video:
                                 empty_frames_meta.add(coord)
 
                             if frames_processed >= next_print_target:
-                                print(f"\rAnalyzing and repacking frame {frames_processed} of {total_stitched_frames}", end="", flush=True)
+                                print(f"\rAnalyzing frame {frames_processed} of {total_stitched_frames}", end="", flush=True)
                                 next_print_target = frames_processed + 15
 
                             continue
@@ -686,25 +685,27 @@ class Video:
 
                             for item in surviving_items:
                                 surviving_frames_meta.add((item["frame_idx"], z_idx))
-                                rec_batches[z_idx].append(item)
 
-                                if len(rec_batches[z_idx]) >= batch_limits[z_idx]:
-                                    rec_counter = flush_batch(rec_batches[z_idx], rec_counter, z_idx, "rec_stitched", rec_stitched_dir, rec_stitch_map)
-                                    rec_batches[z_idx] = []
+                                filename = f"rec_image_{rec_counter:0{FILENAME_ZERO_PADDING}d}_zone{z_idx}.jpg"
+                                filepath = os.path.join(rec_images_dir, filename)
+                                h, w = item["img"].shape[:2]
+                                write_queue.put((filepath, w, h, [(item["img"], 0, 0)]))
+
+                                rec_image_map[filename] = {
+                                    "frame_idx": item["frame_idx"],
+                                    "zone_idx": z_idx
+                                }
+                                rec_counter += 1
 
                             frames_processed += len(ssim_args[1])
 
                             if frames_processed >= next_print_target:
-                                print(f"\rAnalyzing and repacking frame {frames_processed} of {total_stitched_frames}", end="", flush=True)
+                                print(f"\rAnalyzing frame {frames_processed} of {total_stitched_frames}", end="", flush=True)
                                 next_print_target = frames_processed + 15
 
                         loaded_grids.clear()
 
-                for z_idx in [0, 1]:
-                    if rec_batches[z_idx]:
-                        rec_counter = flush_batch(rec_batches[z_idx], rec_counter, z_idx, "rec_stitched", rec_stitched_dir, rec_stitch_map)
-
-                print(f"\rAnalyzing and repacking frame {frames_processed} of {total_stitched_frames}", end="", flush=True)
+                print(f"\rAnalyzing frame {frames_processed} of {total_stitched_frames}", end="", flush=True)
                 success = True
 
             except KeyboardInterrupt:
@@ -732,7 +733,6 @@ class Video:
                     raise error_list[0]
 
             print(f"\nFiltered out {frames_deleted_count} redundant frame(s) via Text-Detection and tight-box SSIM analysis.", flush=True)
-            print(f"Stitched {len(surviving_frames_meta)} remaining frame(s) down to {rec_counter} image grid(s).", flush=True)
 
             if rec_counter == 0:
                 return
@@ -740,13 +740,13 @@ class Video:
             # --------------------------------------------------------
             # Recognition Pass
             # --------------------------------------------------------
-            stitched_ocr_outputs: dict[str, list[Any]] = {}
+            rec_ocr_outputs: dict[str, list[Any]] = {}
             ocr_image_index = 0
 
             if ocr_engine == "google_lens":
                 args = [
                     self.google_lens_path,
-                    rec_stitched_dir,
+                    rec_images_dir,
                     self.lang,
                     "--get-coords",
                     "--oneline",
@@ -763,7 +763,7 @@ class Video:
                     data = json.loads(line)
                     stitched_filename = data["file"]
 
-                    if stitched_filename not in rec_stitch_map:
+                    if stitched_filename not in rec_image_map:
                         continue
 
                     grid_w = data["dimensions"]["original_width"]
@@ -790,16 +790,16 @@ class Video:
                         combined_text = text + separator
                         results.append([box, (combined_text, 1.0)])
 
-                    stitched_ocr_outputs[stitched_filename] = results
+                    rec_ocr_outputs[stitched_filename] = results
                     ocr_image_index += 1
-                    print(f"\rStep 3/3: Performing OCR on image {ocr_image_index} of {len(rec_stitch_map)}", end="", flush=True)
+                    print(f"\rStep 3/3: Performing OCR on image {ocr_image_index} of {len(rec_image_map)}", end="", flush=True)
                 print()
 
             elif ocr_engine == "paddleocr":
                 args = [
                     self.paddleocr_path,
                     "ocr",
-                    "--input", rec_stitched_dir,
+                    "--input", rec_images_dir,
                     "--device", "gpu" if use_gpu else "cpu",
                     "--use_textline_orientation", "true" if use_angle_cls else "false",
                     "--use_doc_orientation_classify", "false",
@@ -825,33 +825,34 @@ class Video:
                         match = re.search(r"\*+(.+?)\*+$", line)
                         if match:
                             current_image = os.path.basename(match.group(1)).strip()
-                            stitched_ocr_outputs[current_image] = []
+                            rec_ocr_outputs[current_image] = []
                             ocr_image_index += 1
-                            print(f"\rStep 3/3: Performing OCR on image {ocr_image_index} of {len(rec_stitch_map)}", end="", flush=True)
+                            print(f"\rStep 3/3: Performing OCR on image {ocr_image_index} of {len(rec_image_map)}", end="", flush=True)
                     elif current_image and '[[' in line:
                         try:
                             match = re.search(r"ppocr INFO:\s*(\[.+\])", line)
                             if match:
                                 parsed = ast.literal_eval(match.group(1))
-                                stitched_ocr_outputs[current_image].append(parsed)
+                                rec_ocr_outputs[current_image].append(parsed)
                         except Exception as e:
                             print(f"Error parsing OCR for {current_image}: {e}", flush=True)
                 print()
 
-            # Unstitch 2D coordinates
+            # Map 2D coordinates
             ocr_outputs: dict[tuple[int, int], list[Any]] = {}
 
-            for stitched_filename, results in stitched_ocr_outputs.items():
-                if stitched_filename not in rec_stitch_map:
+            for filename, results in rec_ocr_outputs.items():
+                if filename not in rec_image_map:
                     continue
 
-                for word_pred in results:
-                    adjusted_box, best_m = utils.unstitch_polygon(word_pred[0], rec_stitch_map[stitched_filename])
+                m = rec_image_map[filename]
+                coord_key = (m["frame_idx"], m["zone_idx"])
 
-                    coord_key = (best_m["frame_idx"], zone_idx)
-                    if coord_key not in ocr_outputs:
-                        ocr_outputs[coord_key] = []
-                    ocr_outputs[coord_key].append([adjusted_box, word_pred[1]])
+                if coord_key not in ocr_outputs:
+                    ocr_outputs[coord_key] = []
+
+                for word_pred in results:
+                    ocr_outputs[coord_key].append([word_pred[0], word_pred[1]])
 
             active_frame_coords = surviving_frames_meta | empty_frames_meta
 

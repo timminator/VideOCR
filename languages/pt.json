@@ -175,8 +175,7 @@
 
     "cli_info_pass": "Executando passagem de Apenas-Detecção de Texto em {} quadro(s) filtrado(s) mesclado(s) em {} grade(s) de imagens...",
     "cli_filtered": "Filtrado(s) {} quadro(s) redundante(s) via Detecção de Texto e análise SSIM de caixa ajustada.",
-    "cli_repacking": "Analisando e reempacotando quadro {} de {}",
-    "cli_stitched": "Mesclado(s) {} quadro(s) restante(s) em {} grade(s) de imagens.",
+    "cli_analyzing": "Analisando quadro {} de {}",
     "cli_starting_lens": "Iniciando a CLI do Google Lens...",
     "lbl_frame": "Quadro",
     "cli_starting_paddleocr": "Iniciando PaddleOCR...",

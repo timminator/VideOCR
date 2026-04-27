@@ -175,8 +175,7 @@
 
     "cli_info_pass": "{} 個の画像グリッドに結合された {} 個のフィルタリング済みフレームに対してテキスト検出のみのパスを実行しています...",
     "cli_filtered": "テキスト検出とタイトボックスSSIM分析により、{} 個の冗長なフレームをフィルタリングしました。",
-    "cli_repacking": "フレーム {} / {} を分析および再パッキングしています",
-    "cli_stitched": "残りの {} フレームを {} 個の画像グリッドに結合しました。",
+    "cli_analyzing": "フレーム {} / {} を分析しています",
     "cli_starting_lens": "Google Lens CLIを開始しています...",
     "lbl_frame": "フレーム",
     "cli_starting_paddleocr": "PaddleOCRを開始しています...",

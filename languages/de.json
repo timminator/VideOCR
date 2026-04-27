@@ -175,8 +175,7 @@
 
     "cli_info_pass": "Führe reinen Texterkennungs-Durchlauf auf {} gefilterten Frame(s) durch, die zu {} Bildraster(n) zusammengefügt wurden...",
     "cli_filtered": "{} redundante(n) Frame(s) durch Texterkennung und Tight-Box-SSIM-Analyse herausgefiltert.",
-    "cli_repacking": "Analysiere und packe Frame {} von {} neu",
-    "cli_stitched": "{} verbleibende(n) Frame(s) zu {} Bildraster(n) zusammengefügt.",
+    "cli_analyzing": "Analysiere Frame {} von {} neu",
     "cli_starting_lens": "Starte Google Lens CLI...",
     "lbl_frame": "Bild",
     "cli_starting_paddleocr": "Starte PaddleOCR...",

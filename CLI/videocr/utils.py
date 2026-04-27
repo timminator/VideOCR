@@ -370,25 +370,65 @@ def get_batch_limit(w: int, h: int, max_width: int, max_height: int, padding: in
     return cols * rows
 
 
-def unstitch_polygon(poly: list[list[float]], mapping: list[dict[str, Any]]) -> tuple[list[list[float]], dict[str, Any]]:
-    """Finds the closest grid frame for a polygon and adjusts its coordinates to local space."""
-    cx = sum(pt[0] for pt in poly) / 4.0
-    cy = sum(pt[1] for pt in poly) / 4.0
+def unstitch_polygon(poly: list[list[float]], mapping: list[dict[str, Any]]) -> list[tuple[list[list[float]], dict[str, Any]]]:
+    """Finds all grid frames a polygon intersects and clips coordinates to their local space."""
+    poly_min_x = min(pt[0] for pt in poly)
+    poly_max_x = max(pt[0] for pt in poly)
+    poly_min_y = min(pt[1] for pt in poly)
+    poly_max_y = max(pt[1] for pt in poly)
 
-    best_m = min(mapping, key=lambda m:
-        (cx - (m["x"] + m["w"] / 2.0))**2 +
-        (cy - (m["y"] + m["h"] / 2.0))**2
-    )
+    intersections = []
 
-    adjusted_poly = [[pt[0] - best_m["x"], pt[1] - best_m["y"]] for pt in poly]
+    for m in mapping:
+        cell_min_x = m["x"]
+        cell_max_x = m["x"] + m["w"]
+        cell_min_y = m["y"]
+        cell_max_y = m["y"] + m["h"]
 
-    return adjusted_poly, best_m
+        if (poly_min_x < cell_max_x and poly_max_x > cell_min_x and
+            poly_min_y < cell_max_y and poly_max_y > cell_min_y):
+
+            inter_min_x = max(poly_min_x, cell_min_x)
+            inter_max_x = min(poly_max_x, cell_max_x)
+            inter_min_y = max(poly_min_y, cell_min_y)
+            inter_max_y = min(poly_max_y, cell_max_y)
+
+            if inter_max_x - inter_min_x < 5 or inter_max_y - inter_min_y < 5:
+                continue
+
+            local_min_x = inter_min_x - m["x"]
+            local_max_x = inter_max_x - m["x"]
+            local_min_y = inter_min_y - m["y"]
+            local_max_y = inter_max_y - m["y"]
+
+            adjusted_poly = [
+                [local_min_x, local_min_y],
+                [local_max_x, local_min_y],
+                [local_max_x, local_max_y],
+                [local_min_x, local_max_y]
+            ]
+            intersections.append((adjusted_poly, m))
+
+    if not intersections:
+        cx = sum(pt[0] for pt in poly) / 4.0
+        cy = sum(pt[1] for pt in poly) / 4.0
+
+        best_m = min(mapping, key=lambda m:
+            (cx - (m["x"] + m["w"] / 2.0))**2 +
+            (cy - (m["y"] + m["h"] / 2.0))**2
+        )
+
+        adjusted_poly = [[pt[0] - best_m["x"], pt[1] - best_m["y"]] for pt in poly]
+        intersections.append((adjusted_poly, best_m))
+
+    return intersections
 
 
 def stream_cli_process(args: list[str], log_name: str) -> Iterator[str]:
     """Executes a CLI process, yields its stdout lines, and handles errors/logging."""
     cli_env = os.environ.copy()
     cli_env["PYTHONIOENCODING"] = "utf-8"
+    cli_env["PYTHONUNBUFFERED"] = "1"
 
     process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", env=cli_env, bufsize=1)
 

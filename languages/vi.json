@@ -175,8 +175,7 @@
 
     "cli_info_pass": "Đang chạy lượt chỉ-Phát-hiện-Văn-bản trên {} khung hình đã lọc được ghép thành {} lưới hình ảnh...",
     "cli_filtered": "Đã lọc ra {} khung hình thừa thông qua Phát hiện văn bản và phân tích SSIM hộp chặt.",
-    "cli_repacking": "Đang phân tích và đóng gói lại khung hình {} / {}",
-    "cli_stitched": "Đã ghép {} khung hình còn lại thành {} lưới hình ảnh.",
+    "cli_analyzing": "Đang phân tích khung hình {} / {}",
     "cli_starting_lens": "Đang khởi động Google Lens CLI...",
     "lbl_frame": "Khung hình",
     "cli_starting_paddleocr": "Đang khởi động PaddleOCR...",

@@ -175,8 +175,7 @@
 
     "cli_info_pass": "Exécution de la passe de détection de texte seule sur {} image(s) filtrée(s) assemblée(s) en {} grille(s) d'images...",
     "cli_filtered": "Filtrage de {} image(s) redondante(s) via la détection de texte et l'analyse SSIM de boîte ajustée.",
-    "cli_repacking": "Analyse et ré-empaquetage de l'image {} sur {}",
-    "cli_stitched": "Assemblage des {} image(s) restante(s) en {} grille(s) d'images.",
+    "cli_analyzing": "Analyse de l'image {} sur {}",
     "cli_starting_lens": "Démarrage du CLI Google Lens...",
     "lbl_frame": "Image",
     "cli_starting_paddleocr": "Démarrage de PaddleOCR...",

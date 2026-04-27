@@ -175,8 +175,7 @@
 
     "cli_info_pass": "Ejecutando pasada solo de detección de texto en {} fotograma(s) filtrado(s) unido(s) en {} cuadrícula(s) de imágenes...",
     "cli_filtered": "Se filtraron {} fotograma(s) redundante(s) mediante detección de texto y análisis SSIM de caja ajustada.",
-    "cli_repacking": "Analizando y reempaquetando el fotograma {} de {}",
-    "cli_stitched": "Se combinaron {} fotograma(s) restante(s) en {} cuadrícula(s) de imágenes.",
+    "cli_analyzing": "Analizando el fotograma {} de {}",
     "cli_starting_lens": "Iniciando Google Lens CLI...",
     "lbl_frame": "Fotograma",
     "cli_starting_paddleocr": "Iniciando PaddleOCR...",

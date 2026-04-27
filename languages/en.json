@@ -175,8 +175,7 @@
 
     "cli_info_pass": "Running Text-Detection-Only pass on {} filtered frame(s) stitched into {} image grid(s)...",
     "cli_filtered": "Filtered out {} redundant frame(s) via Text-Detection and tight-box SSIM analysis.",
-    "cli_repacking": "Analyzing and repacking frame {} of {}",
-    "cli_stitched": "Stitched {} remaining frame(s) down to {} image grid(s).",
+    "cli_analyzing": "Analyzing frame {} of {}",
     "cli_starting_lens": "Starting Google Lens CLI...",
     "lbl_frame": "Frame",
     "cli_starting_paddleocr": "Starting PaddleOCR...",

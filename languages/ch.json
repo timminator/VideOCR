@@ -175,8 +175,7 @@
 
     "cli_info_pass": "正在对拼接为 {} 个图像网格的 {} 个过滤帧执行纯文本检测...",
     "cli_filtered": "通过文本检测和紧凑边界框 SSIM 分析过滤了 {} 个冗余帧。",
-    "cli_repacking": "正在分析和重新打包第 {} 帧，共 {} 帧",
-    "cli_stitched": "已将剩余的 {} 帧拼接到 {} 个图像网格中。",
+    "cli_analyzing": "正在分析第 {} 帧，共 {} 帧",
     "cli_starting_lens": "正在启动 Google Lens CLI...",
     "lbl_frame": "帧",
     "cli_starting_paddleocr": "正在启动 PaddleOCR...",
