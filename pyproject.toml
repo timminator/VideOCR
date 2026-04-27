@@ -25,7 +25,7 @@ dependencies = [
     "opencc",
     "Pillow",
     "psutil",
-    "PySimpleGUI-4-foss",
+    "PySimpleGUI",
     "thefuzz",
     "wakepy",
     "wordninja-enhanced",
