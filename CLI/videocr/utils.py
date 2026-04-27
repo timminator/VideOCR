@@ -533,6 +533,7 @@ def process_ssim_group(union_rects: list[list[float]], group_frames: list[tuple[
             current_similar_batch.append(item_dict)
         else:
             best_item = max(current_similar_batch, key=lambda x: x["det_score"])
+            best_item["frame_idx"] = current_similar_batch[0]["frame_idx"]
             local_surviving_items.append(best_item)
 
             current_similar_batch = [item_dict]
@@ -540,6 +541,7 @@ def process_ssim_group(union_rects: list[list[float]], group_frames: list[tuple[
 
     if current_similar_batch:
         best_item = max(current_similar_batch, key=lambda x: x["det_score"])
+        best_item["frame_idx"] = current_similar_batch[0]["frame_idx"]
         local_surviving_items.append(best_item)
 
     local_deleted = len(group_frames) - len(local_surviving_items)

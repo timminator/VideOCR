@@ -333,7 +333,7 @@ class Video:
                             h, w = img.shape[:2]
                             canvas[y:y + h, x:x + w] = img
 
-                        Image.fromarray(canvas).save(frame_path, quality=95, subsampling=0)
+                        Image.fromarray(canvas).save(frame_path, quality=80)
 
                 except Exception as e:
                     error_list.append(e)
