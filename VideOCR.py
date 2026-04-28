@@ -2802,6 +2802,11 @@ if len(sys.argv) > 1:
     path_arg = sys.argv[1]
     if os.path.exists(path_arg):
         path_arg = os.path.abspath(path_arg)
+
+        if path_arg in ("-h", "--help"):
+            print("VideOCR-GUI")
+            print("Usage: VideOCR.exe [video_file_path | folder_path]")
+            sys.exit(0)
         
         if os.path.isdir(path_arg):
             # If it's a directory, scan for videos just like the Browse Folder button
