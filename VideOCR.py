@@ -19,6 +19,7 @@
 
 from __future__ import annotations
 
+import argparse
 import ast
 import configparser
 import contextlib
@@ -2796,6 +2797,37 @@ KEYS_TO_AUTOSAVE = [
 ]
 
 window.is_drawing = False
+
+
+# --- Handle Command Line Arguments ---
+def valid_path(path_str):
+    """Checks if the path exists and is either a file or a folder."""
+    if not os.path.exists(path_str):
+        raise argparse.ArgumentTypeError(f"The path '{path_str}' does not exist.")
+    if not (os.path.isfile(path_str) or os.path.isdir(path_str)):
+        raise argparse.ArgumentTypeError(f"The path '{path_str}' is neither a file nor a directory.")
+    return os.path.abspath(path_str)
+
+
+parser = argparse.ArgumentParser(
+    description="VideOCR-GUI"
+)
+
+parser.add_argument('--video_path', type=valid_path, required=False, help='Path to the video file or directory')
+args = parser.parse_args()
+
+if args.path:
+    path_arg = args.path
+
+    if os.path.isdir(path_arg):
+        videos = scan_video_folder(path_arg)
+        if videos:
+            window['-VIDEO-LIST-'].update(value=videos[0], values=videos, size=(38, None), disabled=False)
+            window.write_event_value('-VIDEO-LIST-', videos[0])
+
+    elif os.path.isfile(path_arg):
+        window['-VIDEO-LIST-'].update(value=path_arg, values=[path_arg], size=(38, None), disabled=False)
+        window.write_event_value('-VIDEO-LIST-', path_arg)
 
 # --- Event Loop ---
 while True:
