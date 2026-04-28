@@ -2809,13 +2809,11 @@ if len(sys.argv) > 1:
             sys.exit(0)
 
         if os.path.isdir(path_arg):
-            # If it's a directory, scan for videos just like the Browse Folder button
             videos = scan_video_folder(path_arg)
             if videos:
                 window['-VIDEO-LIST-'].update(value=videos[0], values=videos, size=(38, None), disabled=False)
                 window.write_event_value('-VIDEO-LIST-', videos[0])
         elif os.path.isfile(path_arg):
-            # If it's a file, treat it like the Browse File button
             window['-VIDEO-LIST-'].update(value=path_arg, values=[path_arg], size=(38, None), disabled=False)
             window.write_event_value('-VIDEO-LIST-', path_arg)
 
