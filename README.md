@@ -38,6 +38,42 @@ This will create a shortcut for VideOCR. You can remove it via:
 ./uninstall_videocr.sh
 ```
 
+### Docker:
+The VideOCR CLI can also be entirely run within a Docker container.
+
+#### Requirements:
+- **[Docker](https://docs.docker.com/get-docker/)** installed on your system.
+- **For GPU acceleration:** An NVIDIA GPU with the **[NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)** installed on your host machine.
+
+#### Option A: Download from GitHub Container Registry (GHCR):
+Pre-built images are automatically generated and hosted on GitHub. You can pull them directly without needing to compile anything:
+
+- **CPU Version:**
+  ```bash
+  docker pull ghcr.io/timminator/videocr-cli-cpu:latest
+  ```
+
+- **GPU Version (CUDA 11.8 - Nvidia 10 Series graphics cards):**
+  ```bash
+  docker pull ghcr.io/timminator/videocr-cli-gpu-cuda11.8:latest
+  ```
+
+- **GPU Version (CUDA 12.9 - Nvidia 16 - 50 Series graphics cards):**
+  ```bash
+  docker pull ghcr.io/timminator/videocr-cli-gpu-cuda12.9:latest
+  ```
+
+#### Option B: Build Locally:
+If you prefer to build the image yourself from the source, clone the repository and use the provided Dockerfile. You can specify the hardware target using the BUILD_TARGET argument (cpu, gpu-cuda11.8, or gpu-cuda12.9).
+
+```bash
+# Example: Build the CUDA 12.9 GPU version locally
+docker build --build-arg BUILD_TARGET=gpu-cuda12.9 -t videocr-cli-gpu:latest .
+
+# Example: Build the CPU version locally
+docker build --build-arg BUILD_TARGET=cpu -t videocr-cli-cpu:latest .
+```
+
 ## Usage
 
 Import a video and seek through the video via the timeline. You can also use the right and left arrow keys. Then you can just draw a crop box over the right part of the video. Use click+drag to select. Afterwards you can start the subtitle extraction process via the "Run" Button.
@@ -64,6 +100,31 @@ There is also a CLI version available. Unzip the archive to your desired locatio
 .\videocr-cli.exe --video_path "Path\to\your\video\example.mp4" --output "Path\to\your\desired\subtitle\location\example.srt" --lang en --time_start "18:40" --use_gpu true
 ```
 More info about the arguments can be found in the parameters section further down.
+
+### Example Usage (Docker):
+When running the Docker container, you must use Docker volumes (-v) to mount your local video folder into the container's /data directory so the application can read the video and save the .srt output.
+
+- **GPU Example:**
+  ```bash
+  docker run --rm -it --gpus all \
+  -v /path/to/your/local/videos:/data \
+  ghcr.io/timminator/videocr-cli-gpu-cuda12.9:latest \
+  --video_path /data/my_video.mp4 \
+  --output /data/my_subtitle.srt \
+  --use_gpu true
+  ```
+
+
+- **CPU Example:**
+  ```bash
+  docker run --rm -it \
+  -v /path/to/your/local/videos:/data \
+  ghcr.io/timminator/videocr-cli-cpu:latest \
+  --video_path /data/my_video.mp4 \
+  --output /data/my_subtitle.srt
+  ```
+
+Any of the CLI parameters listed in the parameters section can be appended to the end of the docker run command.
 
 ## Performance
 

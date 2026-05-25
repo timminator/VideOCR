@@ -1,0 +1,35 @@
+name: Publish Docker Images to GHCR
+
+on:
+  workflow_dispatch: 
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        build_target: ["cpu", "gpu-cuda11.8", "gpu-cuda12.9"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          build-args: |
+            BUILD_TARGET=${{ matrix.build_target }}
+
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/videocr-cli-${{ matrix.build_target }}:latest
+            ghcr.io/${{ github.repository_owner }}/videocr-cli-${{ matrix.build_target }}:${{ github.sha }}

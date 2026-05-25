@@ -280,6 +280,11 @@ def is_process_running(pid: int) -> bool:
     return False
 
 
+def is_running_in_container() -> bool:
+    """Check if the app is running inside a Docker container."""
+    return os.path.exists('/.dockerenv')
+
+
 def create_clean_temp_dir() -> str:
     """Cleans up orphaned temporary directories from previous crashed runs and creates a fresh one for the current process."""
     current_pid = os.getpid()

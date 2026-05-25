@@ -354,6 +354,10 @@ def package_target(build_target: str, args: argparse.Namespace, releases_dir: Pa
     else:
         os.remove(paddle_archive_path)
 
+    for file_path in Path(temp_cli_dist).rglob("*flashattn*"):
+        if file_path.is_file():
+            file_path.unlink(missing_ok=True)
+
     # Assemble Final Directory Structure
     print_header(f"Assembling Final Directory Structure for {display_target_name}")
 
@@ -427,9 +431,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="VideOCR Build Script", formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument(
         "--target",
-        choices=["cpu", "gpu", "all"],
+        choices=["cpu", "gpu", "gpu-cuda11.8", "gpu-cuda12.9", "all"],
         default="cpu",
-        help="The build target for PaddleOCR: 'cpu', 'gpu' (builds all GPU versions), or 'all'. Defaults to 'cpu'."
+        help="The build target: 'cpu', 'gpu' (builds all GPU versions), specific gpu targets, or 'all'. Defaults to 'cpu'."
     )
     parser.add_argument(
         "--cli-only",

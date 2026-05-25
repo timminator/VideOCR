@@ -95,7 +95,7 @@ def valid_alignment_name(arg: str) -> str | None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description='Extract subtitles from video using PaddleOCR.')
+    parser = argparse.ArgumentParser(description='Extract subtitles from a video using PaddleOCR or Google Lens.')
 
     parser.add_argument('--video_path', type=valid_video_path, required=True, help='Path to the video file')
     parser.add_argument('--output', type=valid_output_path, default='subtitle.srt', help='Output SRT file path (default: subtitle.srt)')
@@ -172,7 +172,8 @@ def main() -> None:
             elif not is_zone2_empty:
                 raise ValueError("Partial crop coordinates detected for Zone 2. You must provide ALL four: --crop_x2, --crop_y2, --crop_width2, and --crop_height2.")
 
-        keep_awake_manager = nullcontext() if args.allow_system_sleep else keep.running()
+        disable_wakelock = args.allow_system_sleep or utils.is_running_in_container()
+        keep_awake_manager = nullcontext() if disable_wakelock else keep.running()
 
         with keep_awake_manager:
             save_subtitles_to_file(
