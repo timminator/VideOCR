@@ -113,7 +113,7 @@ def extract_non_chinese_segments(text: str) -> list[tuple[str, str]]:
     return segments
 
 
-def find_executable(program_name: str) -> str:
+def find_executable(program_name: str) -> str | None:
     """Finds an executable inside a directory starting with the program name."""
     program_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
     ext = ".exe" if sys.platform == "win32" else ".bin"
@@ -125,7 +125,7 @@ def find_executable(program_name: str) -> str:
             if os.path.isfile(path):
                 return path
 
-    raise FileNotFoundError(f"Could not find {executable_name} in any folder starting with '{program_name}'")
+    return None
 
 
 def resolve_model_dirs(lang: str, use_server_model: bool) -> tuple[str, str, str]:
@@ -170,10 +170,31 @@ def resolve_model_dirs(lang: str, use_server_model: bool) -> tuple[str, str, str
     )
 
 
-def perform_hardware_check(paddleocr_path: str, use_gpu: bool) -> None:
+def perform_hardware_check(use_gpu: bool, paddleocr_path: str | None = None) -> None:
     """Checks if the current system supports the hardware requirements."""
     error_prefix = "Unsupported Hardware Error:"
     warning_prefix = "Hardware Check Warning:"
+
+    CUDA_COMPATIBILITY_MAP = {
+        "CUDA-11.8": (6.1, 8.9) if sys.platform == "win32" else (6.0, 8.9),
+        "CUDA-12.9": (7.5, 12.0),
+    }
+
+    CUDA_DRIVER_MAP = {
+        "CUDA-11.8": "451.22" if sys.platform == "win32" else "450.36.06",
+        "CUDA-12.9": "527.41" if sys.platform == "win32" else "525.60.13",
+    }
+
+    cuda_version: str | None = None
+    if paddleocr_path is not None:
+        cuda_version = next((v for v in CUDA_COMPATIBILITY_MAP if v in paddleocr_path), None)
+    else:
+        try:
+            import paddle
+            cuda_ver = paddle.version.cuda()
+            cuda_version = f"CUDA-{cuda_ver}" if cuda_ver else None
+        except Exception:
+            pass
 
     def has_avx() -> bool:
         # CPUID leaf 1: Check AVX and OSXSAVE flags
@@ -199,16 +220,6 @@ def perform_hardware_check(paddleocr_path: str, use_gpu: bool) -> None:
         except Exception as e:
             print(f"{warning_prefix} Could not determine CPU AVX support due to an error: {e}. Functionality is uncertain.", flush=True)
 
-    CUDA_COMPATIBILITY_MAP = {
-        "CUDA-11.8": (6.1, 8.9) if sys.platform == "win32" else (6.0, 8.9),
-        "CUDA-12.9": (7.5, 12.0),
-    }
-
-    CUDA_DRIVER_MAP = {
-        "CUDA-11.8": "451.22" if sys.platform == "win32" else "450.36.06",
-        "CUDA-12.9": "527.41" if sys.platform == "win32" else "525.60.13",
-    }
-
     def parse_version(v_str: str) -> tuple[int, ...]:
         return tuple(map(int, v_str.split('.')))
 
@@ -224,33 +235,33 @@ def perform_hardware_check(paddleocr_path: str, use_gpu: bool) -> None:
             driver_version_str, compute_cap_str = [item.strip() for item in first_gpu_info.split(',')]
             compute_capability = float(compute_cap_str)
 
-            detected_cuda_version = next((v for v in CUDA_COMPATIBILITY_MAP if v in paddleocr_path), None)
-
-            if detected_cuda_version:
-                # Check Compute Capability
-                min_cc, max_cc = CUDA_COMPATIBILITY_MAP[detected_cuda_version]
+            if cuda_version and cuda_version in CUDA_COMPATIBILITY_MAP:
+                min_cc, max_cc = CUDA_COMPATIBILITY_MAP[cuda_version]
                 if not (min_cc <= compute_capability <= max_cc):
                     raise SystemExit(
                         f"{error_prefix} GPU compute capability is {compute_capability}, but this build "
-                        f"({detected_cuda_version}) requires a value between {min_cc} and {max_cc}."
+                        f"({cuda_version}) requires a value between {min_cc} and {max_cc}."
                     )
 
-                # Check NVIDIA Driver Version
-                required_driver = CUDA_DRIVER_MAP[detected_cuda_version]
+                required_driver = CUDA_DRIVER_MAP[cuda_version]
                 if parse_version(driver_version_str) < parse_version(required_driver):
                     raise SystemExit(
                         f"{error_prefix} NVIDIA driver version is {driver_version_str}, but this build "
-                        f"({detected_cuda_version}) requires version {required_driver} or newer."
+                        f"({cuda_version}) requires version {required_driver} or newer."
                     )
 
+        except SystemExit:
+            raise
         except Exception as e:
             print(f"{warning_prefix} Could not determine GPU support due to an error: {e}. Functionality is uncertain.", flush=True)
 
     check_cpu()
 
-    build_folder_name = os.path.basename(os.path.dirname(paddleocr_path))
-
-    if use_gpu and 'GPU' in build_folder_name.upper():
+    if paddleocr_path is not None:
+        build_folder_name = os.path.basename(os.path.dirname(paddleocr_path))
+        if use_gpu and 'GPU' in build_folder_name.upper():
+            check_gpu()
+    elif use_gpu:
         check_gpu()
 
 

@@ -25,8 +25,8 @@ class Video:
     path: str
     lang: str
     use_fullframe: bool
-    paddleocr_path: str
-    google_lens_path: str
+    paddleocr_path: str | None
+    google_lens_path: str | None
     post_processing: bool
     det_model_dir: str
     rec_model_dir: str
@@ -42,7 +42,7 @@ class Video:
     start_time_offset_ms: float
     avg_frame_duration_ms: float
 
-    def __init__(self, path: str, paddleocr_path: str, det_model_dir: str, rec_model_dir: str, cls_model_dir: str, google_lens_path: str) -> None:
+    def __init__(self, path: str, det_model_dir: str, rec_model_dir: str, cls_model_dir: str, google_lens_path: str | None = None, paddleocr_path: str | None = None) -> None:
         self.path = path
         self.paddleocr_path = paddleocr_path
         self.det_model_dir = det_model_dir
@@ -520,24 +520,41 @@ class Video:
             det_res_dir = os.path.join(temp_dir, "det_results")
             os.makedirs(det_res_dir, exist_ok=True)
 
-            args = [
-                self.paddleocr_path,
-                "text_detection",
-                "--input", det_stitched_dir,
-                "--model_dir", self.det_model_dir,
-                "--model_name", os.path.basename(self.det_model_dir),
-                "--save_path", det_res_dir
-            ]
+            if self.paddleocr_path is not None:
+                args = [
+                    self.paddleocr_path,
+                    "text_detection",
+                    "--input", det_stitched_dir,
+                    "--model_dir", self.det_model_dir,
+                    "--model_name", os.path.basename(self.det_model_dir),
+                    "--save_path", det_res_dir
+                ]
 
-            print("Starting PaddleOCR...", flush=True)
+                print("Starting PaddleOCR...", flush=True)
 
-            for line in utils.stream_cli_process(args, "paddleocr_error.log"):
-                if "ppocr INFO: Processed item" in line:
-                    match = re.search(r"Processed item (\d+)", line)
-                    if match:
-                        current_item = match.group(1)
-                        print(f"\rStep 2/3: Performing Text-Detection on image {current_item} of {det_counter}", end="", flush=True)
-            print()
+                for line in utils.stream_cli_process(args, "paddleocr_error.log"):
+                    if "ppocr INFO: Processed item" in line:
+                        match = re.search(r"Processed item (\d+)", line)
+                        if match:
+                            current_item = match.group(1)
+                            print(f"\rStep 2/3: Performing Text-Detection on image {current_item} of {det_counter}", end="", flush=True)
+                print()
+            else:
+                from paddleocr import TextDetection
+
+                det_model = TextDetection(
+                    model_name=os.path.basename(self.det_model_dir),
+                    model_dir=self.det_model_dir,
+                )
+
+                print("Starting PaddleOCR...", flush=True)
+
+                current_item = 0
+                for res in det_model.predict(det_stitched_dir):
+                    res.save_to_json(save_path=det_res_dir)
+                    current_item += 1
+                    print(f"\rStep 2/3: Performing Text-Detection on image {current_item} of {det_counter}", end="", flush=True)
+                print()
 
             # Parse JSON Outputs and unstitch coordinates
             parsed_detections: dict[int, list[Any]] = {0: [], 1: []}
@@ -547,8 +564,9 @@ class Video:
                     continue
 
                 with open(os.path.join(det_res_dir, json_file), encoding='utf-8') as f:
-                    data = json.load(f)
+                    raw = json.load(f)
 
+                data = raw.get('res', raw) if self.paddleocr_path is None else raw
                 stitched_filename = os.path.basename(data["input_path"])
                 if stitched_filename not in det_stitch_map:
                     continue
@@ -744,6 +762,8 @@ class Video:
             ocr_image_index = 0
 
             if ocr_engine == "google_lens":
+                if self.google_lens_path is None:
+                    raise FileNotFoundError("Google Lens CLI executable not found. Ensure the chrome-lens binary is in the application directory.")
                 args = [
                     self.google_lens_path,
                     rec_images_dir,
@@ -796,47 +816,93 @@ class Video:
                 print()
 
             elif ocr_engine == "paddleocr":
-                args = [
-                    self.paddleocr_path,
-                    "ocr",
-                    "--input", rec_images_dir,
-                    "--device", "gpu" if use_gpu else "cpu",
-                    "--use_textline_orientation", "true" if use_angle_cls else "false",
-                    "--use_doc_orientation_classify", "false",
-                    "--use_doc_unwarping", "false",
-                    "--lang", self.lang,
-                    "--text_detection_model_dir", self.det_model_dir,
-                    "--text_detection_model_name", os.path.basename(self.det_model_dir),
-                    "--text_recognition_model_dir", self.rec_model_dir,
-                    "--text_recognition_model_name", os.path.basename(self.rec_model_dir),
-                ]
+                if self.paddleocr_path is not None:
+                    args = [
+                        self.paddleocr_path,
+                        "ocr",
+                        "--input", rec_images_dir,
+                        "--device", "gpu" if use_gpu else "cpu",
+                        "--use_textline_orientation", "true" if use_angle_cls else "false",
+                        "--use_doc_orientation_classify", "false",
+                        "--use_doc_unwarping", "false",
+                        "--lang", self.lang,
+                        "--text_detection_model_dir", self.det_model_dir,
+                        "--text_detection_model_name", os.path.basename(self.det_model_dir),
+                        "--text_recognition_model_dir", self.rec_model_dir,
+                        "--text_recognition_model_name", os.path.basename(self.rec_model_dir),
+                    ]
 
-                if use_angle_cls:
-                    args += ["--textline_orientation_model_dir", self.cls_model_dir]
-                    args += ["--textline_orientation_model_name", os.path.basename(self.cls_model_dir)]
+                    if use_angle_cls:
+                        args += ["--textline_orientation_model_dir", self.cls_model_dir]
+                        args += ["--textline_orientation_model_name", os.path.basename(self.cls_model_dir)]
 
-                print("Starting PaddleOCR...", flush=True)
+                    print("Starting PaddleOCR...", flush=True)
 
-                current_image = None
-                for line in utils.stream_cli_process(args, "paddleocr_error.log"):
-                    line = line.strip()
+                    current_image = None
+                    for line in utils.stream_cli_process(args, "paddleocr_error.log"):
+                        line = line.strip()
 
-                    if "ppocr INFO: **********" in line:
-                        match = re.search(r"\*+(.+?)\*+$", line)
-                        if match:
-                            current_image = os.path.basename(match.group(1)).strip()
-                            rec_ocr_outputs[current_image] = []
-                            ocr_image_index += 1
-                            print(f"\rStep 3/3: Performing OCR on image {ocr_image_index} of {len(rec_image_map)}", end="", flush=True)
-                    elif current_image and '[[' in line:
-                        try:
-                            match = re.search(r"ppocr INFO:\s*(\[.+\])", line)
+                        if "ppocr INFO: **********" in line:
+                            match = re.search(r"\*+(.+?)\*+$", line)
                             if match:
-                                parsed = ast.literal_eval(match.group(1))
-                                rec_ocr_outputs[current_image].append(parsed)
-                        except Exception as e:
-                            print(f"Error parsing OCR for {current_image}: {e}", flush=True)
-                print()
+                                current_image = os.path.basename(match.group(1)).strip()
+                                rec_ocr_outputs[current_image] = []
+                                ocr_image_index += 1
+                                print(f"\rStep 3/3: Performing OCR on image {ocr_image_index} of {len(rec_image_map)}", end="", flush=True)
+                        elif current_image and '[[' in line:
+                            try:
+                                match = re.search(r"ppocr INFO:\s*(\[.+\])", line)
+                                if match:
+                                    parsed = ast.literal_eval(match.group(1))
+                                    rec_ocr_outputs[current_image].append(parsed)
+                            except Exception as e:
+                                print(f"Error parsing OCR for {current_image}: {e}", flush=True)
+                    print()
+                else:
+                    from paddleocr import PaddleOCR
+
+                    ocr_init_kwargs: dict[str, Any] = {
+                        "text_detection_model_dir": self.det_model_dir,
+                        "text_detection_model_name": os.path.basename(self.det_model_dir),
+                        "text_recognition_model_dir": self.rec_model_dir,
+                        "text_recognition_model_name": os.path.basename(self.rec_model_dir),
+                        "use_textline_orientation": use_angle_cls,
+                        "use_doc_orientation_classify": False,
+                        "use_doc_unwarping": False,
+                        "device": "gpu" if use_gpu else "cpu",
+                    }
+
+                    if use_angle_cls:
+                        ocr_init_kwargs["textline_orientation_model_dir"] = self.cls_model_dir
+                        ocr_init_kwargs["textline_orientation_model_name"] = os.path.basename(self.cls_model_dir)
+
+                    ocr = PaddleOCR(**ocr_init_kwargs)
+
+                    print("Starting PaddleOCR...", flush=True)
+
+                    ocr_image_index = 0
+                    for res in ocr.predict(rec_images_dir):
+                        data = res.res if hasattr(res, 'res') else res
+                        if isinstance(data, dict) and 'res' in data:
+                            data = data['res']
+
+                        filename = os.path.basename(data.get('input_path', ''))
+                        if filename not in rec_image_map:
+                            continue
+
+                        results: list[list[Any]] = []
+                        dt_polys = data.get('dt_polys', [])
+                        rec_texts = data.get('rec_texts', [])
+                        rec_scores = data.get('rec_scores', [])
+
+                        for poly, text, score in zip(dt_polys, rec_texts, rec_scores):
+                            poly_list = poly.tolist() if hasattr(poly, 'tolist') else poly
+                            results.append([poly_list, (text, float(score))])
+
+                        rec_ocr_outputs[filename] = results
+                        ocr_image_index += 1
+                        print(f"\rStep 3/3: Performing OCR on image {ocr_image_index} of {len(rec_image_map)}", end="", flush=True)
+                    print()
 
             # Map 2D coordinates
             ocr_outputs: dict[tuple[int, int], list[Any]] = {}

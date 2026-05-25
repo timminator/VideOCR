@@ -221,3 +221,56 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
     ```bash
     python build.py -h
     ```
+
+## Docker
+
+A Docker image is available for running VideOCR in a GPU-accelerated container. It uses the PaddleOCR Python API directly (no standalone binary required) and is based on the NVIDIA CUDA 12.9 runtime image with cuDNN.
+
+### Requirements
+
+- [Docker](https://docs.docker.com/get-docker/)
+- [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) (for GPU access)
+- NVIDIA GPU with compute capability 7.5+ and driver 525.60.13+
+
+### Building
+
+```bash
+docker build -t videocr .
+```
+
+The build uses cache mounts for apt, pip, and downloaded archives. Rebuilds after the first one are significantly faster since the 2GB PaddlePaddle wheel and other downloads are cached.
+
+### Running
+
+```bash
+docker run --gpus all -v /path/to/videos:/videos videocr \
+  --video_path /videos/example.mp4 \
+  --lang en \
+  --use_gpu true
+```
+
+The `--output` path defaults to the video's directory with an `.srt` extension. Mount your video directory to make both input and output accessible:
+
+```bash
+docker run --gpus all -v /path/to/videos:/videos videocr \
+  --video_path /videos/example.mp4 \
+  --output /videos/example.srt \
+  --lang en \
+  --use_gpu true \
+  --use_angle_cls true \
+  --conf_threshold 75
+```
+
+### Available Parameters
+
+All CLI parameters are supported except `--allow_system_sleep` (always enabled in Docker). See the [Command Line Parameters](#command-line-parameters-cli-version) section for details.
+
+### Image Size Optimization
+
+The Dockerfile removes several categories of redundant files within the PaddlePaddle install layer to minimize image size:
+
+- **NVIDIA pip packages** (~4.5 GB): PaddlePaddle pulls in CUDA/cuDNN runtime libraries as pip packages, but the base image already provides these. They are uninstalled in the same layer they're installed to avoid bloating the image.
+- **Flash Attention libraries** (~900 MB): Only needed for LLM/transformer inference, not OCR.
+- **Duplicate OpenCV**: `opencv-python` is removed (redundant with `opencv-contrib-python` which PaddleX requires).
+
+Despite these optimizations, the Docker image is still 8.6GB, mostly because of CUDA and Paddle.

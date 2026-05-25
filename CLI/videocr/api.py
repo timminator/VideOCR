@@ -23,8 +23,9 @@ def save_subtitles_to_file(
         subtitle_alignments.append(None)
 
     paddleocr_path = utils.find_executable("paddleocr")
+
     try:
-        utils.perform_hardware_check(paddleocr_path, use_gpu)
+        utils.perform_hardware_check(use_gpu, paddleocr_path=paddleocr_path)
     except SystemExit as e:
         print(e, flush=True)
         sys.exit(1)
@@ -32,12 +33,13 @@ def save_subtitles_to_file(
     if ocr_engine == 'paddleocr':
         det_model_dir, rec_model_dir, cls_model_dir = utils.resolve_model_dirs(lang, use_server_model)
     else:
-        # For the Text-Detection-Only Pass just the default detection model is needed
         det_model_dir, rec_model_dir, cls_model_dir = utils.resolve_model_dirs('en', use_server_model)
 
-    google_lens_path = utils.find_executable("chrome-lens")
+    google_lens_path: str | None = None
+    if ocr_engine == 'google_lens':
+        google_lens_path = utils.find_executable("chrome-lens")
 
-    v = Video(video_path, paddleocr_path, det_model_dir, rec_model_dir, cls_model_dir, google_lens_path)
+    v = Video(video_path, det_model_dir, rec_model_dir, cls_model_dir, google_lens_path, paddleocr_path=paddleocr_path)
     try:
         v.run_ocr(
             use_gpu, ocr_engine, lang, use_angle_cls, time_start, time_end, conf_threshold,
