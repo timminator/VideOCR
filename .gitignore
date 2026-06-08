@@ -13,6 +13,9 @@ videocr_gui_config.ini
 /CLI/Chrome-Lens-OCR*
 /videocr-cli*/
 
+# Local test assets (videos, extracted frames, generated srt)
+/test/
+
 # Environments
 .env
 .venv

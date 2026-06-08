@@ -35,7 +35,7 @@ def save_subtitles_to_file(
         # For the Text-Detection-Only Pass just the default detection model is needed
         det_model_dir, rec_model_dir, cls_model_dir = utils.resolve_model_dirs('en', use_server_model)
 
-    google_lens_path = utils.find_executable("chrome-lens")
+    google_lens_path = utils.find_executable("chrome-lens") if ocr_engine == "google_lens" else ""
 
     v = Video(video_path, paddleocr_path, det_model_dir, rec_model_dir, cls_model_dir, google_lens_path)
     try:

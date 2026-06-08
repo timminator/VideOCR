@@ -11,12 +11,12 @@ import threading
 from typing import Any, cast
 
 import av
-import fast_ssim  # type: ignore
 import numpy as np
 import wordninja_enhanced as wordninja  # type: ignore
 from PIL import Image
 
 from . import utils
+from . import _ssim_compat as fast_ssim  # native fast_ssim lib won't load on macOS/arm64
 from .models import PredictedFrames, PredictedSubtitle
 from .pyav_adapter import Capture, get_video_properties
 
@@ -796,11 +796,14 @@ class Video:
                 print()
 
             elif ocr_engine == "paddleocr":
+                rec_res_dir = os.path.join(temp_dir, "rec_results")
+                os.makedirs(rec_res_dir, exist_ok=True)
                 args = [
                     self.paddleocr_path,
                     "ocr",
                     "--input", rec_images_dir,
                     "--device", "gpu" if use_gpu else "cpu",
+                    "--save_path", rec_res_dir,
                     "--use_textline_orientation", "true" if use_angle_cls else "false",
                     "--use_doc_orientation_classify", "false",
                     "--use_doc_unwarping", "false",
@@ -817,25 +820,30 @@ class Video:
 
                 print("Starting PaddleOCR...", flush=True)
 
-                current_image = None
-                for line in utils.stream_cli_process(args, "paddleocr_error.log"):
-                    line = line.strip()
+                # Drain the process; PaddleOCR 3.x results are read from the JSON
+                # files written to --save_path, not parsed from stdout.
+                for _line in utils.stream_cli_process(args, "paddleocr_error.log"):
+                    pass
 
-                    if "ppocr INFO: **********" in line:
-                        match = re.search(r"\*+(.+?)\*+$", line)
-                        if match:
-                            current_image = os.path.basename(match.group(1)).strip()
-                            rec_ocr_outputs[current_image] = []
-                            ocr_image_index += 1
-                            print(f"\rStep 3/3: Performing OCR on image {ocr_image_index} of {len(rec_image_map)}", end="", flush=True)
-                    elif current_image and '[[' in line:
-                        try:
-                            match = re.search(r"ppocr INFO:\s*(\[.+\])", line)
-                            if match:
-                                parsed = ast.literal_eval(match.group(1))
-                                rec_ocr_outputs[current_image].append(parsed)
-                        except Exception as e:
-                            print(f"Error parsing OCR for {current_image}: {e}", flush=True)
+                for json_file in os.listdir(rec_res_dir):
+                    if not json_file.endswith("_res.json"):
+                        continue
+                    with open(os.path.join(rec_res_dir, json_file), encoding="utf-8") as f:
+                        data = json.load(f)
+
+                    stitched_filename = os.path.basename(data.get("input_path", ""))
+                    if stitched_filename not in rec_image_map:
+                        continue
+
+                    rec_ocr_outputs.setdefault(stitched_filename, [])
+                    polys = data.get("rec_polys") or []
+                    texts = data.get("rec_texts") or []
+                    scores = data.get("rec_scores") or []
+                    for poly, text, score in zip(polys, texts, scores):
+                        rec_ocr_outputs[stitched_filename].append([poly, (text, float(score))])
+
+                    ocr_image_index += 1
+                    print(f"\rStep 3/3: Performing OCR on image {ocr_image_index} of {len(rec_image_map)}", end="", flush=True)
                 print()
 
             # Map 2D coordinates

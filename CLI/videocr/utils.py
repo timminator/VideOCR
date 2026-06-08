@@ -10,9 +10,16 @@ from collections.abc import Iterator
 from typing import IO, Any
 
 import av
-import fast_ssim  # type: ignore
+from . import _ssim_compat as fast_ssim  # native fast_ssim lib won't load on macOS/arm64
 import numpy as np
-from cpuid import cpuid, xgetbv  # type: ignore
+try:
+    from cpuid import cpuid, xgetbv  # type: ignore
+except Exception:  # cpuid is x86-only; on arm64 the AVX check is skipped (caller catches and warns)
+    def cpuid(*_a, **_k):  # type: ignore
+        raise RuntimeError("cpuid unavailable on this platform")
+
+    def xgetbv(*_a, **_k):  # type: ignore
+        raise RuntimeError("xgetbv unavailable on this platform")
 from PIL import Image
 
 from .lang_dictionaries import PADDLEOCR_LANGS
@@ -114,7 +121,10 @@ def extract_non_chinese_segments(text: str) -> list[tuple[str, str]]:
 
 
 def find_executable(program_name: str) -> str:
-    """Finds an executable inside a directory starting with the program name."""
+    """Finds an executable on PATH, or inside a directory starting with the program name."""
+    on_path = shutil.which(program_name)
+    if on_path:
+        return on_path
     program_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
     ext = ".exe" if sys.platform == "win32" else ".bin"
     executable_name = f"{program_name}{ext}"
