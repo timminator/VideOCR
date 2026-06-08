@@ -71,6 +71,34 @@ docker build --build-arg BUILD_TARGET=gpu-cuda12.9 -t videocr-cli-gpu:latest .
 docker build --build-arg BUILD_TARGET=cpu -t videocr-cli-cpu:latest .
 ```
 
+### macOS（Apple Silicon / arm64）:
+macOS 没有预编译包，也没有 Docker 镜像——内置的 PaddleOCR 独立运行时仅支持 x86 的 Windows/Linux。在 Apple Silicon 上，CLI 改为**从源码原生运行**，调用 pip 安装的 PaddleOCR。这也比在模拟下运行 x86 Docker 镜像更快。
+
+1. 用 Python 3.12（PaddlePaddle 兼容性最佳）创建环境并安装依赖：
+   ```bash
+   conda create -n videocr python=3.12 -y
+   conda activate videocr
+   pip install paddlepaddle paddleocr \
+     av scikit-image numpy Pillow opencc thefuzz wordninja-enhanced wakepy psutil
+   ```
+   > `scikit-image` 用于替换 `fast_ssim`（其内置原生库在 macOS 上无法加载）。x86 专用的 `cpuid` 和仅 GUI 用的 `PySimpleGUI` 在 CLI 下都不需要。
+
+2. 下载 PP-OCRv5 模型支持文件（与架构无关），解压到 `CLI/` 下，使目录结构为 `CLI/PaddleOCR.PP-OCRv5.support.files/`。从最新的 [PaddleOCR-Standalone release](https://github.com/timminator/PaddleOCR-Standalone/releases) 下载 `PaddleOCR.PP-OCRv5.support.files.VideOCR.tar.xz`：
+   ```bash
+   tar -xf PaddleOCR.PP-OCRv5.support.files.VideOCR.tar.xz -C CLI/
+   ```
+
+3. 从源码运行 CLI：
+   ```bash
+   python CLI/videocr_cli.py -h
+   python CLI/videocr_cli.py \
+     --video_path /path/to/video.mp4 \
+     --output /path/to/subtitle.srt \
+     --lang ch --use_server_model true
+   ```
+
+提取中文硬字幕的便捷封装脚本见 `ocr_cn.sh`。
+
 ## 使用说明
 
 导入视频后，可通过时间轴或左右方向键浏览视频内容。通过点击拖拽的方式在视频上绘制裁剪框，选择字幕区域。完成后，点击“运行”按钮开始字幕提取。

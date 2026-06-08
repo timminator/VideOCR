@@ -74,6 +74,34 @@ docker build --build-arg BUILD_TARGET=gpu-cuda12.9 -t videocr-cli-gpu:latest .
 docker build --build-arg BUILD_TARGET=cpu -t videocr-cli-cpu:latest .
 ```
 
+### macOS (Apple Silicon / arm64):
+There is no prebuilt binary or Docker image for macOS — the bundled standalone PaddleOCR runtime is x86 Windows/Linux only. On Apple Silicon the CLI runs natively from source against a pip-installed PaddleOCR instead. This is also faster than running the x86 Docker image under emulation.
+
+1. Create an environment with Python 3.12 (recommended for PaddlePaddle compatibility) and install the dependencies:
+   ```bash
+   conda create -n videocr python=3.12 -y
+   conda activate videocr
+   pip install paddlepaddle paddleocr \
+     av scikit-image numpy Pillow opencc thefuzz wordninja-enhanced wakepy psutil
+   ```
+   > `scikit-image` replaces the `fast_ssim` package, whose bundled native library cannot be loaded on macOS. The x86-only `cpuid` and the GUI-only `PySimpleGUI` are not needed for the CLI.
+
+2. Download the PP-OCRv5 model support files (architecture-independent) and extract them into the `CLI/` folder so the layout is `CLI/PaddleOCR.PP-OCRv5.support.files/`. Grab `PaddleOCR.PP-OCRv5.support.files.VideOCR.tar.xz` from the latest [PaddleOCR-Standalone release](https://github.com/timminator/PaddleOCR-Standalone/releases):
+   ```bash
+   tar -xf PaddleOCR.PP-OCRv5.support.files.VideOCR.tar.xz -C CLI/
+   ```
+
+3. Run the CLI from source:
+   ```bash
+   python CLI/videocr_cli.py -h
+   python CLI/videocr_cli.py \
+     --video_path /path/to/video.mp4 \
+     --output /path/to/subtitle.srt \
+     --lang en --use_server_model true
+   ```
+
+A convenience wrapper for extracting Chinese hardcoded subtitles is provided in `ocr_cn.sh`.
+
 ## Usage
 
 Import a video and seek through the video via the timeline. You can also use the right and left arrow keys. Then you can just draw a crop box over the right part of the video. Use click+drag to select. Afterwards you can start the subtitle extraction process via the "Run" Button.
