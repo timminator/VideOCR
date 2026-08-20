@@ -9,7 +9,7 @@ import sys
 import tarfile
 from pathlib import Path
 
-import requests  # type: ignore
+import requests  # type: ignore[import-untyped, unused-ignore]
 
 from _version import __version__
 

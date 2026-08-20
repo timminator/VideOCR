@@ -26,6 +26,7 @@ dependencies = [
     "Pillow",
     "psutil",
     "PySimpleGUI",
+    "psgdnd",
     "thefuzz",
     "wakepy",
     "wordninja-enhanced",

@@ -42,6 +42,7 @@ from typing import IO, Any, cast
 
 import av
 import numpy as np
+import psgdnd as dnd  # type: ignore
 import psutil  # type: ignore
 import PySimpleGUI as sg  # type: ignore
 from PIL import Image
@@ -2569,6 +2570,13 @@ else:
         window.move(x, new_y)
         window.refresh()
 
+# Register elements for Drag & Drop
+try:
+    dnd.register_element_dnd(window['-VIDEO-LIST-'], window, dnd.DROP_TYPE_FILES)
+    dnd.register_element_dnd(window['-GRAPH-'], window, dnd.DROP_TYPE_FILES)
+except Exception as e:
+    log_error(f"Could not register Drag and Drop: {e}")
+
 # --- Load settings when the application starts ---
 load_settings(window)
 
@@ -3063,6 +3071,21 @@ while True:
             break
 
     # --- File/Folder Handling ---
+    elif dnd.is_drop_event(event):
+        if event.key in ('-VIDEO-LIST-', '-GRAPH-'):
+
+            if os.path.isdir(values[event]):
+                videos = scan_video_folder(values[event])
+                if videos:
+                    window['-VIDEO-LIST-'].update(value=videos[0], values=videos, size=(38, None), disabled=False)
+                    window.write_event_value('-VIDEO-LIST-', videos[0])
+                else:
+                    custom_popup(window, "No Videos", "No supported videos found in folder.", icon=ICON_PATH)
+
+            elif os.path.isfile(values[event]):
+                window['-VIDEO-LIST-'].update(value=values[event], values=[values[event]], size=(38, None), disabled=False)
+                window.write_event_value('-VIDEO-LIST-', values[event])
+
     elif event == '-BTN-OPEN-FILE-':
         video_file_types = LANG.get('video_file_types', "Video Files")
         all_file_types = LANG.get('all_file_types', "All Files")
