@@ -2573,11 +2573,12 @@ else:
         window.refresh()
 
 # Register elements for Drag & Drop
-try:
-    dnd.register_element_dnd(window['-VIDEO-LIST-'], window, dnd.DROP_TYPE_FILES)
-    dnd.register_element_dnd(window['-GRAPH-'], window, dnd.DROP_TYPE_FILES)
-except Exception as e:
-    log_error(f"Could not register Drag and Drop: {e}")
+if sys.platform == "win32":
+    try:
+        dnd.register_element_dnd(window['-VIDEO-LIST-'], window, dnd.DROP_TYPE_FILES)
+        dnd.register_element_dnd(window['-GRAPH-'], window, dnd.DROP_TYPE_FILES)
+    except Exception as e:
+        log_error(f"Could not register Drag and Drop: {e}")
 
 # --- Load settings when the application starts ---
 load_settings(window)
