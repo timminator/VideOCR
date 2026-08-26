@@ -131,37 +131,40 @@ def find_executable(program_name: str) -> str:
 def resolve_model_dirs(lang: str, use_server_model: bool) -> tuple[str, str, str]:
     """Resolves the model directory for the specified language and mode."""
     program_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
-    base_path = os.path.join(program_dir, "PaddleOCR.PP-OCRv5.support.files")
+    base_path = os.path.join(program_dir, "PaddleOCR.PP-OCRv6.support.files")
 
     det_path = os.path.join(base_path, "det")
     rec_path = os.path.join(base_path, "rec")
     cls_path = os.path.join(base_path, "cls", "PP-LCNet_x1_0_textline_ori")
 
-    mode = "server" if use_server_model else "mobile"
+    v6_mode = "medium" if use_server_model else "small"
+    legacy_mode = "server" if use_server_model else "mobile"
 
-    # DET
-    if lang == "ka":
-        det_sub = "PP-OCRv3_mobile_det"
+    is_v6_supported = lang in ("ch", "chinese_cht", "en", "japan") or (lang in PADDLEOCR_LANGS["latin"] and lang != "pi")
+
+    if is_v6_supported:
+        det_sub = f"PP-OCRv6_{v6_mode}_det"
+        rec_sub = f"PP-OCRv6_{v6_mode}_rec"
     else:
-        det_sub = f"PP-OCRv5_{mode}_det"
+        if lang == "ka":
+            det_sub = "PP-OCRv3_mobile_det"
+        else:
+            det_sub = f"PP-OCRv5_{legacy_mode}_det"
 
-    # REC
-    if lang in ("ch", "chinese_cht", "japan"):
-        rec_sub = f"PP-OCRv5_{mode}_rec"
-    elif lang in PADDLEOCR_LANGS["latin"]:
-        rec_sub = "latin_PP-OCRv5_mobile_rec"
-    elif lang in PADDLEOCR_LANGS["arabic"]:
-        rec_sub = "arabic_PP-OCRv5_mobile_rec"
-    elif lang in PADDLEOCR_LANGS["eslav"]:
-        rec_sub = "eslav_PP-OCRv5_mobile_rec"
-    elif lang in PADDLEOCR_LANGS["cyrillic"]:
-        rec_sub = "cyrillic_PP-OCRv5_mobile_rec"
-    elif lang in PADDLEOCR_LANGS["devanagari"]:
-        rec_sub = "devanagari_PP-OCRv5_mobile_rec"
-    elif lang in ("en", "korean", "th", "el", "te", "ta"):
-        rec_sub = f"{lang}_PP-OCRv5_mobile_rec"
-    elif lang == "ka":
-        rec_sub = "ka_PP-OCRv3_mobile_rec"
+        if lang in PADDLEOCR_LANGS["latin"]:
+            rec_sub = "latin_PP-OCRv5_mobile_rec"
+        elif lang in PADDLEOCR_LANGS["arabic"]:
+            rec_sub = "arabic_PP-OCRv5_mobile_rec"
+        elif lang in PADDLEOCR_LANGS["eslav"]:
+            rec_sub = "eslav_PP-OCRv5_mobile_rec"
+        elif lang in PADDLEOCR_LANGS["cyrillic"]:
+            rec_sub = "cyrillic_PP-OCRv5_mobile_rec"
+        elif lang in PADDLEOCR_LANGS["devanagari"]:
+            rec_sub = "devanagari_PP-OCRv5_mobile_rec"
+        elif lang in ("korean", "th", "el", "te", "ta"):
+            rec_sub = f"{lang}_PP-OCRv5_mobile_rec"
+        elif lang == "ka":
+            rec_sub = "ka_PP-OCRv3_mobile_rec"
 
     return (
         os.path.join(det_path, det_sub),

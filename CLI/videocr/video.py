@@ -517,39 +517,43 @@ class Video:
             total_stitched_frames = sum(len(mappings) for mappings in det_stitch_map.values())
             print(f"Running Text-Detection-Only pass on {total_stitched_frames} filtered frame(s) stitched into {det_counter} image grid(s)...", flush=True)
 
-            det_res_dir = os.path.join(temp_dir, "det_results")
-            os.makedirs(det_res_dir, exist_ok=True)
-
             args = [
                 self.paddleocr_path,
                 "text_detection",
                 "--input", det_stitched_dir,
                 "--model_dir", self.det_model_dir,
-                "--model_name", os.path.basename(self.det_model_dir),
-                "--save_path", det_res_dir
+                "--model_name", os.path.basename(self.det_model_dir)
             ]
 
             print("Starting PaddleOCR...", flush=True)
 
+            det_ocr_outputs: dict[str, list[Any]] = {}
+            current_image = None
+            det_image_index = 0
+
             for line in utils.stream_cli_process(args, "paddleocr_error.log"):
-                if "ppocr INFO: Processed item" in line:
-                    match = re.search(r"Processed item (\d+)", line)
+                line = line.strip()
+
+                if "ppocr INFO: **********" in line:
+                    match = re.search(r"\*+(.+?)\*+$", line)
                     if match:
-                        current_item = match.group(1)
-                        print(f"\rStep 2/3: Performing Text-Detection on image {current_item} of {det_counter}", end="", flush=True)
+                        current_image = os.path.basename(match.group(1)).strip()
+                        det_ocr_outputs[current_image] = []
+                        det_image_index += 1
+                        print(f"\rStep 2/3: Performing Text-Detection on image {det_image_index} of {det_counter}", end="", flush=True)
+                elif current_image and '[[' in line:
+                    try:
+                        match = re.search(r"ppocr INFO:\s*(\[.+\])", line)
+                        if match:
+                            parsed = ast.literal_eval(match.group(1))
+                            det_ocr_outputs[current_image].append(parsed)
+                    except Exception as e:
+                        print(f"Error parsing detection for {current_image}: {e}", flush=True)
             print()
 
-            # Parse JSON Outputs and unstitch coordinates
             parsed_detections: dict[int, list[Any]] = {0: [], 1: []}
 
-            for json_file in os.listdir(det_res_dir):
-                if not json_file.endswith('.json'):
-                    continue
-
-                with open(os.path.join(det_res_dir, json_file), encoding='utf-8') as f:
-                    data = json.load(f)
-
-                stitched_filename = os.path.basename(data["input_path"])
+            for stitched_filename, det_results in det_ocr_outputs.items():
                 if stitched_filename not in det_stitch_map:
                     continue
 
@@ -558,10 +562,10 @@ class Video:
 
                 temp_polys_dict: dict[int, list[Any]] = {m["frame_idx"]: [] for m in mapping}
 
-                dt_polys = data["dt_polys"]
-                dt_scores = data["dt_scores"]
+                for item in det_results:
+                    poly = item[0]
+                    score = item[1]
 
-                for poly, score in zip(dt_polys, dt_scores):
                     for adjusted_poly, m in utils.unstitch_polygon(poly, mapping):
                         temp_polys_dict[m["frame_idx"]].append({"poly": adjusted_poly, "score": score})
 

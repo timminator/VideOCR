@@ -17,8 +17,8 @@ from _version import __version__
 APP_VERSION = __version__
 
 SUPPORT_FILES_URLS: dict[str, str] = {
-    "Windows": "https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{version}/PaddleOCR.PP-OCRv5.support.files.VideOCR.7z",
-    "Linux": "https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{version}/PaddleOCR.PP-OCRv5.support.files.VideOCR.tar.xz"
+    "Windows": "https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{version}/PaddleOCR.PP-OCRv6.support.files.VideOCR.7z",
+    "Linux": "https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{version}/PaddleOCR.PP-OCRv6.support.files.VideOCR.tar.xz"
 }
 
 PADDLE_URLS: dict[str, dict[str, str | list[str]]] = {
@@ -354,7 +354,7 @@ def package_target(build_target: str, args: argparse.Namespace, releases_dir: Pa
     else:
         os.remove(paddle_archive_path)
 
-    for file_path in Path(temp_cli_dist).rglob("*flash*"):
+    for file_path in Path(temp_cli_dist).rglob("*portable_mode.txt*"):
         if file_path.is_file():
             file_path.unlink(missing_ok=True)
 
