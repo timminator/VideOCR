@@ -13,8 +13,8 @@ from typing import Any, cast
 import av
 import fast_ssim  # type: ignore
 import numpy as np
+import simplejpeg  # type: ignore
 import wordninja_enhanced as wordninja  # type: ignore
-from PIL import Image
 
 from . import utils
 from .models import PredictedFrames, PredictedSubtitle
@@ -333,7 +333,9 @@ class Video:
                             h, w = img.shape[:2]
                             canvas[y:y + h, x:x + w] = img
 
-                        Image.fromarray(canvas).save(frame_path, quality=80)
+                        jpeg_bytes = simplejpeg.encode_jpeg(canvas, quality=80, colorspace='RGB')
+                        with open(frame_path, 'wb') as f:
+                            f.write(jpeg_bytes)
 
                 except Exception as e:
                     error_list.append(e)

@@ -12,8 +12,8 @@ from typing import IO, Any
 import av
 import fast_ssim  # type: ignore
 import numpy as np
+import simplejpeg  # type: ignore
 from cpuid import cpuid, xgetbv  # type: ignore
-from PIL import Image
 
 from .lang_dictionaries import PADDLEOCR_LANGS
 from .models import PredictedText
@@ -535,7 +535,8 @@ def are_rect_lists_similar(rects1: list[list[float]], rects2: list[list[float]],
 
 def load_grid(g_file: str) -> tuple[str, Any]:
     """Loads a grid image."""
-    return g_file, np.array(Image.open(g_file))
+    with open(g_file, 'rb') as f:
+        return g_file, simplejpeg.decode_jpeg(f.read(), colorspace='RGB')
 
 
 def process_ssim_group(union_rects: list[list[float]], group_frames: list[tuple[int, list[list[float]], float, dict[str, Any]]],

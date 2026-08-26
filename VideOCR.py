@@ -45,7 +45,6 @@ import numpy as np
 import psgdnd as dnd  # type: ignore
 import psutil  # type: ignore
 import PySimpleGUI as sg  # type: ignore
-from PIL import Image
 from wakepy import keep
 
 if sys.platform == "win32":
@@ -1344,6 +1343,12 @@ class VideoHandler:
         self.graph.configure()
         self.last_display_size = display_size
 
+    def _encode_ppm(self, img_np: np.ndarray[Any, Any]) -> bytes:
+        """Encodes an RGB image array as a binary PPM (P6) image."""
+        h, w = img_np.shape[:2]
+        header = f"P6\n{w} {h}\n255\n".encode('ascii')
+        return header + img_np.tobytes()
+
     def open(self, path: str) -> dict[str, int]:
         if self.path == path and self.container:
             return self._get_cached_properties()
@@ -1439,11 +1444,8 @@ class VideoHandler:
                 mask = gray > brightness_threshold
                 img_np *= mask[..., None]
 
-            pil_img = Image.fromarray(img_np)
-            img_byte_arr = io.BytesIO()
-            pil_img.save(img_byte_arr, format='PNG')
-
-            return io.BytesIO(img_byte_arr.getvalue()), self.current_new_w, self.current_new_h, off_x, off_y
+            img_bytes = self._encode_ppm(img_np)
+            return io.BytesIO(img_bytes), self.current_new_w, self.current_new_h, off_x, off_y
 
         except Exception as e:
             log_error(f"VideoHandler Seek Error: {e}")
