@@ -11,8 +11,8 @@ def save_subtitles_to_file(
         time_start: str = '0:00', time_end: str = '', conf_threshold: int = 75, sim_threshold: int = 80, max_merge_gap_sec: float = 0.1,
         use_fullframe: bool = False, use_gpu: bool = False, use_angle_cls: bool = False, use_server_model: bool = False,
         brightness_threshold: int | None = None, ssim_threshold: int = 92, subtitle_position: str = "center", frames_to_skip: int = 1,
-        crop_zones: list[dict[str, int]] | None = None, ocr_image_max_width: int = 720, post_processing: bool = False, min_subtitle_duration_sec: float = 0.2,
-        normalize_to_simplified_chinese: bool = True, subtitle_alignments: list[str | None] | None = None) -> None:
+        crop_zones: list[dict[str, int]] | None = None, ocr_image_max_width: int = 720, disable_stitching: bool = False, post_processing: bool = False,
+        min_subtitle_duration_sec: float = 0.2, normalize_to_simplified_chinese: bool = True, subtitle_alignments: list[str | None] | None = None) -> None:
 
     if crop_zones is None:
         crop_zones = []
@@ -42,7 +42,8 @@ def save_subtitles_to_file(
         v.run_ocr(
             use_gpu, ocr_engine, lang, use_angle_cls, time_start, time_end, conf_threshold,
             use_fullframe, brightness_threshold, ssim_threshold, subtitle_position,
-            frames_to_skip, crop_zones, ocr_image_max_width, normalize_to_simplified_chinese
+            frames_to_skip, crop_zones, ocr_image_max_width, disable_stitching,
+            normalize_to_simplified_chinese
         )
     except Exception as e:
         print(f"Error: {e}", flush=True)

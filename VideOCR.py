@@ -1,5 +1,6 @@
 # Compilation instructions
 # nuitka-project: --standalone
+# nuitka-project: --no-prefer-source-code
 # nuitka-project: --enable-plugin=tk-inter
 # nuitka-project: --windows-console-mode=disable
 # nuitka-project: --include-windows-runtime-dlls=yes
@@ -587,6 +588,7 @@ def update_gui_text(window: sg.Window, is_paused: bool = False) -> None:
         '--ssim_threshold': {'tooltip': 'tip_ssim'},
         '-LBL-OCR_WIDTH-': {'text': 'lbl_ocr_width', 'tooltip': 'tip_ocr_width'},
         '--ocr_image_max_width': {'tooltip': 'tip_ocr_width'},
+        '--disable_stitching': {'text': 'chk_disable_stitching', 'tooltip': 'tip_disable_stitching'},
         '-LBL-FRAMES_SKIP-': {'text': 'lbl_frames_skip', 'tooltip': 'tip_frames_skip'},
         '--frames_to_skip': {'tooltip': 'tip_frames_skip'},
         '-LBL-MIN_DURATION-': {'text': 'lbl_min_duration', 'tooltip': 'tip_min_duration'},
@@ -1054,6 +1056,7 @@ def get_default_settings() -> dict[str, Any]:
     '--brightness_threshold': '',
     '--ssim_threshold': str(DEFAULT_SSIM_THRESHOLD),
     '--ocr_image_max_width': str(DEFAULT_OCR_IMAGE_MAX_WIDTH),
+    '--disable_stitching': False,
     '--frames_to_skip': str(DEFAULT_FRAMES_TO_SKIP),
     '--use_fullframe': False,
     '--use_gpu': True,
@@ -1182,6 +1185,7 @@ def load_settings(window: sg.Window) -> None:
                     ('--brightness_threshold', 'input'),
                     ('--ssim_threshold', 'input'),
                     ('--ocr_image_max_width', 'input'),
+                    ('--disable_stitching', 'checkbox'),
                     ('--frames_to_skip', 'input'),
                     ('--use_fullframe', 'checkbox'),
                     ('--use_gpu', 'checkbox'),
@@ -2374,6 +2378,7 @@ tab2_content = [
      sg.Input(DEFAULT_SSIM_THRESHOLD, key="--ssim_threshold", size=(10, 1), enable_events=True)],
     [sg.Text("Max OCR Image Width (pixel):", size=(38, 1), key='-LBL-OCR_WIDTH-'),
      sg.Input(DEFAULT_OCR_IMAGE_MAX_WIDTH, key="--ocr_image_max_width", size=(10, 1), enable_events=True)],
+    [sg.Checkbox("Disable Frame Stitching", default=False, key="--disable_stitching", enable_events=True)],
     [sg.Text("Frames to Skip:", size=(38, 1), key='-LBL-FRAMES_SKIP-'),
      sg.Input(DEFAULT_FRAMES_TO_SKIP, key="--frames_to_skip", size=(10, 1), enable_events=True)],
     [sg.Text("Minimum Subtitle Duration (seconds):", size=(38, 1), key='-LBL-MIN_DURATION-'),
@@ -2801,6 +2806,7 @@ KEYS_TO_AUTOSAVE = [
     '--brightness_threshold',
     '--ssim_threshold',
     '--ocr_image_max_width',
+    '--disable_stitching',
     '--frames_to_skip',
     '--use_fullframe',
     '--use_gpu',

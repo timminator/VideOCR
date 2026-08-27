@@ -1,5 +1,6 @@
 # Compilation instructions
 # nuitka-project: --standalone
+# nuitka-project: --no-prefer-source-code
 # nuitka-project: --include-windows-runtime-dlls=yes
 # nuitka-project-if: {OS} == "Windows":
 #     nuitka-project: --output-filename=videocr-cli
@@ -118,6 +119,7 @@ def main() -> None:
     parser.add_argument('--post_processing', type=lambda x: x.lower() == 'true', default=False, help='Enable post processing of subtitles (default: false)')
     parser.add_argument('--min_subtitle_duration', type=restricted_float(min_val=0.0), default=0.2, help='Minimum subtitle duration in seconds (default: 0.2)')
     parser.add_argument('--ocr_image_max_width', type=restricted_int(min_val=1), default=720, help='Maximum image width used for OCR (default: 720)')
+    parser.add_argument('--disable_stitching', type=lambda x: x.lower() == 'true', default=False, help='Disable frame stitching for the detection pass, processing one frame at a time for maximum accuracy at the cost of speed (default: false)')
     parser.add_argument('--crop_x', type=int, default=None, help='(Zone 1) Crop start X')
     parser.add_argument('--crop_y', type=int, default=None, help='(Zone 1) Crop start Y')
     parser.add_argument('--crop_width', type=int, default=None, help='(Zone 1) Crop width')
@@ -199,6 +201,7 @@ def main() -> None:
                 post_processing=args.post_processing,
                 min_subtitle_duration_sec=args.min_subtitle_duration,
                 ocr_image_max_width=args.ocr_image_max_width,
+                disable_stitching=args.disable_stitching,
                 subtitle_alignments=[args.subtitle_alignment, args.subtitle_alignment2]
             )
     except ValueError as e:

@@ -51,6 +51,8 @@
     "tip_ssim": "Se o SSIM entre dois quadros exceder esse limite,\no quadro é considerado semelhante e descartado durante a filtragem inicial de quadros na Etapa 1.",
     "lbl_ocr_width": "Largura máx. da imagem para OCR (px):",
     "tip_ocr_width": "Largura máxima da imagem para OCR. Imagens maiores serão redimensionadas\npara essa largura para melhorar o desempenho. Use 0 para desativar.",
+    "chk_disable_stitching": "Desativar Costura de Quadros",
+    "tip_disable_stitching": "Processa cada quadro individualmente em vez de combinar vários quadros em uma única grade de imagem para a etapa de detecção.\nMelhora a precisão às custas da velocidade de processamento.",
     "lbl_frames_skip": "Quadros a pular:",
     "tip_frames_skip": "Processa um quadro a cada N quadros (ex.: 1 = processa a cada 2 quadros).\nValores maiores = mais rápido, mas menos preciso. Valores menores = mais lento, mas mais preciso.",
     "lbl_min_duration": "Duração mínima da legenda (segundos):",

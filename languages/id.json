@@ -51,6 +51,8 @@
     "tip_ssim": "Jika SSIM antara frame melebihi ambang ini,\nframe dianggap serupa dan dibuang selama pemfilteran frame awal pada Langkah 1.",
     "lbl_ocr_width": "Lebar Gambar OCR Maksimal (piksel):",
     "tip_ocr_width": "Lebar gambar maksimal untuk OCR. Gambar yang lebih besar akan diperkecil\nke lebar ini untuk meningkatkan performa. Atur ke 0 untuk menonaktifkan.",
+    "chk_disable_stitching": "Nonaktifkan Penggabungan Frame",
+    "tip_disable_stitching": "Memproses setiap frame secara individual, bukan menggabungkan beberapa frame menjadi satu grid gambar untuk tahap deteksi.\nMeningkatkan akurasi dengan mengorbankan kecepatan pemrosesan.",
     "lbl_frames_skip": "Frame yang Dilewati:",
     "tip_frames_skip": "Proses setiap frame ke-N (contoh: 1 = setiap frame ke-2).\nTinggi = lebih cepat tapi kurang akurat, rendah = lebih lambat tapi lebih akurat.",
     "lbl_min_duration": "Durasi Subtitle Minimum (detik):",

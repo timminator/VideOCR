@@ -51,6 +51,8 @@
     "tip_ssim": "Se l'SSIM tra due fotogrammi supera questo valore,\nil fotogramma è considerato simile e scartato durante il filtraggio iniziale dei fotogrammi nella Fase 1.",
     "lbl_ocr_width": "Larghezza max immagine per OCR (px):",
     "tip_ocr_width": "Larghezza massima dell'immagine per l'OCR. Le immagini più grandi verranno ridimensionate\na questa larghezza per migliorare le prestazioni. Usa 0 per disattivare.",
+    "chk_disable_stitching": "Disabilita Cucitura dei Fotogrammi",
+    "tip_disable_stitching": "Elabora ogni fotogramma singolarmente invece di combinarne più in un'unica griglia di immagini per la fase di rilevamento.\nMigliora la precisione a scapito della velocità di elaborazione.",
     "lbl_frames_skip": "Fotogrammi da saltare:",
     "tip_frames_skip": "Elabora un fotogramma ogni N fotogrammi (es. 1 = elabora ogni 2 fotogrammi).\nValori maggiori = più veloce ma meno preciso. Valori minori = più lento ma più preciso.",
     "lbl_min_duration": "Durata minima sottotitolo (secondi):",

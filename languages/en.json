@@ -51,6 +51,8 @@
     "tip_ssim": "If the SSIM between frames exceeds this threshold,\nthe frame is considered similar and discarded during initial frame filtering in Step 1.",
     "lbl_ocr_width": "Max OCR Image Width (pixel):",
     "tip_ocr_width": "Maximum image width for OCR. Larger images are scaled\ndown to this width to improve performance. Set to 0 to disable.",
+    "chk_disable_stitching": "Disable Frame Stitching",
+    "tip_disable_stitching": "Processes each frame individually instead of combining several into a single image grid for the detection pass.\nImproves accuracy at the cost of processing speed.",
     "lbl_frames_skip": "Frames to Skip:",
     "tip_frames_skip": "Process every Nth frame (e.g., 1 = every 2nd).\nHigher = faster but less accurate, lower = slower but more accurate.",
     "lbl_min_duration": "Minimum Subtitle Duration (seconds):",

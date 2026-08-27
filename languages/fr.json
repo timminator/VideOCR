@@ -51,6 +51,8 @@
     "tip_ssim": "Si le SSIM entre deux images dépasse ce seuil,\nl'image est considérée comme similaire et ignorée lors du filtrage initial des images à l'étape 1.",
     "lbl_ocr_width": "Largeur max. de l'image OCR (pixels) :",
     "tip_ocr_width": "Largeur maximale d'image pour l'OCR. Les images plus grandes sont réduites\nà cette largeur pour améliorer les performances. Mettre 0 pour désactiver.",
+    "chk_disable_stitching": "Désactiver l'assemblage des images",
+    "tip_disable_stitching": "Traite chaque image individuellement au lieu de combiner plusieurs images en une seule grille pour l'étape de détection.\nAméliore la précision au détriment de la vitesse de traitement.",
     "lbl_frames_skip": "Images à ignorer :",
     "tip_frames_skip": "Traiter une image toutes les N images (ex. : 1 = une image sur 2).\nPlus la valeur est élevée = plus rapide mais moins précis, plus faible = plus lent mais plus précis.",
     "lbl_min_duration": "Durée minimale des sous-titres (secondes) :",

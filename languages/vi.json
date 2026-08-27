@@ -51,6 +51,8 @@
     "tip_ssim": "Nếu SSIM giữa các khung hình vượt quá ngưỡng này,\nkhung hình được coi là tương tự và bị loại bỏ trong quá trình lọc khung hình ban đầu ở Bước 1.",
     "lbl_ocr_width": "Chiều Rộng Hình Ảnh OCR Tối Đa (pixel):",
     "tip_ocr_width": "Chiều rộng hình ảnh tối đa cho OCR. Hình ảnh lớn hơn sẽ được thu nhỏ\nxuống chiều rộng này để cải thiện hiệu suất. Đặt 0 để tắt.",
+    "chk_disable_stitching": "Tắt Ghép Khung Hình",
+    "tip_disable_stitching": "Xử lý từng khung hình riêng lẻ thay vì ghép nhiều khung hình thành một lưới ảnh cho bước phát hiện văn bản.\nTăng độ chính xác nhưng giảm tốc độ xử lý.",
     "lbl_frames_skip": "Số Khung Hình Bỏ Qua:",
     "tip_frames_skip": "Xử lý mỗi khung hình thứ N (ví dụ: 1 = mỗi khung thứ 2).\nCao hơn = nhanh hơn nhưng ít chính xác, thấp hơn = chậm hơn nhưng chính xác hơn.",
     "lbl_min_duration": "Thời Lượng Phụ Đề Tối Thiểu (giây):",

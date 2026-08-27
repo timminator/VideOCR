@@ -51,6 +51,8 @@
     "tip_ssim": "如果两帧的 SSIM 超过该阈值，\n则该帧被视为相似，并在第 1 步的初始帧过滤期间被丢弃。",
     "lbl_ocr_width": "最大 OCR 图像宽度（像素）：",
     "tip_ocr_width": "OCR 处理的最大图像宽度。更大的图像会被缩小\n到该宽度以提高性能。设为 0 则禁用。",
+    "chk_disable_stitching": "禁用帧拼接",
+    "tip_disable_stitching": "单独处理每一帧，而不是将多帧合并为一个图像网格进行检测。\n可提高准确性，但会降低处理速度。",
     "lbl_frames_skip": "跳帧数：",
     "tip_frames_skip": "每 N 帧处理一次（例如 1 = 每隔 2 帧处理一次）。\n值越高速度越快但准确性降低，值越低速度越慢但准确性更高。",
     "lbl_min_duration": "最小字幕持续时间（秒）：",

@@ -61,7 +61,7 @@ class Video:
 
     def run_ocr(self, use_gpu: bool, ocr_engine: str, lang: str, use_angle_cls: bool, time_start: str, time_end: str, conf_threshold: int,
                 use_fullframe: bool, brightness_threshold: int | None, ssim_threshold: int, subtitle_position: str, frames_to_skip: int,
-                crop_zones: list[dict[str, int]], ocr_image_max_width: int, normalize_to_simplified_chinese: bool) -> None:
+                crop_zones: list[dict[str, int]], ocr_image_max_width: int, disable_stitching: bool, normalize_to_simplified_chinese: bool) -> None:
         conf_threshold_ratio = conf_threshold / 100
         ssim_threshold_ratio = ssim_threshold / 100
         self.lang = lang
@@ -361,11 +361,15 @@ class Video:
             MAX_STITCH_WIDTH = 1500
             MAX_STITCH_HEIGHT = 1500
             GRID_SPACING = 10
+            MAX_STITCH_ROWS = 10
             FILENAME_ZERO_PADDING = 8
 
             batch_limits: dict[int, int] = {}
             for z_idx, z in enumerate(self.validated_zones):
-                batch_limits[z_idx] = utils.get_batch_limit(z['w'], z['h'], MAX_STITCH_WIDTH, MAX_STITCH_HEIGHT, GRID_SPACING)
+                if disable_stitching:
+                    batch_limits[z_idx] = 1
+                else:
+                    batch_limits[z_idx] = utils.get_batch_limit(z['w'], z['h'], MAX_STITCH_WIDTH, MAX_STITCH_HEIGHT, GRID_SPACING, MAX_STITCH_ROWS)
 
             def flush_batch(batch: list[Any], counter: int, zone_idx: int, prefix: str, out_dir: str, target_map: dict[str, Any]) -> int:
                 queue_args = utils.prepare_stitch_batch(batch, counter, zone_idx, prefix, out_dir, target_map, MAX_STITCH_WIDTH, GRID_SPACING, FILENAME_ZERO_PADDING)
