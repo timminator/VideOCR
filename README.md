@@ -217,6 +217,10 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
 
   Downscales the cropped image frame so its width does not exceed this value before passing it to the OCR engine. A lower value shortens the processing time, but setting it too low can reduce OCR accuracy.
 
+- `disable_stitching`
+
+  By default, multiple filtered frames are stitched together into a single image grid before the detection pass to speed up processing. Setting this to `True` disables that behavior and processes each frame individually instead. This can improve accuracy, but comes at the cost of processing speed.
+
 - `use_gpu`
 
   Set to `True` if performing OCR with GPU.

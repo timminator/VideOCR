@@ -213,6 +213,10 @@ docker build --build-arg BUILD_TARGET=cpu -t videocr-cli-cpu:latest .
 
   在传递给OCR引擎之前缩小裁剪的图像帧，使其宽度不超过此设定值。较低的数值可缩短处理时间，但设置过低可能会降低OCR识别的准确率。
 
+- `disable_stitching`
+
+  默认情况下，多个经过过滤的帧会在检测阶段之前被拼接为一个图像网格，以加快处理速度。将此参数设为`True`可禁用该行为，转而单独处理每一帧。禁用后可提高准确率，但会降低处理速度。
+
 - `use_gpu`
 
   设为`True`时，使用GPU进行OCR。
