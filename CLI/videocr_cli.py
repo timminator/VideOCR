@@ -112,7 +112,7 @@ def main() -> None:
     parser.add_argument('--use_angle_cls', type=lambda x: x.lower() == 'true', default=False, help='Enable Classification (PaddleOCR only, default: false)')
     parser.add_argument('--use_server_model', type=lambda x: x.lower() == 'true', default=False, help='Enable usage of server model (default: false)')
     parser.add_argument('--brightness_threshold', type=restricted_int(0, 255), default=None, help='Brightness threshold')
-    parser.add_argument('--ssim_threshold', type=restricted_int(0, 100), default=92, help='SSIM similarity threshold for initial frame filtering in Step 1 (default: 92)')
+    parser.add_argument('--ssim_threshold', type=restricted_int(0, 100), default=94, help='SSIM similarity threshold for initial frame filtering in Step 1 (default: 94)')
     parser.add_argument('--subtitle_position', type=str, default='center', help='Subtitle position alignment (center (default), left, right, any)')
     parser.add_argument('--frames_to_skip', type=restricted_int(min_val=0), default=1, help='Frames to skip (default: 1)')
     parser.add_argument('--normalize_to_simplified_chinese', type=lambda x: x.lower() == 'true', default=True, help='Normalize Traditional Chinese characters to Simplified Chinese for ch (default: true)')
