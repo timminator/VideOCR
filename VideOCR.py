@@ -1,6 +1,7 @@
 # Compilation instructions
 # nuitka-project: --standalone
 # nuitka-project: --no-prefer-source-code
+# nuitka-project: --nofollow-import-to=numpy
 # nuitka-project: --enable-plugin=tk-inter
 # nuitka-project: --windows-console-mode=disable
 # nuitka-project: --include-windows-runtime-dlls=yes
@@ -25,7 +26,6 @@ import configparser
 import contextlib
 import ctypes
 import datetime
-import io
 import json
 import math
 import os
@@ -42,7 +42,6 @@ import webbrowser
 from typing import IO, Any, cast
 
 import av
-import numpy as np
 import psgdnd as dnd  # type: ignore
 import psutil  # type: ignore
 import PySimpleGUI as sg  # type: ignore
@@ -1313,45 +1312,71 @@ class VideoHandler:
         self.buffer_node: Any = None
         self.sink_node: Any = None
         self.last_display_size: tuple[int, int] = (0, 0)
+        self.last_threshold: int | None = None
         self.current_new_w: int = 0
         self.current_new_h: int = 0
-
-        self._supports_threads = True
-
-    def _frame_to_array(self, frame: av.VideoFrame, fmt: str) -> np.ndarray[Any, Any]:
-        """Converts a frame to an array, safely falls back if threads arg is unsupported."""
-        if self._supports_threads:
-            try:
-                return frame.to_ndarray(format=fmt, threads=1)
-            except TypeError:
-                self._supports_threads = False
-
-        return frame.to_ndarray(format=fmt)
 
     def _get_cached_properties(self) -> dict[str, int]:
         """Returns internal properties without re-parsing the file."""
         return {'width': self.width, 'height': self.height, 'duration_ms': self.duration_ms}
 
-    def _setup_filter_graph(self, template_frame: av.VideoFrame, display_size: tuple[int, int]) -> None:
-        """Initializes the FFmpeg filter graph for fast resizing and format conversion."""
+    def _setup_filter_graph(self, template_frame: av.VideoFrame, display_size: tuple[int, int], threshold: int | None) -> None:
+        """Initializes the FFmpeg filter graph for resizing, format conversion, and optional brightness masking."""
         scale = min(display_size[0] / self.width, display_size[1] / self.height)
         self.current_new_w, self.current_new_h = int(self.width * scale) & ~1, int(self.height * scale) & ~1
 
         self.graph = av.filter.Graph()
         self.buffer_node = self.graph.add_buffer(template=cast(Any, template_frame))
-        scale_node = self.graph.add("scale", f"{self.current_new_w}:{self.current_new_h}:flags=bicubic")
-        self.sink_node = self.graph.add("buffersink")
+        last = self.graph.add("scale", f"{self.current_new_w}:{self.current_new_h}:flags=bicubic")
+        self.buffer_node.link_to(last)
 
-        self.buffer_node.link_to(scale_node)
-        scale_node.link_to(self.sink_node)
+        fmt_base_node = self.graph.add("format", "rgb24")
+        last.link_to(fmt_base_node)
+        last = fmt_base_node
+
+        if threshold is not None:
+            split_node = self.graph.add("split", "2")
+            last.link_to(split_node)
+
+            gray_node = self.graph.add("format", "gray")
+            split_node.link_to(gray_node, output_idx=0)
+
+            lut_node = self.graph.add("lut", f"c0='255*gt(val,{threshold})'")
+            gray_node.link_to(lut_node)
+
+            mask_rgb_node = self.graph.add("format", "rgb24")
+            lut_node.link_to(mask_rgb_node)
+
+            blend_node = self.graph.add("blend", "all_mode=multiply")
+            split_node.link_to(blend_node, output_idx=1)
+            mask_rgb_node.link_to(blend_node, input_idx=1)
+            last = blend_node
+
+            fmt_out_node = self.graph.add("format", "rgb24")
+            last.link_to(fmt_out_node)
+            last = fmt_out_node
+
+        self.sink_node = self.graph.add("buffersink")
+        last.link_to(self.sink_node)
         self.graph.configure()
         self.last_display_size = display_size
+        self.last_threshold = threshold
 
-    def _encode_ppm(self, img_np: np.ndarray[Any, Any]) -> bytes:
-        """Encodes an RGB image array as a binary PPM (P6) image."""
-        h, w = img_np.shape[:2]
+    def _frame_to_ppm(self, frame: av.VideoFrame) -> bytes:
+        """Encodes an rgb24 frame as a binary PPM (P6) image, handling any plane stride padding."""
+        w, h = frame.width, frame.height
+        plane = frame.planes[0]
+        row_bytes = w * 3
+        raw = bytes(plane)
+        stride = plane.line_size
+
+        if stride == row_bytes:
+            data = raw
+        else:
+            data = b''.join(raw[y * stride: y * stride + row_bytes] for y in range(h))
+
         header = f"P6\n{w} {h}\n255\n".encode('ascii')
-        return header + img_np.tobytes()
+        return header + data
 
     def open(self, path: str) -> dict[str, int]:
         if self.path == path and self.container:
@@ -1379,7 +1404,7 @@ class VideoHandler:
             self.close()
             return {'width': 0, 'height': 0, 'duration_ms': 0}
 
-    def get_frame(self, timestamp_ms: float, display_size: tuple[int, int], brightness_threshold: int | None = None) -> tuple[io.BytesIO | None, int, int, int, int]:
+    def get_frame(self, timestamp_ms: float, display_size: tuple[int, int], brightness_threshold: int | None = None) -> tuple[bytes | None, int, int, int, int]:
         """Seeks or decodes forward to provide a frame at the requested timestamp."""
         if not self.container or not self.stream:
             return None, 0, 0, 0, 0
@@ -1428,28 +1453,17 @@ class VideoHandler:
             if not frame:
                 return None, 0, 0, 0, 0
 
-            if self.graph is None or self.last_display_size != display_size:
-                self._setup_filter_graph(frame, display_size)
+            if self.graph is None or self.last_display_size != display_size or self.last_threshold != brightness_threshold:
+                self._setup_filter_graph(frame, display_size, brightness_threshold)
 
             off_x = (display_size[0] - self.current_new_w) // 2
             off_y = (display_size[1] - self.current_new_h) // 2
 
             self.buffer_node.push(frame)
             processed_frame: av.VideoFrame = self.sink_node.pull()
+            img_bytes = self._frame_to_ppm(processed_frame)
 
-            img_np = self._frame_to_array(processed_frame, fmt='rgb24')
-
-            if brightness_threshold is not None:
-                gray = (
-                    (img_np[..., 0].astype(np.uint16) * 77 +
-                    img_np[..., 1].astype(np.uint16) * 150 +
-                    img_np[..., 2].astype(np.uint16) * 29) >> 8
-                ).astype(np.uint8)
-                mask = gray > brightness_threshold
-                img_np *= mask[..., None]
-
-            img_bytes = self._encode_ppm(img_np)
-            return io.BytesIO(img_bytes), self.current_new_w, self.current_new_h, off_x, off_y
+            return img_bytes, self.current_new_w, self.current_new_h, off_x, off_y
 
         except Exception as e:
             log_error(f"VideoHandler Seek Error: {e}")
@@ -1464,6 +1478,7 @@ class VideoHandler:
         self.duration_ms = 0
         self.last_pts = None
         self.last_display_size = (0, 0)
+        self.last_threshold = None
         self.current_new_w = self.current_new_h = 0
 
 
@@ -2923,12 +2938,11 @@ while True:
         if event == '--brightness_threshold':
             if video_path and video_duration_ms > 0:
                 bt = get_valid_brightness_threshold(values.get('--brightness_threshold'))
-                img_bytes, res_w, res_h, off_x, off_y = video_manager.get_frame(current_time_ms, graph_size, brightness_threshold=bt)
+                current_image_bytes, res_w, res_h, off_x, off_y = video_manager.get_frame(current_time_ms, graph_size, brightness_threshold=bt)
 
-                if img_bytes:
+                if current_image_bytes:
                     resized_frame_width, resized_frame_height = res_w, res_h
                     image_offset_x, image_offset_y = off_x, off_y
-                    current_image_bytes = img_bytes.getvalue()
                     redraw_canvas_and_boxes()
 
         if event in ('enable_subtitle_alignment', '--use_dual_zone'):
@@ -3219,14 +3233,11 @@ while True:
             current_time_ms = 0.0
 
             bt = get_valid_brightness_threshold(values.get('--brightness_threshold'))
-            img_bytes, res_w, res_h, off_x, off_y = video_manager.get_frame(0, graph_size, brightness_threshold=bt)
+            current_image_bytes, res_w, res_h, off_x, off_y = video_manager.get_frame(current_time_ms, graph_size, brightness_threshold=bt)
 
-            if img_bytes:
-                resized_frame_width = res_w
-                resized_frame_height = res_h
-                image_offset_x = off_x
-                image_offset_y = off_y
-                current_image_bytes = img_bytes.getvalue()
+            if current_image_bytes:
+                resized_frame_width, resized_frame_height = res_w, res_h
+                image_offset_x, image_offset_y = off_x, off_y
 
                 graph.draw_image(data=current_image_bytes, location=(image_offset_x, image_offset_y))
                 window["-SLIDER-"].update(range=(0, video_duration_ms), value=0, disabled=False)
@@ -3314,12 +3325,11 @@ while True:
         if abs(new_time_ms - current_time_ms) > 50:
             current_time_ms = new_time_ms
             bt = get_valid_brightness_threshold(values.get('--brightness_threshold'))
-            img_bytes, res_w, res_h, off_x, off_y = video_manager.get_frame(current_time_ms, graph_size, brightness_threshold=bt)
+            current_image_bytes, res_w, res_h, off_x, off_y = video_manager.get_frame(current_time_ms, graph_size, brightness_threshold=bt)
 
-            if img_bytes:
+            if current_image_bytes:
                 resized_frame_width, resized_frame_height = res_w, res_h
                 image_offset_x, image_offset_y = off_x, off_y
-                current_image_bytes = img_bytes.getvalue()
 
                 redraw_canvas_and_boxes()
                 update_time_display(window, current_time_ms, video_duration_ms)
@@ -3922,9 +3932,9 @@ while True:
 
             orig_w, orig_h, duration_ms = video_manager.open(v_path).values()
             bt = get_valid_brightness_threshold(args.get('brightness_threshold'))
-            img_bytes, res_w, res_h, off_x, off_y = video_manager.get_frame(0, graph_size, brightness_threshold=bt)
+            current_image_bytes, res_w, res_h, off_x, off_y = video_manager.get_frame(current_time_ms, graph_size, brightness_threshold=bt)
 
-            if img_bytes and duration_ms > 0:
+            if current_image_bytes and duration_ms > 0:
                 video_path = v_path
                 original_frame_width = orig_w
                 original_frame_height = orig_h
@@ -3934,7 +3944,6 @@ while True:
                 resized_frame_height = res_h
                 image_offset_x = off_x
                 image_offset_y = off_y
-                current_image_bytes = img_bytes.getvalue()
 
                 graph.draw_image(data=current_image_bytes, location=(image_offset_x, image_offset_y))
 

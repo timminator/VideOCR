@@ -242,34 +242,50 @@ class Video:
                             buffer_node = graph.add_buffer(template=raw_frame)
                             num_zones = len(self.validated_zones)
 
-                            if num_zones == 1:
-                                # Single Zone (User crop, Bottom Third, Full Frame)
-                                # Pipeline: Buffer -> Crop -> Scale -> Sink
-                                z = self.validated_zones[0]
+                            if num_zones == 2:
+                                main_split = graph.add("split", "2")
+                                buffer_node.link_to(main_split)
+
+                            for i, z in enumerate(self.validated_zones):
                                 crop_node = graph.add("crop", z['crop_str'])
-                                scale_node = graph.add("scale", z['scale_str'])
+
+                                if num_zones == 2:
+                                    main_split.link_to(crop_node, output_idx=i)
+                                else:
+                                    buffer_node.link_to(crop_node)
+
+                                last = graph.add("scale", z['scale_str'])
+                                crop_node.link_to(last)
+
+                                fmt_base_node = graph.add("format", "rgb24")
+                                last.link_to(fmt_base_node)
+                                last = fmt_base_node
+
+                                if brightness_threshold is not None:
+                                    thresh_split = graph.add("split", "2")
+                                    last.link_to(thresh_split)
+
+                                    gray_node = graph.add("format", "gray")
+                                    thresh_split.link_to(gray_node, output_idx=0)
+
+                                    lut_node = graph.add("lut", f"c0='255*gt(val,{brightness_threshold})'")
+                                    gray_node.link_to(lut_node)
+
+                                    mask_rgb_node = graph.add("format", "rgb24")
+                                    lut_node.link_to(mask_rgb_node)
+
+                                    blend_node = graph.add("blend", "all_mode=multiply")
+                                    thresh_split.link_to(blend_node, output_idx=1)
+                                    mask_rgb_node.link_to(blend_node, input_idx=1)
+                                    last = blend_node
+
+                                    fmt_out_node = graph.add("format", "rgb24")
+                                    last.link_to(fmt_out_node)
+                                    last = fmt_out_node
+
                                 sink_node = graph.add("buffersink")
-
-                                buffer_node.link_to(crop_node)
-                                crop_node.link_to(scale_node)
-                                scale_node.link_to(sink_node)
+                                last.link_to(sink_node)
                                 sinks.append(sink_node)
-
-                            elif num_zones == 2:
-                                # Dual Zone
-                                # Pipeline: Buffer -> Split -> (Crop -> Scale -> Sink) x 2
-                                split_node = graph.add("split", "2")
-                                buffer_node.link_to(split_node)
-
-                                for i, z in enumerate(self.validated_zones):
-                                    crop_node = graph.add("crop", z['crop_str'])
-                                    scale_node = graph.add("scale", z['scale_str'])
-                                    sink_node = graph.add("buffersink")
-
-                                    split_node.link_to(crop_node, output_idx=i)
-                                    crop_node.link_to(scale_node)
-                                    scale_node.link_to(sink_node)
-                                    sinks.append(sink_node)
 
                             graph.configure()
 
@@ -280,15 +296,6 @@ class Video:
 
                             img = utils.frame_to_array(processed_raw_frame, fmt='rgb24')
                             zone_idx = idx
-
-                            if brightness_threshold is not None:
-                                gray = (
-                                    (img[..., 0].astype(np.uint16) * 77 +
-                                    img[..., 1].astype(np.uint16) * 150 +
-                                    img[..., 2].astype(np.uint16) * 29) >> 8
-                                ).astype(np.uint8)
-                                mask = gray > brightness_threshold
-                                img *= mask[..., None]
 
                             sample = None
                             if ssim_threshold_ratio < 1:
