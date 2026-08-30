@@ -27,7 +27,6 @@ dependencies = [
     "PySimpleGUI",
     "psgdnd",
     "simplejpeg",
-    "thefuzz",
     "wakepy",
     "wordninja-enhanced",
     "PyTaskbarProgress @ git+https://github.com/timminator/PyTaskbar.git ; sys_platform == 'win32'",

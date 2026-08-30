@@ -597,3 +597,47 @@ def process_ssim_group(union_rects: list[list[float]], group_frames: list[tuple[
     local_deleted = len(group_frames) - len(local_surviving_items)
 
     return local_surviving_items, local_deleted
+
+
+def levenshtein_ratio(s1: str, s2: str, score_cutoff: int = 0) -> int:
+    """Calculates a 0-100 Levenshtein similarity ratio."""
+    if s1 == s2:
+        return 100
+
+    len1, len2 = len(s1), len(s2)
+    if len1 == 0 or len2 == 0:
+        return 0
+
+    total_len = len1 + len2
+
+    if score_cutoff > 0:
+        best_possible_distance = abs(len1 - len2)
+        best_possible_score = ((total_len - best_possible_distance) / total_len) * 100
+        if best_possible_score < score_cutoff:
+            return 0
+
+    if len2 > len1:
+        s1, s2 = s2, s1
+        len1, len2 = len2, len1
+
+    prev_row = list(range(len2 + 1))
+    curr_row = [0] * (len2 + 1)
+
+    for i in range(len1):
+        curr_row[0] = i + 1
+        c1 = s1[i]
+        for j in range(len2):
+            cost = 0 if c1 == s2[j] else 2
+            del_cost = prev_row[j + 1] + 1
+            ins_cost = curr_row[j] + 1
+            sub_cost = prev_row[j] + cost
+            best = del_cost
+            if ins_cost < best:
+                best = ins_cost
+            if sub_cost < best:
+                best = sub_cost
+            curr_row[j + 1] = best
+        prev_row, curr_row = curr_row, prev_row
+
+    distance = prev_row[len2]
+    return round(((total_len - distance) / total_len) * 100)

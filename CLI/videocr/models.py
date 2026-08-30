@@ -6,7 +6,6 @@ from typing import Any
 
 import wordninja_enhanced as wordninja  # type: ignore
 from opencc import OpenCC
-from thefuzz import fuzz  # type: ignore
 
 from . import utils
 
@@ -119,7 +118,7 @@ class PredictedSubtitle:
         return 0
 
     def is_similar_to(self, other: PredictedSubtitle) -> bool:
-        return fuzz.ratio(self.text.replace(' ', ''), other.text.replace(' ', '')) >= self.sim_threshold  # type: ignore
+        return utils.levenshtein_ratio(self.text.replace(' ', ''), other.text.replace(' ', ''), self.sim_threshold) >= self.sim_threshold
 
     def finalize_text(self, post_processing: bool) -> None:
         text_counts: Counter[str] = Counter()
