@@ -371,9 +371,9 @@ def prepare_stitch_batch(batch: list[Any], counter: int, zone_idx: int, prefix: 
     return filepath, canvas_w, canvas_h, draw_instructions
 
 
-def get_batch_limit(w: int, h: int, max_width: int, max_height: int, padding: int, max_rows: int) -> int:
+def get_batch_limit(w: int, h: int, max_width: int, max_height: int, padding: int, max_cols: int, max_rows: int) -> int:
     """Calculates the maximum number of frames that can fit in a stitched grid."""
-    cols = max(1, (max_width + padding) // (w + padding))
+    cols = min(max_cols, max(1, (max_width + padding) // (w + padding)))
     rows = min(max_rows, max(1, (max_height + padding) // (h + padding)))
 
     return cols * rows

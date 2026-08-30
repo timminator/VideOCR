@@ -368,6 +368,7 @@ class Video:
             MAX_STITCH_WIDTH = 1500
             MAX_STITCH_HEIGHT = 1500
             GRID_SPACING = 10
+            MAX_STITCH_COLS = 3
             MAX_STITCH_ROWS = 10
             FILENAME_ZERO_PADDING = 8
 
@@ -376,7 +377,7 @@ class Video:
                 if disable_stitching:
                     batch_limits[z_idx] = 1
                 else:
-                    batch_limits[z_idx] = utils.get_batch_limit(z['w'], z['h'], MAX_STITCH_WIDTH, MAX_STITCH_HEIGHT, GRID_SPACING, MAX_STITCH_ROWS)
+                    batch_limits[z_idx] = utils.get_batch_limit(z['w'], z['h'], MAX_STITCH_WIDTH, MAX_STITCH_HEIGHT, GRID_SPACING, MAX_STITCH_COLS, MAX_STITCH_ROWS)
 
             def flush_batch(batch: list[Any], counter: int, zone_idx: int, prefix: str, out_dir: str, target_map: dict[str, Any]) -> int:
                 queue_args = utils.prepare_stitch_batch(batch, counter, zone_idx, prefix, out_dir, target_map, MAX_STITCH_WIDTH, GRID_SPACING, FILENAME_ZERO_PADDING)
