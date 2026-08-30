@@ -2847,6 +2847,9 @@ KEYS_TO_AUTOSAVE = [
 
 window.is_drawing = False
 
+brightness_last_event_time = 0.0
+pending_brightness_update = False
+
 # --- Event Loop ---
 while True:
     event, values = window.read(timeout=50)
@@ -2930,20 +2933,25 @@ while True:
         except queue.Empty:
             pass
 
+    if pending_brightness_update and (time.time() - brightness_last_event_time > 0.5):
+        pending_brightness_update = False
+        if video_path and video_duration_ms > 0:
+            bt = get_valid_brightness_threshold(values.get('--brightness_threshold'))
+            current_image_bytes, res_w, res_h, off_x, off_y = video_manager.get_frame(current_time_ms, graph_size, brightness_threshold=bt)
+
+            if current_image_bytes:
+                resized_frame_width, resized_frame_height = res_w, res_h
+                image_offset_x, image_offset_y = off_x, off_y
+                redraw_canvas_and_boxes()
+
     # --- Save settings ---
     if event in KEYS_TO_AUTOSAVE:
         if values is not None:
             save_settings(window, values)
 
         if event == '--brightness_threshold':
-            if video_path and video_duration_ms > 0:
-                bt = get_valid_brightness_threshold(values.get('--brightness_threshold'))
-                current_image_bytes, res_w, res_h, off_x, off_y = video_manager.get_frame(current_time_ms, graph_size, brightness_threshold=bt)
-
-                if current_image_bytes:
-                    resized_frame_width, resized_frame_height = res_w, res_h
-                    image_offset_x, image_offset_y = off_x, off_y
-                    redraw_canvas_and_boxes()
+            brightness_last_event_time = time.time()
+            pending_brightness_update = True
 
         if event in ('enable_subtitle_alignment', '--use_dual_zone'):
             update_alignment_controls(window, values)
