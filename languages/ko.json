@@ -109,6 +109,14 @@
     "chk_check_updates": "시작 시 업데이트 확인",
     "tip_check_updates": "애플리케이션 시작 시 VideOCR의 새 버전을 자동으로 확인합니다.",
     
+    "btn_reset_to_defaults": "기본값으로 재설정",
+    "btn_info": "정보",
+    "menu_reset_default": "기본값으로 재설정",
+    "title_reset_settings": "설정 재설정",
+    "msg_reset_settings": "이 섹션의 모든 설정이 기본값으로 재설정됩니다.\n계속하시겠습니까?",
+    "reset_info": "기본값으로 재설정",
+    "reset_message": "'기본값으로 재설정'은 이 섹션의 모든 설정을 기본값으로 복원합니다.\n\n위의 개별 설정을 마우스 오른쪽 버튼으로 클릭하면 해당 설정만 기본값으로 재설정할 수도 있습니다.",
+
     "btn_browse": "파일 열기...",
     "btn_browse_folder": "폴더 열기...",
     "btn_save_as": "다른 이름으로 저장...",

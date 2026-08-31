@@ -109,6 +109,14 @@
     "chk_check_updates": "Verificar atualizações ao iniciar",
     "tip_check_updates": "Verifica automaticamente novas versões do VideOCR ao iniciar.",
 
+    "btn_reset_to_defaults": "Restaurar Padrões",
+    "btn_info": "Informações",
+    "menu_reset_default": "Restaurar valor padrão",
+    "title_reset_settings": "Redefinir Configurações",
+    "msg_reset_settings": "Isso irá redefinir todas as configurações desta seção para os valores padrão.\nDeseja continuar?",
+    "reset_info": "Restaurar Padrões",
+    "reset_message": "\"Restaurar Padrões\" redefine todas as configurações desta seção para o valor padrão.\n\nVocê também pode clicar com o botão direito em qualquer configuração individual acima para redefinir apenas essa configuração para o valor padrão.",
+
     "btn_browse": "Abrir Arquivo...",
     "btn_browse_folder": "Abrir Pasta...",
     "btn_save_as": "Salvar como...",

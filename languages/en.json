@@ -109,6 +109,14 @@
     "chk_check_updates": "Check for Updates On Startup",
     "tip_check_updates": "Automatically check for new versions of VideOCR when the application starts.",
 
+    "btn_reset_to_defaults": "Reset to Defaults",
+    "btn_info": "Info",
+    "menu_reset_default": "Reset to Default",
+    "title_reset_settings": "Reset Settings",
+    "msg_reset_settings": "This will reset all settings in this section back to their default values.\nDo you want to continue?",
+    "reset_info": "Reset to Defaults",
+    "reset_message": "Reset to Defaults restores every setting in this section back to its default value.\n\nYou can also right-click any individual setting above to reset just that one setting to its default value.",
+
     "btn_browse": "Open File...",
     "btn_browse_folder": "Open Folder...",
     "btn_save_as": "Save As...",

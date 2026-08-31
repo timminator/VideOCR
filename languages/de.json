@@ -109,6 +109,14 @@
     "chk_check_updates": "Beim Start nach Updates suchen",
     "tip_check_updates": "Prüft beim Start der Anwendung automatisch, ob neue Versionen von VideOCR verfügbar sind.",
 
+    "btn_reset_to_defaults": "Auf Standardwerte zurücksetzen",
+    "btn_info": "Info",
+    "menu_reset_default": "Standardwert wiederherstellen",
+    "title_reset_settings": "Einstellungen zurücksetzen",
+    "msg_reset_settings": "Dadurch werden alle Einstellungen in diesem Abschnitt auf ihre Standardwerte zurückgesetzt.\nMöchten Sie fortfahren?",
+    "reset_info": "Auf Standardwerte zurücksetzen",
+    "reset_message": "„Auf Standardwerte zurücksetzen“ setzt jede Einstellung in diesem Abschnitt auf ihren Standardwert zurück.\n\nSie können auch mit der rechten Maustaste auf eine einzelne Einstellung oben klicken, um nur diese auf ihren Standardwert zurückzusetzen.",
+
     "btn_browse": "Datei öffnen...",
     "btn_browse_folder": "Ordner öffnen...",
     "btn_save_as": "Speichern unter...",

@@ -109,6 +109,14 @@
     "chk_check_updates": "Buscar actualizaciones al iniciar",
     "tip_check_updates": "Buscar automáticamente nuevas versiones de VideOCR al iniciar la aplicación.",
     
+    "btn_reset_to_defaults": "Restablecer valores predeterminados",
+    "btn_info": "Información",
+    "menu_reset_default": "Restablecer valor predeterminado",
+    "title_reset_settings": "Restablecer ajustes",
+    "msg_reset_settings": "Esto restablecerá todos los ajustes de esta sección a sus valores predeterminados.\n¿Desea continuar?",
+    "reset_info": "Restablecer valores predeterminados",
+    "reset_message": "«Restablecer valores predeterminados» restaura todos los ajustes de esta sección a su valor predeterminado.\n\nTambién puede hacer clic derecho en cualquier ajuste individual de arriba para restablecer solo ese ajuste a su valor predeterminado.",
+
     "btn_browse": "Abrir archivo...",
     "btn_browse_folder": "Abrir carpeta...",
     "btn_save_as": "Guardar como...",

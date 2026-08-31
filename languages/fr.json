@@ -109,6 +109,14 @@
     "chk_check_updates": "Vérifier les mises à jour au démarrage",
     "tip_check_updates": "Vérifie automatiquement les nouvelles versions de VideOCR au démarrage.",
 
+    "btn_reset_to_defaults": "Réinitialiser les valeurs par défaut",
+    "btn_info": "Info",
+    "menu_reset_default": "Réinitialiser à la valeur par défaut",
+    "title_reset_settings": "Réinitialiser les paramètres",
+    "msg_reset_settings": "Cela réinitialisera tous les paramètres de cette section à leurs valeurs par défaut.\nVoulez-vous continuer ?",
+    "reset_info": "Réinitialiser les valeurs par défaut",
+    "reset_message": "« Réinitialiser les valeurs par défaut » restaure tous les paramètres de cette section à leur valeur par défaut.\n\nVous pouvez également faire un clic droit sur un paramètre individuel ci-dessus pour réinitialiser uniquement ce paramètre à sa valeur par défaut.",
+
     "btn_browse": "Ouvrir fichier...",
     "btn_browse_folder": "Ouvrir dossier...",
     "btn_save_as": "Enregistrer sous...",

@@ -109,6 +109,14 @@
     "chk_check_updates": "启动时检查更新",
     "tip_check_updates": "应用启动时自动检查 VideOCR 的新版本。",
 
+    "btn_reset_to_defaults": "恢复默认设置",
+    "btn_info": "信息",
+    "menu_reset_default": "恢复默认值",
+    "title_reset_settings": "重置设置",
+    "msg_reset_settings": "这将把此部分中的所有设置恢复为默认值。\n是否继续？",
+    "reset_info": "恢复默认设置",
+    "reset_message": "“恢复默认设置”会将此部分中的每一项设置恢复为其默认值。\n\n您也可以右键单击上方的任意单项设置，仅将该设置恢复为默认值。",
+
     "btn_browse": "打开文件...",
     "btn_browse_folder": "打开文件夹...",
     "btn_save_as": "另存为...",

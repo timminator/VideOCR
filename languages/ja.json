@@ -109,6 +109,14 @@
     "chk_check_updates": "起動時に更新をチェック",
     "tip_check_updates": "アプリケーション起動時にVideOCRの新しいバージョンを自動的にチェックします。",
     
+    "btn_reset_to_defaults": "デフォルトに戻す",
+    "btn_info": "情報",
+    "menu_reset_default": "デフォルト値に戻す",
+    "title_reset_settings": "設定のリセット",
+    "msg_reset_settings": "このセクションのすべての設定がデフォルト値に戻ります。\n続行しますか？",
+    "reset_info": "デフォルトに戻す",
+    "reset_message": "「デフォルトに戻す」は、このセクションのすべての設定をデフォルト値に戻します。\n\n上の個々の設定を右クリックすると、その設定だけをデフォルト値に戻すこともできます。",
+
     "btn_browse": "ファイルを開く...",
     "btn_browse_folder": "フォルダを開く...",
     "btn_save_as": "名前を付けて保存...",

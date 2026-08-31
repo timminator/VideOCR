@@ -109,6 +109,14 @@
     "chk_check_updates": "Periksa Pembaruan Saat Startup",
     "tip_check_updates": "Otomatis memeriksa versi baru VideOCR saat aplikasi dimulai.",
     
+    "btn_reset_to_defaults": "Setel ke Default",
+    "btn_info": "Info",
+    "menu_reset_default": "Setel ke Nilai Default",
+    "title_reset_settings": "Atur Ulang Pengaturan",
+    "msg_reset_settings": "Ini akan mengatur ulang semua pengaturan di bagian ini ke nilai default-nya.\nApakah Anda ingin melanjutkan?",
+    "reset_info": "Setel ke Default",
+    "reset_message": "\"Setel ke Default\" mengembalikan setiap pengaturan di bagian ini ke nilai default-nya.\n\nAnda juga dapat mengklik kanan pengaturan mana pun di atas untuk mengatur ulang hanya pengaturan tersebut ke nilai default-nya.",
+
     "btn_browse": "Buka File...",
     "btn_browse_folder": "Buka Folder...",
     "btn_save_as": "Simpan Sebagai...",

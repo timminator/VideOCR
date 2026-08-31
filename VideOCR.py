@@ -139,6 +139,11 @@ def get_gui_scaling_multiplier() -> float | None:
     return None
 
 
+def scaling_value_to_multiplier(value: str) -> float | None:
+    """Converts an internal GUI scaling value (e.g. '1.25' or 'System Default') to its effective multiplier."""
+    return None if value == 'System Default' else float(value)
+
+
 def get_scaled_graph_size(custom_scale: float | None, base_w: int, base_h: int) -> tuple[int, int]:
     """Calculates graph size using a custom scale, falling back to OS DPI if None."""
     scale = custom_scale if custom_scale is not None else get_dpi_scaling()
@@ -543,6 +548,7 @@ def update_gui_text(window: sg.Window, is_paused: bool = False) -> None:
         '-LBL-SUB_POS-': {'text': 'lbl_sub_pos', 'tooltip': 'tip_sub_pos'},
         '-SUBTITLE_POS_COMBO-': {'tooltip': 'tip_sub_pos'},
         '-BTN-HELP-': {'text': 'btn_how_to_use'},
+        '-BTN-OCR-INFO-': {'text': 'btn_info'},
         '-LBL-SEEK-': {'text': 'lbl_seek'},
         '-LBL-CROP_BOX-': {'text': 'lbl_crop_box'},
         '-CROP_COORDS-': {'text': 'crop_not_set'},
@@ -603,6 +609,8 @@ def update_gui_text(window: sg.Window, is_paused: bool = False) -> None:
         '--use_angle_cls': {'text': 'chk_angle_cls', 'tooltip': 'tip_angle_cls'},
         '--post_processing': {'text': 'chk_post_processing', 'tooltip': 'tip_post_processing'},
         '--use_server_model': {'text': 'chk_server_model', 'tooltip': 'tip_server_model'},
+        '-RESET_OCR_SETTINGS-': {'text': 'btn_reset_to_defaults'},
+        '-RESET_OCR_SETTINGS_INFO-': {'text': 'btn_info'},
         '-LBL-VIDEOCR_SETTINGS-': {'text': 'lbl_videocr_settings'},
         '-LBL-UI_LANG-': {'text': 'lbl_ui_lang', 'tooltip': 'tip_ui_lang'},
         '-UI_LANG_COMBO-': {'tooltip': 'tip_ui_lang'},
@@ -619,6 +627,8 @@ def update_gui_text(window: sg.Window, is_paused: bool = False) -> None:
         'prevent_system_sleep': {'text': 'chk_prevent_sleep', 'tooltip': 'tip_prevent_sleep'},
         '--normalize_to_simplified_chinese': {'text': 'chk_normalize_chinese', 'tooltip': 'tip_normalize_chinese'},
         '-BTN-CHECK_UPDATE_MANUAL-': {'text': 'btn_check_now'},
+        '-RESET_VIDEOCR_SETTINGS-': {'text': 'btn_reset_to_defaults'},
+        '-RESET_VIDEOCR_SETTINGS_INFO-': {'text': 'btn_info'},
 
         # Tab 3
         '-TAB-ABOUT-': {'text': 'tab_about'},
@@ -681,6 +691,10 @@ def update_gui_text(window: sg.Window, is_paused: bool = False) -> None:
 
     current_scale_idx = window['gui_scaling'].Widget.current()
     update_gui_scaling_combo(window, current_scale_idx)
+
+    for reset_key in OCR_SETTINGS_RESET_KEYS + VIDEOCR_SETTINGS_RESET_KEYS:
+        if reset_key in window.AllKeysDict:
+            window[reset_key].set_right_click_menu(make_reset_menu(reset_key))
 
 
 # --- Helper Functions ---
@@ -1078,6 +1092,136 @@ def get_default_settings() -> dict[str, Any]:
     '--normalize_to_simplified_chinese': True,
     'gui_scaling': 'System Default',
     }
+
+
+# --- "Reset to Default" groupings ---
+OCR_SETTINGS_RESET_KEYS = [
+    '--time_start', '--time_end', '--conf_threshold', '--sim_threshold', '--max_merge_gap',
+    '--brightness_threshold', '--ssim_threshold', '--ocr_image_max_width', '--disable_stitching',
+    '--frames_to_skip', '--min_subtitle_duration', '--use_gpu', '--use_fullframe', '--use_dual_zone',
+    'enable_subtitle_alignment', '--subtitle_alignment', '--subtitle_alignment2', '--use_angle_cls',
+    '--post_processing', '--normalize_to_simplified_chinese', '--use_server_model',
+]
+
+VIDEOCR_SETTINGS_RESET_KEYS = [
+    '-UI_LANG_COMBO-', 'gui_scaling', '--save_crop_box', '--save_in_video_dir',
+    '--default_output_dir', '--keyboard_seek_step', '--send_notification',
+    'prevent_system_sleep', '--check_for_updates',
+]
+
+
+def make_reset_menu(key: str) -> list[Any]:
+    """Builds a single-item right-click menu that resets one setting to its default value."""
+    return ['', [f"{LANG.get('menu_reset_default', 'Reset to Default')}::{key}"]]
+
+
+def apply_ui_language_change(window: sg.Window, selected_native_name: str) -> None:
+    """Switches the active UI language and refreshes all translated GUI text/tooltips."""
+    lang_code = available_languages.get(selected_native_name)
+    if not lang_code:
+        return
+
+    current_resume_text = LANG.get('btn_resume', "Resume")
+    was_paused = window['-BTN-PAUSE-'].get_text() == current_resume_text
+
+    selected_pos_display_name = window['-SUBTITLE_POS_COMBO-'].Widget.get()
+    pos_display_to_internal_map = {LANG.get(lang_key, lang_key): internal_val for lang_key, internal_val in SUBTITLE_POSITIONS_LIST}
+    saved_internal_pos = pos_display_to_internal_map.get(selected_pos_display_name, DEFAULT_INTERNAL_SUBTITLE_POSITION)
+
+    load_language(lang_code)
+    update_gui_text(window, is_paused=was_paused)
+
+    update_subtitle_pos_combo(window, saved_internal_pos)
+
+    if video_path:
+        update_time_display(window, current_time_ms, video_duration_ms)
+
+
+def apply_gui_scaling_change(window: sg.Window, selected_display_value: str) -> bool:
+    """Switches the GUI scaling factor if required."""
+    scale_display_to_internal_map = {LANG.get(lang_key, internal_val): internal_val for lang_key, internal_val in GUI_SCALING_LIST}
+    selected_internal_value = scale_display_to_internal_map.get(selected_display_value, DEFAULT_GUI_SCALING)
+
+    if scaling_value_to_multiplier(selected_internal_value) == gui_scale_multiplier:
+        return False
+
+    title = LANG.get('title_restart', "Restart Required")
+    message = LANG.get('msg_restart_scaling', "The scaling factor has been updated.\nWould you like to restart the application now to apply this change?")
+    restart_choice = custom_popup_yes_no(window, title, message, icon=ICON_PATH)
+
+    if restart_choice != 'Yes':
+        internal_to_display_map = {internal_val: LANG.get(lang_key, internal_val) for lang_key, internal_val in GUI_SCALING_LIST}
+        active_internal_value = next((v for _, v in GUI_SCALING_LIST if scaling_value_to_multiplier(v) == gui_scale_multiplier), DEFAULT_GUI_SCALING)
+        window['gui_scaling'].update(value=internal_to_display_map.get(active_internal_value, active_internal_value))
+
+        current_values = window.read(timeout=0)[1]
+        update_alignment_controls(window, current_values)
+        save_settings(window, current_values)
+        return False
+
+    video_manager.close()
+    set_system_awake(False)
+
+    process_to_kill = getattr(window, '_videocr_process_pid', None)
+    if process_to_kill:
+        try:
+            kill_process_tree(process_to_kill)
+        except Exception as e:
+            log_error(f"Exception during restart process kill: {e}")
+
+    if sys.argv[0].endswith('.py') or sys.argv[0].endswith('.pyw'):
+        # Uncompiled: Needs the python interpreter + script name
+        restart_cmd = [sys.executable] + sys.argv
+    else:
+        # Compiled: sys.argv[0] is already the compiled executable
+        restart_cmd = sys.argv
+
+    subprocess.Popen(restart_cmd)
+    return True
+
+
+def reset_settings_to_default(window: sg.Window, keys: list[str]) -> bool:
+    """Resets the given setting keys to their default values and updates the GUI/config accordingly."""
+    defaults = get_default_settings()
+
+    if '--subtitle_alignment' in keys or '--subtitle_alignment2' in keys:
+        current_idx1 = window['--subtitle_alignment'].Widget.current()
+        current_idx2 = window['--subtitle_alignment2'].Widget.current()
+        new_idx1 = get_alignment_index(defaults['--subtitle_alignment']) if '--subtitle_alignment' in keys else current_idx1
+        new_idx2 = get_alignment_index(defaults['--subtitle_alignment2']) if '--subtitle_alignment2' in keys else current_idx2
+        update_alignment_combos(window, new_idx1, new_idx2)
+
+    pending_scaling_display: str | None = None
+    pending_language_display: str | None = None
+
+    for key in keys:
+        if key in ('--subtitle_alignment', '--subtitle_alignment2'):
+            continue
+
+        elif key == 'gui_scaling':
+            internal_to_display_map = {internal_val: LANG.get(lang_key, internal_val) for lang_key, internal_val in GUI_SCALING_LIST}
+            display_val = internal_to_display_map.get(defaults['gui_scaling'], defaults['gui_scaling'])
+            window['gui_scaling'].update(value=display_val)
+            pending_scaling_display = display_val
+
+        elif key == '-UI_LANG_COMBO-':
+            code_to_native_name_map = {v: k for k, v in available_languages.items()}
+            display_lang = code_to_native_name_map.get(defaults['--language'], 'English')
+            if window['-UI_LANG_COMBO-'].Widget.get() != display_lang:
+                window['-UI_LANG_COMBO-'].update(value=display_lang)
+                pending_language_display = display_lang
+
+        elif key in window.AllKeysDict:
+            window[key].update(defaults[key])
+
+    if pending_language_display is not None:
+        apply_ui_language_change(window, pending_language_display)
+
+    current_values = window.read(timeout=0)[1]
+    update_alignment_controls(window, current_values)
+    save_settings(window, current_values)
+
+    return pending_scaling_display is not None and apply_gui_scaling_change(window, pending_scaling_display)
 
 
 def save_settings(window: sg.Window, values: dict[str, Any]) -> None:
@@ -2378,59 +2522,63 @@ tab_batch_layout = [[sg.Column(tab_batch_content, expand_x=True, expand_y=True)]
 tab2_content = [
     [sg.Text("OCR Settings:", font=("Arial", scale_font_size(10), "bold"), key='-LBL-OCR_SETTINGS-')],
     [sg.Text("Start Time (e.g., 0:00 or 1:23:45):", size=(38, 1), key='-LBL-TIME_START-'),
-     sg.Input(DEFAULT_TIME_START, key="--time_start", size=(15, 1), enable_events=True)],
+     sg.Input(DEFAULT_TIME_START, key="--time_start", size=(15, 1), enable_events=True, right_click_menu=make_reset_menu("--time_start"))],
     [sg.Text("End Time (e.g., 0:10 or 2:34:56):", size=(38, 1), key='-LBL-TIME_END-'),
-     sg.Input("", key="--time_end", size=(15, 1), enable_events=True)],
+     sg.Input("", key="--time_end", size=(15, 1), enable_events=True, right_click_menu=make_reset_menu("--time_end"))],
     [sg.Text("Confidence Threshold (0-100):", size=(38, 1), key='-LBL-CONF_THRESHOLD-'),
-     sg.Input(DEFAULT_CONF_THRESHOLD, key="--conf_threshold", size=(10, 1), enable_events=True)],
+     sg.Input(DEFAULT_CONF_THRESHOLD, key="--conf_threshold", size=(10, 1), enable_events=True, right_click_menu=make_reset_menu("--conf_threshold"))],
     [sg.Text("Similarity Threshold (0-100):", size=(38, 1), key='-LBL-SIM_THRESHOLD-'),
-     sg.Input(DEFAULT_SIM_THRESHOLD, key="--sim_threshold", size=(10, 1), enable_events=True)],
+     sg.Input(DEFAULT_SIM_THRESHOLD, key="--sim_threshold", size=(10, 1), enable_events=True, right_click_menu=make_reset_menu("--sim_threshold"))],
     [sg.Text("Max Merge Gap (seconds):", size=(38, 1), key='-LBL-MERGE_GAP-'),
-     sg.Input(DEFAULT_MAX_MERGE_GAP, key="--max_merge_gap", size=(10, 1), enable_events=True)],
+     sg.Input(DEFAULT_MAX_MERGE_GAP, key="--max_merge_gap", size=(10, 1), enable_events=True, right_click_menu=make_reset_menu("--max_merge_gap"))],
     [sg.Text("Brightness Threshold (0-255):", size=(38, 1), key='-LBL-BRIGHTNESS-'),
-     sg.Input("", key="--brightness_threshold", size=(10, 1), enable_events=True)],
+     sg.Input("", key="--brightness_threshold", size=(10, 1), enable_events=True, right_click_menu=make_reset_menu("--brightness_threshold"))],
     [sg.Text("SSIM Threshold (0-100):", size=(38, 1), key='-LBL-SSIM-'),
-     sg.Input(DEFAULT_SSIM_THRESHOLD, key="--ssim_threshold", size=(10, 1), enable_events=True)],
+     sg.Input(DEFAULT_SSIM_THRESHOLD, key="--ssim_threshold", size=(10, 1), enable_events=True, right_click_menu=make_reset_menu("--ssim_threshold"))],
     [sg.Text("Max OCR Image Width (pixel):", size=(38, 1), key='-LBL-OCR_WIDTH-'),
-     sg.Input(DEFAULT_OCR_IMAGE_MAX_WIDTH, key="--ocr_image_max_width", size=(10, 1), enable_events=True)],
-    [sg.Checkbox("Disable Frame Stitching", default=False, key="--disable_stitching", enable_events=True)],
+     sg.Input(DEFAULT_OCR_IMAGE_MAX_WIDTH, key="--ocr_image_max_width", size=(10, 1), enable_events=True, right_click_menu=make_reset_menu("--ocr_image_max_width"))],
+    [sg.Checkbox("Disable Frame Stitching", default=False, key="--disable_stitching", enable_events=True, right_click_menu=make_reset_menu("--disable_stitching"))],
     [sg.Text("Frames to Skip:", size=(38, 1), key='-LBL-FRAMES_SKIP-'),
-     sg.Input(DEFAULT_FRAMES_TO_SKIP, key="--frames_to_skip", size=(10, 1), enable_events=True)],
+     sg.Input(DEFAULT_FRAMES_TO_SKIP, key="--frames_to_skip", size=(10, 1), enable_events=True, right_click_menu=make_reset_menu("--frames_to_skip"))],
     [sg.Text("Minimum Subtitle Duration (seconds):", size=(38, 1), key='-LBL-MIN_DURATION-'),
-     sg.Input(DEFAULT_MIN_SUBTITLE_DURATION, key="--min_subtitle_duration", size=(10, 1), enable_events=True)],
-    [sg.Checkbox("Enable GPU Usage", default=True, key="--use_gpu", enable_events=True)],
-    [sg.Checkbox("Use Full Frame OCR", default=False, key="--use_fullframe", enable_events=True)],
-    [sg.Checkbox("Enable Dual Zone OCR", default=False, key="--use_dual_zone", enable_events=True)],
-    [sg.Checkbox("Enable Subtitle Alignment", default=False, key="enable_subtitle_alignment", enable_events=True)],
+     sg.Input(DEFAULT_MIN_SUBTITLE_DURATION, key="--min_subtitle_duration", size=(10, 1), enable_events=True, right_click_menu=make_reset_menu("--min_subtitle_duration"))],
+    [sg.Checkbox("Enable GPU Usage", default=True, key="--use_gpu", enable_events=True, right_click_menu=make_reset_menu("--use_gpu"))],
+    [sg.Checkbox("Use Full Frame OCR", default=False, key="--use_fullframe", enable_events=True, right_click_menu=make_reset_menu("--use_fullframe"))],
+    [sg.Checkbox("Enable Dual Zone OCR", default=False, key="--use_dual_zone", enable_events=True, right_click_menu=make_reset_menu("--use_dual_zone"))],
+    [sg.Checkbox("Enable Subtitle Alignment", default=False, key="enable_subtitle_alignment", enable_events=True, right_click_menu=make_reset_menu("enable_subtitle_alignment"))],
     [sg.Text("Zone 1 Alignment:", size=(38, 1), key='-LBL-SUBTITLE-ALIGNMENT-'),
-     sg.Combo([], key="--subtitle_alignment", size=(15, 1), readonly=True, enable_events=True, disabled=True)],
+     sg.Combo([], key="--subtitle_alignment", size=(15, 1), readonly=True, enable_events=True, disabled=True, right_click_menu=make_reset_menu("--subtitle_alignment"))],
     [sg.Text("Zone 2 Alignment:", size=(38, 1), key='-LBL-SUBTITLE-ALIGNMENT2-'),
-     sg.Combo([], key="--subtitle_alignment2", size=(15, 1), readonly=True, enable_events=True, disabled=True)],
-    [sg.Checkbox("Enable Angle Classification", default=False, key="--use_angle_cls", enable_events=True)],
-    [sg.Checkbox("Enable Post Processing", default=False, key="--post_processing", enable_events=True)],
-    [sg.Checkbox("Normalize Traditional to Simplified Chinese", default=True, key="--normalize_to_simplified_chinese", enable_events=True)],
-    [sg.Checkbox("Use Server Model", default=False, key="--use_server_model", enable_events=True)],
+     sg.Combo([], key="--subtitle_alignment2", size=(15, 1), readonly=True, enable_events=True, disabled=True, right_click_menu=make_reset_menu("--subtitle_alignment2"))],
+    [sg.Checkbox("Enable Angle Classification", default=False, key="--use_angle_cls", enable_events=True, right_click_menu=make_reset_menu("--use_angle_cls"))],
+    [sg.Checkbox("Enable Post Processing", default=False, key="--post_processing", enable_events=True, right_click_menu=make_reset_menu("--post_processing"))],
+    [sg.Checkbox("Normalize Traditional to Simplified Chinese", default=True, key="--normalize_to_simplified_chinese", enable_events=True, right_click_menu=make_reset_menu("--normalize_to_simplified_chinese"))],
+    [sg.Checkbox("Use Server Model", default=False, key="--use_server_model", enable_events=True, right_click_menu=make_reset_menu("--use_server_model"))],
+    [sg.Push(),
+     sg.Button("Reset to Defaults", key="-RESET_OCR_SETTINGS-", pad=((5, 5), (15, 3))),
+     sg.Button("Info", key="-RESET_OCR_SETTINGS_INFO-", pad=((5, 5), (15, 3))),
+     sg.Push()],
     [sg.HorizontalSeparator()],
     [sg.Text("VideOCR Settings:", font=("Arial", scale_font_size(10), "bold"), key='-LBL-VIDEOCR_SETTINGS-')],
     [
         sg.Column([
             [sg.Text("UI Language:", size=(30, 1), key='-LBL-UI_LANG-'), VerticalStrut()],
             [sg.Text("GUI Scaling:", size=(30, 1), key='-LBL-GUI_SCALING-'), VerticalStrut()],
-            [sg.Checkbox("Save Crop Box Selection", default=True, key="--save_crop_box", enable_events=True), VerticalStrut()],
-            [sg.Checkbox("Save SRT in Video Directory", default=True, key="--save_in_video_dir", enable_events=True), VerticalStrut()],
+            [sg.Checkbox("Save Crop Box Selection", default=True, key="--save_crop_box", enable_events=True, right_click_menu=make_reset_menu("--save_crop_box")), VerticalStrut()],
+            [sg.Checkbox("Save SRT in Video Directory", default=True, key="--save_in_video_dir", enable_events=True, right_click_menu=make_reset_menu("--save_in_video_dir")), VerticalStrut()],
             [sg.Text("Output Directory:", size=(30, 1), key='-LBL-OUTPUT_DIR-'), VerticalStrut()],
             [sg.Text("Keyboard Seek Step (seconds):", size=(30, 1), key='-LBL-SEEK_STEP-'), VerticalStrut()],
-            [sg.Checkbox("Send Notification", default=True, key="--send_notification", enable_events=True), VerticalStrut()],
-            [sg.Checkbox("Prevent System Sleep", default=True, key="prevent_system_sleep", enable_events=True), VerticalStrut()],
-            [sg.Checkbox("Check for Updates On Startup", default=True, key="--check_for_updates", enable_events=True), VerticalStrut()],
+            [sg.Checkbox("Send Notification", default=True, key="--send_notification", enable_events=True, right_click_menu=make_reset_menu("--send_notification")), VerticalStrut()],
+            [sg.Checkbox("Prevent System Sleep", default=True, key="prevent_system_sleep", enable_events=True, right_click_menu=make_reset_menu("prevent_system_sleep")), VerticalStrut()],
+            [sg.Checkbox("Check for Updates On Startup", default=True, key="--check_for_updates", enable_events=True, right_click_menu=make_reset_menu("--check_for_updates")), VerticalStrut()],
         ], pad=(0, None)),
         sg.Column([
-            [sg.Combo(ui_language_display_names, key='-UI_LANG_COMBO-', size=(32, 1), readonly=True, enable_events=True, expand_x=True), VerticalStrut()],
-            [sg.Combo([], key='gui_scaling', size=(32, 1), readonly=True, enable_events=True, expand_x=True), VerticalStrut()],
+            [sg.Combo(ui_language_display_names, key='-UI_LANG_COMBO-', size=(32, 1), readonly=True, enable_events=True, expand_x=True, right_click_menu=make_reset_menu("-UI_LANG_COMBO-")), VerticalStrut()],
+            [sg.Combo([], key='gui_scaling', size=(32, 1), readonly=True, enable_events=True, expand_x=True, right_click_menu=make_reset_menu("gui_scaling")), VerticalStrut()],
             [VerticalStrut()],
             [VerticalStrut()],
-            [sg.Input(DEFAULT_DOCUMENTS_DIR, key="--default_output_dir", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, size=(34, 1), enable_events=True), VerticalStrut()],
-            [sg.Input(KEY_SEEK_STEP, key="--keyboard_seek_step", size=(10, 1), enable_events=True), VerticalStrut()],
+            [sg.Input(DEFAULT_DOCUMENTS_DIR, key="--default_output_dir", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, size=(34, 1), enable_events=True, right_click_menu=make_reset_menu("--default_output_dir")), VerticalStrut()],
+            [sg.Input(KEY_SEEK_STEP, key="--keyboard_seek_step", size=(10, 1), enable_events=True, right_click_menu=make_reset_menu("--keyboard_seek_step")), VerticalStrut()],
             [VerticalStrut()],
             [VerticalStrut()],
             [sg.Button("Check Now", key="-BTN-CHECK_UPDATE_MANUAL-")],
@@ -2446,7 +2594,11 @@ tab2_content = [
             [VerticalStrut()],
             [VerticalStrut()],
         ], pad=(0, None), expand_x=True),
-    ]
+    ],
+    [sg.Push(),
+     sg.Button("Reset to Defaults", key="-RESET_VIDEOCR_SETTINGS-", pad=((5, 5), (15, 3))),
+     sg.Button("Info", key="-RESET_VIDEOCR_SETTINGS_INFO-", pad=((5, 5), (15, 3))),
+     sg.Push()],
 ]
 tab2_layout = [[sg.Column(tab2_content,
                            key='-TAB2_COL-',
@@ -2527,10 +2679,10 @@ def get_work_area() -> tuple[int, int]:
         return width, int(height * 0.90)
 
 
-def stretch_scrollable_col(col_key: str) -> None:
+def stretch_scrollable_col(col_key: str, max_height: int | None = None) -> None:
     """
-    Unlocks a PySimpleGUI scrollable column, stretches its hidden canvas viewport
-    to fit the dynamically resized contents, and restores its original propagation state.
+    Resizes a scrollable column to fit its contents, optionally capped at max_height.
+    Restores the column's original pack propagation state afterward.
     """
     col: sg.Element = window[col_key]
 
@@ -2544,9 +2696,10 @@ def stretch_scrollable_col(col_key: str) -> None:
                 scrollregion = child.cget("scrollregion")
                 if scrollregion:
                     true_inner_height: int = int(scrollregion.split()[3])
+                    target_height = min(true_inner_height, max_height) if max_height is not None else true_inner_height
 
-                    child.config(height=true_inner_height)
-                    col.TKColFrame.config(height=true_inner_height)
+                    child.config(height=target_height)
+                    col.TKColFrame.config(height=target_height)
                 break
 
         col.TKColFrame.pack_propagate(original_propagate)
@@ -2566,7 +2719,11 @@ window.refresh()
 window['-TAB1_COL-'].contents_changed()
 window['-TAB2_COL-'].contents_changed()
 stretch_scrollable_col('-TAB1_COL-')
-stretch_scrollable_col('-TAB2_COL-')
+window.refresh()
+
+# Cap tab2 (Advanced Settings) at tab1's height
+tab1_height = window['-TAB1_COL-'].TKColFrame.winfo_reqheight()
+stretch_scrollable_col('-TAB2_COL-', max_height=tab1_height)
 window.refresh()
 
 # Reposition window
@@ -3053,52 +3210,38 @@ while True:
                 log_error(f"Exception during final process kill: {e}")
         break
 
+    # --- Handle "Reset to Defaults" section buttons ---
+    elif event in ('-RESET_OCR_SETTINGS-', '-RESET_VIDEOCR_SETTINGS-'):
+        title = LANG.get('title_reset_settings', "Reset Settings")
+        message = LANG.get('msg_reset_settings', "This will reset all settings in this section back to their default values.\nDo you want to continue?")
+        reset_choice = custom_popup_yes_no(window, title, message, icon=ICON_PATH)
+
+        if reset_choice == 'Yes':
+            keys_to_reset = OCR_SETTINGS_RESET_KEYS if event == '-RESET_OCR_SETTINGS-' else VIDEOCR_SETTINGS_RESET_KEYS
+            if reset_settings_to_default(window, keys_to_reset):
+                break
+
+    # --- Handle "Reset to Defaults" info buttons ---
+    elif event in ('-RESET_OCR_SETTINGS_INFO-', '-RESET_VIDEOCR_SETTINGS_INFO-'):
+        custom_popup(window, LANG.get('reset_info', "Reset to Defaults"), LANG.get('reset_message', (
+            "Reset to Defaults restores every setting in this section back to its default value.\n\n"
+            "You can also right-click any individual setting above to reset just that one setting "
+            "to its default value.")),
+            icon=ICON_PATH
+        )
+
+    # --- Handle per-field "Reset to Default" right-click menu entries ---
+    elif isinstance(event, str) and event.startswith(f"{LANG.get('menu_reset_default', 'Reset to Default')}::"):
+        setting_key = event.split('::', 1)[1]
+        reset_settings_to_default(window, [setting_key])
+
     # --- Handle UI language change ---
     elif event == '-UI_LANG_COMBO-':
-        selected_native_name = values['-UI_LANG_COMBO-']
-        lang_code = available_languages.get(selected_native_name)
-
-        if lang_code:
-            current_resume_text = LANG.get('btn_resume', "Resume")
-            was_paused = window['-BTN-PAUSE-'].get_text() == current_resume_text
-
-            selected_pos_display_name = values['-SUBTITLE_POS_COMBO-']
-            pos_display_to_internal_map = {LANG.get(lang_key, lang_key): internal_val for lang_key, internal_val in SUBTITLE_POSITIONS_LIST}
-            saved_internal_pos = pos_display_to_internal_map.get(selected_pos_display_name, DEFAULT_INTERNAL_SUBTITLE_POSITION)
-
-            load_language(lang_code)
-            update_gui_text(window, is_paused=was_paused)
-
-            update_subtitle_pos_combo(window, saved_internal_pos)
-
-            if video_path:
-                update_time_display(window, current_time_ms, video_duration_ms)
+        apply_ui_language_change(window, values['-UI_LANG_COMBO-'])
 
     # --- Handle UI scaling change ---
     elif event == 'gui_scaling':
-        title = LANG.get('title_restart', "Restart Required")
-        message = LANG.get('msg_restart_scaling', "The scaling factor has been updated.\nWould you like to restart the application now to apply this change?")
-        restart_choice = custom_popup_yes_no(window, title, message, icon=ICON_PATH)
-
-        if restart_choice == 'Yes':
-            video_manager.close()
-            set_system_awake(False)
-
-            process_to_kill = getattr(window, '_videocr_process_pid', None)
-            if process_to_kill:
-                try:
-                    kill_process_tree(process_to_kill)
-                except Exception as e:
-                    log_error(f"Exception during restart process kill: {e}")
-
-            if sys.argv[0].endswith('.py') or sys.argv[0].endswith('.pyw'):
-                # Uncompiled: Needs the python interpreter + script name
-                restart_cmd = [sys.executable] + sys.argv
-            else:
-                # Compiled: sys.argv[0] is already the compiled executable
-                restart_cmd = sys.argv
-
-            subprocess.Popen(restart_cmd)
+        if apply_gui_scaling_change(window, values['gui_scaling']):
             break
 
     # --- File/Folder Handling ---

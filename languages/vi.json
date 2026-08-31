@@ -109,6 +109,14 @@
     "chk_check_updates": "Kiểm Tra Cập Nhật Khi Khởi Động",
     "tip_check_updates": "Tự động kiểm tra phiên bản mới của VideOCR khi ứng dụng khởi động.",
     
+    "btn_reset_to_defaults": "Đặt Lại Mặc Định",
+    "btn_info": "Thông Tin",
+    "menu_reset_default": "Đặt lại về mặc định",
+    "title_reset_settings": "Đặt Lại Cài Đặt",
+    "msg_reset_settings": "Thao tác này sẽ đặt lại tất cả cài đặt trong phần này về giá trị mặc định.\nBạn có muốn tiếp tục không?",
+    "reset_info": "Đặt Lại Mặc Định",
+    "reset_message": "\"Đặt Lại Mặc Định\" khôi phục mọi cài đặt trong phần này về giá trị mặc định.\n\nBạn cũng có thể nhấp chuột phải vào từng cài đặt riêng lẻ ở trên để chỉ đặt lại cài đặt đó về giá trị mặc định.",
+
     "btn_browse": "Mở Tệp...",
     "btn_browse_folder": "Mở Thư Mục...",
     "btn_save_as": "Lưu Thành...",
