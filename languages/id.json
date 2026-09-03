@@ -117,6 +117,11 @@
     "reset_info": "Setel ke Default",
     "reset_message": "\"Setel ke Default\" mengembalikan setiap pengaturan di bagian ini ke nilai default-nya.\n\nAnda juga dapat mengklik kanan pengaturan mana pun di atas untuk mengatur ulang hanya pengaturan tersebut ke nilai default-nya.",
 
+    "menu_copy_command": "Salin Perintah",
+    "tip_copy_command": "Klik kanan untuk menyalin perintah CLI yang setara tanpa menjalankannya.",
+    "error_no_video_for_copy": "\nPilih video terlebih dahulu untuk membuat perintahnya.\n",
+    "msg_command_copied": "Perintah disalin ke clipboard.\n",
+
     "btn_browse": "Buka File...",
     "btn_browse_folder": "Buka Folder...",
     "btn_save_as": "Simpan Sebagai...",

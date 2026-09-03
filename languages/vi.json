@@ -117,6 +117,11 @@
     "reset_info": "Đặt Lại Mặc Định",
     "reset_message": "\"Đặt Lại Mặc Định\" khôi phục mọi cài đặt trong phần này về giá trị mặc định.\n\nBạn cũng có thể nhấp chuột phải vào từng cài đặt riêng lẻ ở trên để chỉ đặt lại cài đặt đó về giá trị mặc định.",
 
+    "menu_copy_command": "Sao Chép Lệnh",
+    "tip_copy_command": "Nhấp chuột phải để sao chép lệnh CLI tương đương mà không cần chạy.",
+    "error_no_video_for_copy": "\nVui lòng chọn video trước để tạo lệnh.\n",
+    "msg_command_copied": "Đã sao chép lệnh vào khay nhớ tạm.\n",
+
     "btn_browse": "Mở Tệp...",
     "btn_browse_folder": "Mở Thư Mục...",
     "btn_save_as": "Lưu Thành...",

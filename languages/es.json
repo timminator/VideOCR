@@ -117,6 +117,11 @@
     "reset_info": "Restablecer valores predeterminados",
     "reset_message": "«Restablecer valores predeterminados» restaura todos los ajustes de esta sección a su valor predeterminado.\n\nTambién puede hacer clic derecho en cualquier ajuste individual de arriba para restablecer solo ese ajuste a su valor predeterminado.",
 
+    "menu_copy_command": "Copiar comando",
+    "tip_copy_command": "Haga clic derecho para copiar el comando CLI equivalente sin ejecutarlo.",
+    "error_no_video_for_copy": "\nSeleccione primero un vídeo para generar su comando.\n",
+    "msg_command_copied": "Comando copiado al portapapeles.\n",
+
     "btn_browse": "Abrir archivo...",
     "btn_browse_folder": "Abrir carpeta...",
     "btn_save_as": "Guardar como...",

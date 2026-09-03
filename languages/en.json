@@ -117,6 +117,11 @@
     "reset_info": "Reset to Defaults",
     "reset_message": "Reset to Defaults restores every setting in this section back to its default value.\n\nYou can also right-click any individual setting above to reset just that one setting to its default value.",
 
+    "menu_copy_command": "Copy Command",
+    "tip_copy_command": "Right-click to copy the equivalent CLI command without running it.",
+    "error_no_video_for_copy": "\nSelect a video first to build its command.\n",
+    "msg_command_copied": "Command copied to clipboard.\n",
+
     "btn_browse": "Open File...",
     "btn_browse_folder": "Open Folder...",
     "btn_save_as": "Save As...",

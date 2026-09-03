@@ -32,6 +32,7 @@ import os
 import pathlib
 import queue
 import re
+import shlex
 import subprocess
 import sys
 import threading
@@ -553,13 +554,13 @@ def update_gui_text(window: sg.Window, is_paused: bool = False) -> None:
         '-LBL-CROP_BOX-': {'text': 'lbl_crop_box'},
         '-CROP_COORDS-': {'text': 'crop_not_set'},
         '-TIME_TEXT-': {'text': 'time_text_empty'},
-        '-BTN-RUN-': {'text': 'btn_run'},
+        '-BTN-RUN-': {'text': 'btn_run', 'tooltip': 'tip_copy_command'},
         '-BTN-CANCEL-': {'text': 'btn_cancel'},
         '-BTN-CLEAR_CROP-': {'text': 'btn_clear_crop'},
         '-LBL-PROGRESS-': {'text': 'lbl_progress'},
         '-LBL-LOG-': {'text': 'lbl_log'},
         '-LBL-WHEN_READY-': {'text': 'lbl_when_ready'},
-        '-BTN-ADD-BATCH-': {'text': 'btn_add_to_queue'},
+        '-BTN-ADD-BATCH-': {'text': 'btn_add_to_queue', 'tooltip': 'tip_copy_command'},
         '-BTN-BATCH-ADD-ALL-': {'text': 'btn_add_all_to_queue'},
 
         # Queue Tab
@@ -695,6 +696,10 @@ def update_gui_text(window: sg.Window, is_paused: bool = False) -> None:
     for reset_key in OCR_SETTINGS_RESET_KEYS + VIDEOCR_SETTINGS_RESET_KEYS:
         if reset_key in window.AllKeysDict:
             window[reset_key].set_right_click_menu(make_reset_menu(reset_key))
+
+    for cmd_key in ('-BTN-RUN-', '-BTN-ADD-BATCH-'):
+        if cmd_key in window.AllKeysDict:
+            window[cmd_key].set_right_click_menu(make_copy_command_menu())
 
 
 # --- Helper Functions ---
@@ -1113,6 +1118,11 @@ VIDEOCR_SETTINGS_RESET_KEYS = [
 def make_reset_menu(key: str) -> list[Any]:
     """Builds a single-item right-click menu that resets one setting to its default value."""
     return ['', [f"{LANG.get('menu_reset_default', 'Reset to Default')}::{key}"]]
+
+
+def make_copy_command_menu() -> list[Any]:
+    """Builds the right-click menu that copies the equivalent CLI command to the clipboard."""
+    return ['', [f"{LANG.get('menu_copy_command', 'Copy Command')}::COPY_CLI_COMMAND"]]
 
 
 def apply_ui_language_change(window: sg.Window, selected_native_name: str) -> None:
@@ -1934,14 +1944,9 @@ def get_valid_brightness_threshold(value: Any) -> int | None:
     return None
 
 
-def run_videocr(args_dict: dict[str, Any], window: sg.Window) -> bool:
-    """Runs the videocr-cli tool in a separate process and streams output."""
-    if not VIDEOCR_PATH:
-        error_msg = LANG.get('error_cli_not_found', "\nError: videocr-cli not found. Please check the path.\n")
-        gui_queue.put(('-VIDEOCR_OUTPUT-', error_msg))
-        return False
-
-    command = [VIDEOCR_PATH]
+def build_cli_command(args_dict: dict[str, Any]) -> list[str]:
+    """Builds the videocr-cli command-line argument list from a processing args dict."""
+    command = [cast(str, VIDEOCR_PATH)]
 
     for key, value in args_dict.items():
         if value is not None and value != '':
@@ -1952,6 +1957,25 @@ def run_videocr(args_dict: dict[str, Any], window: sg.Window) -> bool:
                     command.append(str(value).lower())
                 else:
                     command.append(str(value))
+
+    return command
+
+
+def command_to_shell_string(command: list[str]) -> str:
+    """Formats a command list into a paste-ready string, quoted for the current OS's shell."""
+    if sys.platform == 'win32':
+        return subprocess.list2cmdline(command)
+    return shlex.join(command)
+
+
+def run_videocr(args_dict: dict[str, Any], window: sg.Window) -> bool:
+    """Runs the videocr-cli tool in a separate process and streams output."""
+    if not VIDEOCR_PATH:
+        error_msg = LANG.get('error_cli_not_found', "\nError: videocr-cli not found. Please check the path.\n")
+        gui_queue.put(('-VIDEOCR_OUTPUT-', error_msg))
+        return False
+
+    command = build_cli_command(args_dict)
 
     UNSUPPORTED_HARDWARE_ERROR_PATTERN = re.compile(r"Unsupported Hardware Error: (.*)")
     WARNING_HARDWARE_PATTERN = re.compile(r"Hardware Check Warning: (.*)")
@@ -2473,11 +2497,11 @@ tab1_content = [
         sg.Text("Time: -/-", key="-TIME_TEXT-")
     ],
     [sg.Text("Crop Box (X, Y, W, H):", key='-LBL-CROP_BOX-'), sg.Text("Not Set", key="-CROP_COORDS-", size=(45, 1), expand_x=True)],
-    [sg.Button("Run", key="-BTN-RUN-"),
+    [sg.Button("Run", key="-BTN-RUN-", right_click_menu=make_copy_command_menu()),
      sg.Button("Pause", key="-BTN-PAUSE-", disabled=True),
      sg.Button("Cancel", key="-BTN-CANCEL-", disabled=True),
      sg.Button("Clear Crop", key="-BTN-CLEAR_CROP-", disabled=True)],
-    [sg.Button("Add to Queue", key="-BTN-ADD-BATCH-"),
+    [sg.Button("Add to Queue", key="-BTN-ADD-BATCH-", right_click_menu=make_copy_command_menu()),
      sg.Button("Add All to Queue", key="-BTN-BATCH-ADD-ALL-")],
     [sg.Text("Progress Info:", key='-LBL-PROGRESS-')],
     [
@@ -3231,9 +3255,27 @@ while True:
         )
 
     # --- Handle per-field "Reset to Default" right-click menu entries ---
-    elif isinstance(event, str) and event.startswith(f"{LANG.get('menu_reset_default', 'Reset to Default')}::"):
-        setting_key = event.split('::', 1)[1]
+    elif isinstance(event, str) and '::' in event and (setting_key := event.rsplit('::', 1)[1]) in OCR_SETTINGS_RESET_KEYS + VIDEOCR_SETTINGS_RESET_KEYS:
         reset_settings_to_default(window, [setting_key])
+
+    # --- Handle "Copy Command" right-click menu entry (Run / Add to Queue) ---
+    elif isinstance(event, str) and event.endswith('::COPY_CLI_COMMAND'):
+        if not VIDEOCR_PATH:
+            window['-OUTPUT-'].update(LANG.get('error_cli_not_found', "\nError: videocr-cli not found. Please check the path.\n"), append=True)
+        elif not video_path:
+            window['-OUTPUT-'].update(LANG.get('error_no_video_for_copy', "\nSelect a video first to build its command.\n"), append=True)
+        else:
+            args, errors = get_processing_args(values, window)
+            if errors or args is None:
+                errors_to_display = errors if errors is not None else ["Unknown validation error"]
+                window['-OUTPUT-'].update(LANG.get('val_err_header', "Validation Errors:\n"), append=True)
+                for error in errors_to_display:
+                    window['-OUTPUT-'].update(f"- {error}\n", append=True)
+            else:
+                command = build_cli_command(args)
+                sg.clipboard_set(command_to_shell_string(command))
+                window['-OUTPUT-'].update(LANG.get('msg_command_copied', "Command copied to clipboard.\n"), append=True)
+            window.refresh()
 
     # --- Handle UI language change ---
     elif event == '-UI_LANG_COMBO-':

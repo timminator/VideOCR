@@ -117,6 +117,11 @@
     "reset_info": "Ripristina Predefiniti",
     "reset_message": "\"Ripristina Predefiniti\" riporta ogni impostazione di questa sezione al suo valore predefinito.\n\nPuoi anche fare clic con il tasto destro su una singola impostazione qui sopra per ripristinare solo quella al suo valore predefinito.",
 
+    "menu_copy_command": "Copia Comando",
+    "tip_copy_command": "Fai clic con il tasto destro per copiare il comando CLI equivalente senza eseguirlo.",
+    "error_no_video_for_copy": "\nSeleziona prima un video per generare il comando.\n",
+    "msg_command_copied": "Comando copiato negli appunti.\n",
+
     "btn_browse": "Apri file...",
     "btn_browse_folder": "Apri cartella...",
     "btn_save_as": "Salva come...",

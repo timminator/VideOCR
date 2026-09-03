@@ -117,6 +117,11 @@
     "reset_info": "Restaurar Padrões",
     "reset_message": "\"Restaurar Padrões\" redefine todas as configurações desta seção para o valor padrão.\n\nVocê também pode clicar com o botão direito em qualquer configuração individual acima para redefinir apenas essa configuração para o valor padrão.",
 
+    "menu_copy_command": "Copiar Comando",
+    "tip_copy_command": "Clique com o botão direito para copiar o comando CLI equivalente sem executá-lo.",
+    "error_no_video_for_copy": "\nSelecione um vídeo primeiro para gerar o comando.\n",
+    "msg_command_copied": "Comando copiado para a área de transferência.\n",
+
     "btn_browse": "Abrir Arquivo...",
     "btn_browse_folder": "Abrir Pasta...",
     "btn_save_as": "Salvar como...",

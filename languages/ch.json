@@ -117,6 +117,11 @@
     "reset_info": "恢复默认设置",
     "reset_message": "“恢复默认设置”会将此部分中的每一项设置恢复为其默认值。\n\n您也可以右键单击上方的任意单项设置，仅将该设置恢复为默认值。",
 
+    "menu_copy_command": "复制命令",
+    "tip_copy_command": "右键单击可复制等效的命令行命令，而无需实际运行。",
+    "error_no_video_for_copy": "\n请先选择一个视频以生成其命令。\n",
+    "msg_command_copied": "命令已复制到剪贴板。\n",
+
     "btn_browse": "打开文件...",
     "btn_browse_folder": "打开文件夹...",
     "btn_save_as": "另存为...",

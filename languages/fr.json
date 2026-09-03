@@ -117,6 +117,11 @@
     "reset_info": "Réinitialiser les valeurs par défaut",
     "reset_message": "« Réinitialiser les valeurs par défaut » restaure tous les paramètres de cette section à leur valeur par défaut.\n\nVous pouvez également faire un clic droit sur un paramètre individuel ci-dessus pour réinitialiser uniquement ce paramètre à sa valeur par défaut.",
 
+    "menu_copy_command": "Copier la commande",
+    "tip_copy_command": "Clic droit pour copier la commande CLI équivalente sans l'exécuter.",
+    "error_no_video_for_copy": "\nVeuillez d'abord sélectionner une vidéo pour générer sa commande.\n",
+    "msg_command_copied": "Commande copiée dans le presse-papiers.\n",
+
     "btn_browse": "Ouvrir fichier...",
     "btn_browse_folder": "Ouvrir dossier...",
     "btn_save_as": "Enregistrer sous...",
