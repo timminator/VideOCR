@@ -4,7 +4,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from typing import Any
 
-import wordninja_enhanced as wordninja  # type: ignore
+import wordninja_enhanced as wordninja
 from opencc import OpenCC
 
 from . import utils

@@ -11,10 +11,8 @@ import threading
 from typing import Any, cast
 
 import av
-import fast_ssim  # type: ignore
-import numpy as np
-import simplejpeg  # type: ignore
-import wordninja_enhanced as wordninja  # type: ignore
+import fast_ssim
+import wordninja_enhanced as wordninja
 
 from . import utils
 from .models import PredictedFrames, PredictedSubtitle
@@ -294,19 +292,19 @@ class Video:
                         for idx, sink in enumerate(sinks):
                             processed_raw_frame = cast(av.VideoFrame, sink.pull())
 
-                            img = utils.frame_to_array(processed_raw_frame, fmt='rgb24')
+                            img = utils.video_frame_to_frame(processed_raw_frame)
                             zone_idx = idx
 
                             sample = None
                             if ssim_threshold_ratio < 1:
-                                w = img.shape[1]
+                                w = img.width
                                 if subtitle_position == "center":
                                     w_margin = int(w * 0.35)
-                                    sample = img[:, w_margin:w - w_margin]
+                                    sample = img.crop_columns(w_margin, w - w_margin)
                                 elif subtitle_position == "left":
-                                    sample = img[:, :int(w * 0.3)]
+                                    sample = img.crop_columns(0, int(w * 0.3))
                                 elif subtitle_position == "right":
-                                    sample = img[:, int(w * 0.7):]
+                                    sample = img.crop_columns(int(w * 0.7), w)
                                 elif subtitle_position == "any":
                                     sample = img
                                 else:
@@ -335,12 +333,11 @@ class Video:
                             continue
 
                         frame_path, canvas_w, canvas_h, draw_instructions = item
-                        canvas = np.zeros((canvas_h, canvas_w, 3), dtype=np.uint8)
+                        canvas = bytearray(canvas_h * canvas_w * 3)
                         for img, x, y in draw_instructions:
-                            h, w = img.shape[:2]
-                            canvas[y:y + h, x:x + w] = img
+                            utils.blit(canvas, canvas_w, img, x, y)
 
-                        jpeg_bytes = simplejpeg.encode_jpeg(canvas, quality=80, colorspace='RGB')
+                        jpeg_bytes = utils.encode_frame_to_jpeg(canvas, canvas_w, canvas_h, quality=80)
                         with open(frame_path, 'wb') as f:
                             f.write(jpeg_bytes)
 
@@ -439,7 +436,7 @@ class Video:
 
                                     if ssim_threshold_ratio < 1:
                                         if prev_samples[zone_idx] is not None:
-                                            score = fast_ssim.ssim(prev_samples[zone_idx], sample, data_range=255)
+                                            score = fast_ssim.ssim(prev_samples[zone_idx].data, sample.data, sample.width, sample.height, channels=3, data_range=255)
                                             if score > ssim_threshold_ratio:
                                                 prev_samples[zone_idx] = sample
                                                 continue
@@ -689,7 +686,7 @@ class Video:
                         loaded_grids: dict[str, Any] = {}
 
                         with concurrent.futures.ThreadPoolExecutor() as executor:
-                            for g_file, img_array in executor.map(utils.load_grid, chunk_grids):
+                            for g_file, img_array in executor.map(utils.decode_jpeg_to_frame, chunk_grids):
                                 loaded_grids[g_file] = img_array
 
                         group_args = [
@@ -706,7 +703,7 @@ class Video:
 
                                 filename = f"rec_image_{rec_counter:0{FILENAME_ZERO_PADDING}d}_zone{z_idx}.jpg"
                                 filepath = os.path.join(rec_images_dir, filename)
-                                h, w = item["img"].shape[:2]
+                                h, w = item["img"].height, item["img"].width
                                 write_queue.put((filepath, w, h, [(item["img"], 0, 0)]))
 
                                 rec_image_map[filename] = {

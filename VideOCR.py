@@ -1,7 +1,6 @@
 # Compilation instructions
 # nuitka-project: --standalone
 # nuitka-project: --no-prefer-source-code
-# nuitka-project: --nofollow-import-to=numpy
 # nuitka-project: --enable-plugin=tk-inter
 # nuitka-project: --windows-console-mode=disable
 # nuitka-project: --include-windows-runtime-dlls=yes
@@ -1521,13 +1520,14 @@ class VideoHandler:
         w, h = frame.width, frame.height
         plane = frame.planes[0]
         row_bytes = w * 3
-        raw = bytes(plane)
         stride = plane.line_size
+        mv = memoryview(plane)
 
         if stride == row_bytes:
-            data = raw
+            data = bytes(mv)
         else:
-            data = b''.join(raw[y * stride: y * stride + row_bytes] for y in range(h))
+            rows = [mv[y * stride: y * stride + row_bytes] for y in range(h)]
+            data = b''.join(rows)
 
         header = f"P6\n{w} {h}\n255\n".encode('ascii')
         return header + data
