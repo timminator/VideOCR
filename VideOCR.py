@@ -48,7 +48,7 @@ import PySimpleGUI as sg  # type: ignore
 from wakepy import keep
 
 if sys.platform == "win32":
-    import PyTaskbar  # type: ignore
+    import PyTaskbar
     from winotify import Notification, audio  # type: ignore
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('VideOCR')
 else:

@@ -34,7 +34,7 @@ dependencies = [
     "simplejpeg @ https://github.com/timminator/simplejpeg/releases/download/v1.9.1/simplejpeg-1.9.1-cp311-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl ; sys_platform == 'linux' and python_version >= '3.11'",
     "wakepy",
     "wordninja-enhanced",
-    "PyTaskbarProgress @ git+https://github.com/timminator/PyTaskbar.git ; sys_platform == 'win32'",
+    "PyTaskbar @ git+https://github.com/timminator/PyTaskbar.git ; sys_platform == 'win32'",
     "winotify ; sys_platform == 'win32'",
     "plyer ; sys_platform != 'win32'",
 ]
@@ -46,7 +46,7 @@ dev = [
     "ruff",
 ]
 build = [
-    "nuitka @ git+https://github.com/timminator/Nuitka.git@ccef15eb85f48c53b087b8de1695e6678c8a0569",
+    "nuitka",
     "patchelf; sys_platform == 'linux'",
     "requests",
 ]
