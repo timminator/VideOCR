@@ -267,7 +267,7 @@ PADDLEOCR_LANGUAGES_LIST = [
     ('Chinese Traditional', 'chinese_cht'), ('Chuvash', 'cv'), ('Croatian', 'hr'),
     ('Czech', 'cs'), ('Danish', 'da'), ('Dargwa', 'dar'), ('Dutch', 'nl'),
     ('English', 'en'), ('Estonian', 'et'), ('Finnish', 'fi'), ('French', 'fr'),
-    ('Galician', 'gl'), ('Georgian', 'ka'), ('German', 'german'), ('Goan Konkani', 'gom'),
+    ('Galician', 'gl'), ('Kannada', 'ka'), ('German', 'german'), ('Goan Konkani', 'gom'),
     ('Greek', 'el'), ('Haryanvi', 'bgc'), ('Hindi', 'hi'), ('Hungarian', 'hu'),
     ('Icelandic', 'is'), ('Indonesian', 'id'), ('Ingush', 'inh'), ('Irish', 'ga'),
     ('Italian', 'it'), ('Japanese', 'japan'), ('Kabardian', 'kbd'), ('Kalmyk', 'xal'),
