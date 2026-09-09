@@ -1341,7 +1341,7 @@ def load_settings(window: sg.Window) -> None:
                 window['-OCR_ENGINE_COMBO-'].update(value=saved_engine)
 
                 active_lang_list = lens_display_names if "Google Lens" in saved_engine else paddle_display_names
-                window['-LANG_COMBO-'].update(values=active_lang_list)
+                window['-LANG_COMBO-'].update(values=active_lang_list, value=DEFAULT_SUBTITLE_LANGUAGE)
 
                 settings_to_load = [
                     ('-LANG_COMBO-', 'combo_lang'),
