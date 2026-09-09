@@ -76,17 +76,7 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs 
 [InstallDelete]
 Type: files; Name: "{commonprograms}\(Default)\VideOCR.lnk"
 Type: dirifempty; Name: "{commonprograms}\(Default)"
-Type: filesandordirs; Name: "{app}\win32com"
-Type: filesandordirs; Name: "{app}\cv2"
-Type: filesandordirs; Name: "{app}\pymediainfo"
-Type: files; Name: "{app}\win32api.pyd"
-Type: files; Name: "{app}\win32gui.pyd"
-Type: files; Name: "{app}\win32ui.pyd"
-Type: files; Name: "{app}\pythoncom312.dll"
-Type: files; Name: "{app}\pywintypes312.dll"
-Type: files; Name: "{app}\mfc140u.dll"
-Type: files; Name: "{app}\_win32sysloader.pyd"
-Type: filesandordirs; Name: "{app}\videocr-cli-*"
+Type: filesandordirs; Name: "{app}"
 
 [UninstallDelete]
 Type: files; Name: "{app}\videocr_gui_config.ini"
@@ -155,52 +145,45 @@ end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 var
-  LegacyConfigPath, NewConfigPath, OldVersion: string;
+  ConfigPath, OldVersion: string;
   SelectedLanguage: string;
 begin
   if CurStep = ssInstall then
   begin
     OldVersion := GetInstalledVersion();
 
-    if VersionCompare(OldVersion, '1.4.2') < 0 then
-    begin
-      LegacyConfigPath := ExpandConstant('{app}\\videocr_gui_config.ini');
-      if FileExists(LegacyConfigPath) then
-        DeleteFile(LegacyConfigPath);
-    end;
-
     if VersionCompare(OldVersion, '1.6.0') < 0 then
     begin
-      NewConfigPath := ExpandConstant('{userappdata}\\VideOCR\\videocr_gui_config.ini');
-      if FileExists(NewConfigPath) then
-        DeleteFile(NewConfigPath);
+      ConfigPath := ExpandConstant('{userappdata}\\VideOCR\\videocr_gui_config.ini');
+      if FileExists(ConfigPath) then
+        DeleteFile(ConfigPath);
     end;
   end;
 
   if CurStep = ssPostInstall then
   begin
-    NewConfigPath := ExpandConstant('{userappdata}\\VideOCR\\videocr_gui_config.ini');
+    ConfigPath := ExpandConstant('{userappdata}\\VideOCR\\videocr_gui_config.ini');
 
-    if not FileExists(NewConfigPath) then
+    if not FileExists(ConfigPath) then
     begin
       SelectedLanguage := ActiveLanguage();
 
       case SelectedLanguage of
-        'german':            SetIniString('Settings', '--language', 'de', NewConfigPath);
-        'chinesesimplified': SetIniString('Settings', '--language', 'ch', NewConfigPath);
-        'spanish':           SetIniString('Settings', '--language', 'es', NewConfigPath);
-        'french':            SetIniString('Settings', '--language', 'fr', NewConfigPath);
-        'portuguese':        SetIniString('Settings', '--language', 'pt', NewConfigPath);
-        'italian':           SetIniString('Settings', '--language', 'it', NewConfigPath);
-        'arabic':            SetIniString('Settings', '--language', 'ar', NewConfigPath);
-        'russian':           SetIniString('Settings', '--language', 'ru', NewConfigPath);
-        'indonesian':        SetIniString('Settings', '--language', 'id', NewConfigPath);
-        'Thai':              SetIniString('Settings', '--language', 'th', NewConfigPath);
-        'Korean':            SetIniString('Settings', '--language', 'ko', NewConfigPath);
-        'japanese':          SetIniString('Settings', '--language', 'ja', NewConfigPath);
-        'vietnamese':        SetIniString('Settings', '--language', 'vi', NewConfigPath);
+        'german':            SetIniString('Settings', '--language', 'de', ConfigPath);
+        'chinesesimplified': SetIniString('Settings', '--language', 'ch', ConfigPath);
+        'spanish':           SetIniString('Settings', '--language', 'es', ConfigPath);
+        'french':            SetIniString('Settings', '--language', 'fr', ConfigPath);
+        'portuguese':        SetIniString('Settings', '--language', 'pt', ConfigPath);
+        'italian':           SetIniString('Settings', '--language', 'it', ConfigPath);
+        'arabic':            SetIniString('Settings', '--language', 'ar', ConfigPath);
+        'russian':           SetIniString('Settings', '--language', 'ru', ConfigPath);
+        'indonesian':        SetIniString('Settings', '--language', 'id', ConfigPath);
+        'Thai':              SetIniString('Settings', '--language', 'th', ConfigPath);
+        'Korean':            SetIniString('Settings', '--language', 'ko', ConfigPath);
+        'japanese':          SetIniString('Settings', '--language', 'ja', ConfigPath);
+        'vietnamese':        SetIniString('Settings', '--language', 'vi', ConfigPath);
       else
-        SetIniString('Settings', '--language', 'en', NewConfigPath);
+        SetIniString('Settings', '--language', 'en', ConfigPath);
       end;
     end;
   end;
