@@ -86,6 +86,10 @@
     "tip_normalize_chinese": "Si activé, les caractères chinois traditionnels seront convertis en\nchinois simplifié avant le traitement. Actif uniquement pour \"Chinese & English\".",
     "chk_server_model": "Utiliser le modèle serveur",
     "tip_server_model": "Active le modèle serveur avec de meilleures capacités OCR.\nCe mode peut donner de meilleurs résultats mais nécessite plus de puissance de calcul.\nUn GPU est fortement recommandé.",
+    "chk_save_ocr_images": "Enregistrer les images OCR (Détection/OCR)",
+    "tip_save_ocr_images": "Enregistre sur le disque les images utilisées pour la détection et l'OCR,\nannotées avec les zones/texte détectés. Les images de l'étape OCR ne sont\nenregistrées que pour PaddleOCR ; pas encore pris en charge pour Google Lens.",
+    "lbl_ocr_images_dir": "Répertoire de sortie des images OCR :",
+    "tip_ocr_images_dir": "Dossier où seront placées les images OCR enregistrées.\nDésactivé sauf si \"Enregistrer les images OCR\" est activé.",
     "lbl_videocr_settings": "Paramètres VideOCR :",
     "lbl_ui_lang": "Langue de l'interface :",
     "tip_ui_lang": "Modifier la langue d'affichage de l'application.",
@@ -196,6 +200,7 @@
     "cli_starting_paddleocr": "Démarrage de PaddleOCR...",
     "cli_generating_subs": "Génération des sous-titres...",
     "log_reached_end": "Heure de fin atteinte. Arrêt.",
+    "cli_note_lens_no_rec_images": "Remarque : Google Lens ne prend pas encore en charge l'enregistrement des images OCR ; seules les images de détection seront enregistrées.",
     "unknown": "inconnu",
 
     "eta_step": "ETA Étape",

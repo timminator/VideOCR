@@ -609,6 +609,10 @@ def update_gui_text(window: sg.Window, is_paused: bool = False) -> None:
         '--use_angle_cls': {'text': 'chk_angle_cls', 'tooltip': 'tip_angle_cls'},
         '--post_processing': {'text': 'chk_post_processing', 'tooltip': 'tip_post_processing'},
         '--use_server_model': {'text': 'chk_server_model', 'tooltip': 'tip_server_model'},
+        '--save_ocr_images': {'text': 'chk_save_ocr_images', 'tooltip': 'tip_save_ocr_images'},
+        '-LBL-OCR_IMAGES_DIR-': {'text': 'lbl_ocr_images_dir', 'tooltip': 'tip_ocr_images_dir'},
+        '--ocr_images_output_dir': {'tooltip': 'tip_ocr_images_dir'},
+        '-BTN-OCR_IMAGES_FOLDER_BROWSE-': {'text': 'btn_browse_folder', 'tooltip': 'tip_ocr_images_dir'},
         '-RESET_OCR_SETTINGS-': {'text': 'btn_reset_to_defaults'},
         '-RESET_OCR_SETTINGS_INFO-': {'text': 'btn_info'},
         '-LBL-VIDEOCR_SETTINGS-': {'text': 'lbl_videocr_settings'},
@@ -1020,6 +1024,13 @@ def update_alignment_controls(window: sg.Window, values: dict[str, Any]) -> None
     window['--subtitle_alignment2'].update(disabled=not (is_checked and is_dual_zone))
 
 
+def update_ocr_images_controls(window: sg.Window, values: dict[str, Any]) -> None:
+    """Enables/disables the OCR images output directory controls based on the Save OCR Images checkbox."""
+    is_checked = values.get('--save_ocr_images', False)
+    window['--ocr_images_output_dir'].update(disabled=not is_checked, readonly=True)
+    window['-BTN-OCR_IMAGES_FOLDER_BROWSE-'].update(disabled=not is_checked)
+
+
 def update_post_action_combo(window: sg.Window, selected_index: int = 0) -> None:
     """Refreshes the Post Action combo text and selects by numeric index."""
     display_values = [LANG.get(key, DEFAULT_ACTION_TEXTS[key]) for key in POST_ACTION_KEYS]
@@ -1081,6 +1092,8 @@ def get_default_settings() -> dict[str, Any]:
     '--post_processing': False,
     '--min_subtitle_duration': str(DEFAULT_MIN_SUBTITLE_DURATION),
     '--use_server_model': False,
+    '--save_ocr_images': False,
+    '--ocr_images_output_dir': DEFAULT_DOCUMENTS_DIR,
     '--use_dual_zone': False,
     'enable_subtitle_alignment': False,
     '--subtitle_alignment': DEFAULT_SUBTITLE_ALIGNMENT,
@@ -1105,6 +1118,7 @@ OCR_SETTINGS_RESET_KEYS = [
     '--frames_to_skip', '--min_subtitle_duration', '--use_gpu', '--use_fullframe', '--use_dual_zone',
     'enable_subtitle_alignment', '--subtitle_alignment', '--subtitle_alignment2', '--use_angle_cls',
     '--post_processing', '--normalize_to_simplified_chinese', '--use_server_model',
+    '--save_ocr_images', '--ocr_images_output_dir',
 ]
 
 VIDEOCR_SETTINGS_RESET_KEYS = [
@@ -1165,6 +1179,7 @@ def apply_gui_scaling_change(window: sg.Window, selected_display_value: str) -> 
 
         current_values = window.read(timeout=0)[1]
         update_alignment_controls(window, current_values)
+        update_ocr_images_controls(window, current_values)
         save_settings(window, current_values)
         return False
 
@@ -1228,6 +1243,7 @@ def reset_settings_to_default(window: sg.Window, keys: list[str]) -> bool:
 
     current_values = window.read(timeout=0)[1]
     update_alignment_controls(window, current_values)
+    update_ocr_images_controls(window, current_values)
     save_settings(window, current_values)
 
     return pending_scaling_display is not None and apply_gui_scaling_change(window, pending_scaling_display)
@@ -1355,6 +1371,8 @@ def load_settings(window: sg.Window) -> None:
                     ('--check_for_updates', 'checkbox'),
                     ('prevent_system_sleep', 'checkbox'),
                     ('--normalize_to_simplified_chinese', 'checkbox'),
+                    ('--save_ocr_images', 'checkbox'),
+                    ('--ocr_images_output_dir', 'input'),
                 ]
 
                 for key, elem_type in settings_to_load:
@@ -1387,6 +1405,7 @@ def load_settings(window: sg.Window) -> None:
 
             current_gui_values = window.read(timeout=0)[1]
             update_alignment_controls(window, current_gui_values)
+            update_ocr_images_controls(window, current_gui_values)
             save_settings(window, current_gui_values)
 
         except configparser.Error as e:
@@ -1989,6 +2008,7 @@ def run_videocr(args_dict: dict[str, Any], window: sg.Window) -> bool:
     FILTERED_PATTERN = re.compile(r"Filtered out (\d+) redundant frame\(s\) via Text-Detection and tight-box SSIM analysis\.")
     GENERATING_SUBTITLES_PATTERN = re.compile(r"Generating subtitles\.\.\.")
     REACHED_END_TIME_PATTERN = re.compile(r"Reached end time\. Stopping\.")
+    LENS_NO_REC_IMAGES_PATTERN = re.compile(r"Note: Google Lens doesn't support saving recognition images yet; only detection images will be saved\.")
 
     last_reported_percentage_step1 = -1.0
     last_reported_percentage_step2 = -1.0
@@ -2121,6 +2141,10 @@ def run_videocr(args_dict: dict[str, Any], window: sg.Window) -> bool:
                 if REACHED_END_TIME_PATTERN.search(line):
                     gui_queue.put(('-VIDEOCR_OUTPUT-', LANG.get('log_reached_end', line) + '\n'))
                     gui_queue.put(('-PROGRESS-SMOOTH-', {'text': LANG.get('log_reached_end', line), 'percent': None}))
+                    continue
+                if LENS_NO_REC_IMAGES_PATTERN.search(line):
+                    note_msg = LANG.get('cli_note_lens_no_rec_images', "Note: Google Lens doesn't support saving recognition images yet; only detection images will be saved.")
+                    gui_queue.put(('-VIDEOCR_OUTPUT-', '\n' + note_msg + '\n'))
                     continue
                 if STARTING_PADDLEOCR_PATTERN.search(line):
                     gui_queue.put(('-VIDEOCR_OUTPUT-', LANG.get('cli_starting_paddleocr', line) + '\n'))
@@ -2578,6 +2602,10 @@ tab2_content = [
     [sg.Checkbox("Enable Post Processing", default=False, key="--post_processing", enable_events=True, right_click_menu=make_reset_menu("--post_processing"))],
     [sg.Checkbox("Normalize Traditional to Simplified Chinese", default=True, key="--normalize_to_simplified_chinese", enable_events=True, right_click_menu=make_reset_menu("--normalize_to_simplified_chinese"))],
     [sg.Checkbox("Use Server Model", default=False, key="--use_server_model", enable_events=True, right_click_menu=make_reset_menu("--use_server_model"))],
+    [sg.Checkbox("Save OCR Images (Detection/OCR)", default=False, key="--save_ocr_images", enable_events=True, right_click_menu=make_reset_menu("--save_ocr_images"))],
+    [sg.Text("OCR Images Output Directory:", size=(38, 1), key='-LBL-OCR_IMAGES_DIR-'),
+     sg.Input(DEFAULT_DOCUMENTS_DIR, key="--ocr_images_output_dir", disabled_readonly_background_color=sg.theme_input_background_color(), readonly=True, disabled=True, size=(24, 1), enable_events=True, right_click_menu=make_reset_menu("--ocr_images_output_dir")),
+     sg.Button("Open Folder...", key="-BTN-OCR_IMAGES_FOLDER_BROWSE-", disabled=True)],
     [sg.Push(),
      sg.Button("Reset to Defaults", key="-RESET_OCR_SETTINGS-", pad=((5, 5), (15, 3))),
      sg.Button("Info", key="-RESET_OCR_SETTINGS_INFO-", pad=((5, 5), (15, 3))),
@@ -3014,6 +3042,8 @@ KEYS_TO_AUTOSAVE = [
     '--post_processing',
     '--min_subtitle_duration',
     '--use_server_model',
+    '--save_ocr_images',
+    '--ocr_images_output_dir',
     '--keyboard_seek_step',
     '--default_output_dir',
     '--save_in_video_dir',
@@ -3092,7 +3122,6 @@ while True:
                     window['-BTN-CANCEL-'].update(disabled=True)
                     window['-BTN-BATCH-STOP-'].update(disabled=True)
                     window['-SAVE_AS_BTN-'].update(disabled=not video_path)
-                    window['--output'].update(disabled=not video_path)
                     window['-PROGRESS-BAR-'].update(0)
                     window['-STATUS-LINE-'].update("")
                     window['-ETA-LINE-'].update("")
@@ -3136,6 +3165,9 @@ while True:
 
         if event in ('enable_subtitle_alignment', '--use_dual_zone'):
             update_alignment_controls(window, values)
+
+        if event == '--save_ocr_images':
+            update_ocr_images_controls(window, values)
 
         if event == '--use_dual_zone' or event == '--use_fullframe':
             reset_crop_state()
@@ -3328,6 +3360,11 @@ while True:
         if folder:
             window['--default_output_dir'].update(folder)
 
+    elif event == '-BTN-OCR_IMAGES_FOLDER_BROWSE-':
+        folder = sg.tk.filedialog.askdirectory()
+        if folder:
+            window['--ocr_images_output_dir'].update(folder)
+
     elif event == '-BTN-OCR-INFO-':
         custom_popup(window, LANG.get('engine_info', "OCR Engine Information"), LANG.get('engine_message', (
             "PaddleOCR (Det. + Rec.):\n"
@@ -3451,7 +3488,6 @@ while True:
                     popup_title = LANG.get('error_set_path_title', "Unable to Set Output Path")
                     popup_msg = LANG.get('error_set_path_msg', "Could not automatically generate default output path.\nPlease specify one manually.\nError: {}")
                     custom_popup(window, popup_title, popup_msg.format(e), icon=ICON_PATH)
-                    window['--output'].update("", disabled=False)
                     window['-SAVE_AS_BTN-'].update(disabled=False)
 
                 # --- Auto-load crop box if setting is enabled ---
@@ -3529,6 +3565,10 @@ while True:
 
     # --- Handle Keyboard Arrow Keys (Bound to Graph) ---
     elif event in ('-GRAPH-<Left>', '-GRAPH-<Right>'):
+        focused_element = window.find_element_with_focus()
+        if isinstance(focused_element, (sg.Input, sg.Multiline)):
+            continue
+
         if video_path and video_duration_ms > 0:
             current_time = float(values["-SLIDER-"])
             try:
@@ -3550,6 +3590,7 @@ while True:
     # --- Graph Interaction ---
     elif event == "-GRAPH-":
         window.is_drawing = True
+        window['-GRAPH-'].set_focus()
 
         if not video_path or resized_frame_width == 0:
             continue
@@ -4168,11 +4209,21 @@ while True:
 
                 # Restore remaining simple arguments
                 for arg_key, arg_val in args.items():
-                    if arg_key in ('ocr_engine', 'lang'):
+                    if arg_key in ('ocr_engine', 'lang', 'subtitle_alignment', 'subtitle_alignment2'):
                         continue
                     gui_key = f"--{arg_key}"
                     if gui_key in window.AllKeysDict:
                         window[gui_key].update(arg_val)
+
+                # Restore subtitle alignment
+                saved_align1 = args.get('subtitle_alignment', DEFAULT_SUBTITLE_ALIGNMENT)
+                saved_align2 = args.get('subtitle_alignment2', DEFAULT_SUBTITLE_ALIGNMENT)
+                window['enable_subtitle_alignment'].update(value='subtitle_alignment' in args)
+                update_alignment_combos(window, get_alignment_index(saved_align1), get_alignment_index(saved_align2))
+
+                current_gui_values = window.read(timeout=0)[1]
+                update_alignment_controls(window, current_gui_values)
+                update_ocr_images_controls(window, current_gui_values)
 
                 new_boxes: list[dict[str, Any]] = []
 

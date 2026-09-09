@@ -86,6 +86,10 @@
     "tip_normalize_chinese": "عند التفعيل، سيتم تحويل أحرف الصينية التقليدية إلى\nالصينية المبسطة قبل المعالجة. يعمل فقط مع \"Chinese & English\".",
     "chk_server_model": "استخدام نموذج الخادم",
     "tip_server_model": "يفعل نموذج الخادم بقدرات OCR أعلى.\nهذا الوضع يمكن أن يقدم نتائج أفضل لكنه يتطلب أيضاً قوة حاسوبية أكثر.\nGPU مُوصى به بشدة عند استخدام هذا الوضع.",
+    "chk_save_ocr_images": "حفظ صور OCR (الكشف/OCR)",
+    "tip_save_ocr_images": "يحفظ على القرص الصور المستخدمة للكشف و OCR،\nموسومة بالمربعات/النص المكتشف. تُحفظ صور خطوة OCR\nفقط لـ PaddleOCR؛ غير مدعوم بعد لـ Google Lens.",
+    "lbl_ocr_images_dir": "مجلد إخراج صور OCR:",
+    "tip_ocr_images_dir": "المجلد حيث ستوضع صور OCR المحفوظة.\nمُعطل ما لم يكن \"حفظ صور OCR\" مُفعلاً.",
     "lbl_videocr_settings": "إعدادات VideOCR:",
     "lbl_ui_lang": "لغة الواجهة:",
     "tip_ui_lang": "تغيير لغة عرض التطبيق.",
@@ -196,6 +200,7 @@
     "cli_starting_paddleocr": "بدء PaddleOCR...",
     "cli_generating_subs": "إنشاء الترجمات...",
     "log_reached_end": "تم الوصول إلى وقت النهاية. جاري الإيقاف.",
+    "cli_note_lens_no_rec_images": "ملاحظة: لا يدعم Google Lens حفظ صور OCR حتى الآن؛ سيتم حفظ صور الكشف فقط.",
     "unknown": "غير معروف",
 
     "eta_step": "ETA الخطوة",

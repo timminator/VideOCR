@@ -86,6 +86,10 @@
     "tip_normalize_chinese": "Khi bật, các ký tự Trung phồn thể sẽ được chuyển sang\nTrung giản thể trước khi xử lý. Chỉ hoạt động với \"Chinese & English\".",
     "chk_server_model": "Sử Dụng Mô Hình Máy Chủ",
     "tip_server_model": "Bật mô hình máy chủ với khả năng OCR cao hơn.\nChế độ này có thể mang lại kết quả tốt hơn nhưng cũng yêu cầu nhiều sức mạnh tính toán hơn.\nGPU được khuyến nghị cao khi sử dụng chế độ này.",
+    "chk_save_ocr_images": "Lưu Hình Ảnh OCR (Phát Hiện/OCR)",
+    "tip_save_ocr_images": "Lưu vào ổ đĩa các hình ảnh dùng cho phát hiện và OCR,\nđược chú thích với khung/văn bản đã phát hiện. Hình ảnh của bước OCR\nchỉ được lưu cho PaddleOCR; chưa được hỗ trợ cho Google Lens.",
+    "lbl_ocr_images_dir": "Thư Mục Đầu Ra Hình Ảnh OCR:",
+    "tip_ocr_images_dir": "Thư mục nơi các hình ảnh OCR đã lưu sẽ được đặt.\nBị tắt trừ khi \"Lưu Hình Ảnh OCR\" được bật.",
     "lbl_videocr_settings": "Cài Đặt VideOCR:",
     "lbl_ui_lang": "Ngôn Ngữ Giao Diện:",
     "tip_ui_lang": "Thay đổi ngôn ngữ hiển thị của ứng dụng.",
@@ -196,6 +200,7 @@
     "cli_starting_paddleocr": "Đang khởi động PaddleOCR...",
     "cli_generating_subs": "Đang tạo phụ đề...",
     "log_reached_end": "Đã đạt đến thời gian kết thúc. Đang dừng.",
+    "cli_note_lens_no_rec_images": "Lưu ý: Google Lens chưa hỗ trợ lưu hình ảnh OCR; chỉ hình ảnh phát hiện sẽ được lưu.",
     "unknown": "không xác định",
 
     "eta_step": "ETA Bước",

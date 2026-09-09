@@ -86,6 +86,10 @@
     "tip_normalize_chinese": "If enabled, Traditional Chinese characters will be converted to\nSimplified Chinese before processing. Only active for \"Chinese & English\".",
     "chk_server_model": "Use Server Model",
     "tip_server_model": "Enables the server model with higher OCR capabilities.\nThis mode can deliver better results but requires also more computing power.\nA GPU is highly recommended when using this mode.",
+    "chk_save_ocr_images": "Save OCR Images (Detection/OCR)",
+    "tip_save_ocr_images": "Saves the images used for text detection and recognition to disk,\nannotated with the detected boxes/text. Recognition images are only\nsaved for PaddleOCR; not yet supported for Google Lens.",
+    "lbl_ocr_images_dir": "OCR Images Output Directory:",
+    "tip_ocr_images_dir": "Folder where the saved OCR images will be placed.\nDisabled unless \"Save OCR Images\" is enabled.",
     "lbl_videocr_settings": "VideOCR Settings:",
     "lbl_ui_lang": "UI Language:",
     "tip_ui_lang": "Change the display language of the application.",
@@ -196,6 +200,7 @@
     "cli_starting_paddleocr": "Starting PaddleOCR...",
     "cli_generating_subs": "Generating subtitles...",
     "log_reached_end": "Reached end time. Stopping.",
+    "cli_note_lens_no_rec_images": "Note: Google Lens doesn't support saving recognition images yet; only detection images will be saved.",
     "unknown": "unknown",
 
     "eta_step": "ETA Step",

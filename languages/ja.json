@@ -86,6 +86,10 @@
     "tip_normalize_chinese": "有効にすると、処理前に繁体字中国語が\n簡体字中国語に変換されます。「Chinese & English」のみ有効です。",
     "chk_server_model": "サーバーモデルを使用",
     "tip_server_model": "より高いOCR機能を持つサーバーモデルを有効にします。\nこのモードはより良い結果を提供できますが、より多くの計算能力も必要です。\nこのモードを使用する際はGPUを強く推奨します。",
+    "chk_save_ocr_images": "OCR画像を保存 (検出/OCR)",
+    "tip_save_ocr_images": "検出とOCRに使用された画像を、検出されたボックス/テキストを\n注釈付きでディスクに保存します。OCRステップの画像は\nPaddleOCRのみで保存され、Google Lensにはまだ対応していません。",
+    "lbl_ocr_images_dir": "OCR画像出力ディレクトリ:",
+    "tip_ocr_images_dir": "保存されたOCR画像が配置されるフォルダ。\n「OCR画像を保存」が有効でない限り無効になります。",
     "lbl_videocr_settings": "VideOCR設定:",
     "lbl_ui_lang": "UI言語:",
     "tip_ui_lang": "アプリケーションの表示言語を変更します。",
@@ -196,6 +200,7 @@
     "cli_starting_paddleocr": "PaddleOCRを開始しています...",
     "cli_generating_subs": "字幕を生成しています...",
     "log_reached_end": "終了時間に達しました。停止します。",
+    "cli_note_lens_no_rec_images": "注意: Google LensはまだOCR画像の保存に対応していません。検出画像のみ保存されます。",
     "unknown": "不明",
 
     "eta_step": "ETA ステップ",

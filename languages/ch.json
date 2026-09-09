@@ -86,6 +86,10 @@
     "tip_normalize_chinese": "启用后，将在处理前把繁体中文字符转换为\n简体中文。仅在“Chinese & English”下生效。",
     "chk_server_model": "使用高精度模型",
     "tip_server_model": "启用高精度模型以获得更高的 OCR 能力。\n该模式可提供更好的结果，但也需要更多计算能力。\n建议在此模式下使用 GPU。",
+    "chk_save_ocr_images": "保存 OCR 图像（检测/OCR）",
+    "tip_save_ocr_images": "将用于检测和 OCR 的图像保存到磁盘，\n并标注检测到的框/文字。OCR 步骤的图像\n仅在使用 PaddleOCR 时保存；Google Lens 尚不支持。",
+    "lbl_ocr_images_dir": "OCR 图像输出目录：",
+    "tip_ocr_images_dir": "保存的 OCR 图像将放置的文件夹。\n除非启用“保存 OCR 图像”，否则此项禁用。",
     "lbl_videocr_settings": "VideOCR 设置：",
     "lbl_ui_lang": "界面语言：",
     "tip_ui_lang": "更改应用程序的显示语言。",
@@ -196,6 +200,7 @@
     "cli_starting_paddleocr": "正在启动 PaddleOCR...",
     "cli_generating_subs": "正在生成字幕...",
     "log_reached_end": "已达到结束时间。正在停止。",
+    "cli_note_lens_no_rec_images": "注意：Google Lens 尚不支持保存 OCR 图像；仅会保存检测图像。",
     "unknown": "未知",
 
     "eta_step": "ETA 步骤",

@@ -86,6 +86,10 @@
     "tip_normalize_chinese": "Jika diaktifkan, karakter Mandarin Tradisional akan dikonversi ke\nMandarin Sederhana sebelum pemrosesan. Hanya aktif untuk \"Chinese & English\".",
     "chk_server_model": "Gunakan Model Server",
     "tip_server_model": "Mengaktifkan model server dengan kemampuan OCR yang lebih tinggi.\nMode ini dapat memberikan hasil yang lebih baik tetapi juga memerlukan daya komputasi yang lebih besar.\nGPU sangat disarankan saat menggunakan mode ini.",
+    "chk_save_ocr_images": "Simpan Gambar OCR (Deteksi/OCR)",
+    "tip_save_ocr_images": "Menyimpan gambar yang digunakan untuk deteksi dan OCR ke disk,\ndiberi anotasi dengan kotak/teks yang terdeteksi. Gambar dari tahap OCR\nhanya disimpan untuk PaddleOCR; belum didukung untuk Google Lens.",
+    "lbl_ocr_images_dir": "Direktori Output Gambar OCR:",
+    "tip_ocr_images_dir": "Folder tempat gambar OCR yang disimpan akan ditempatkan.\nDinonaktifkan kecuali \"Simpan Gambar OCR\" diaktifkan.",
     "lbl_videocr_settings": "Pengaturan VideOCR:",
     "lbl_ui_lang": "Bahasa UI:",
     "tip_ui_lang": "Ubah bahasa tampilan aplikasi.",
@@ -196,6 +200,7 @@
     "cli_starting_paddleocr": "Memulai PaddleOCR...",
     "cli_generating_subs": "Membuat subtitle...",
     "log_reached_end": "Mencapai waktu akhir. Berhenti.",
+    "cli_note_lens_no_rec_images": "Catatan: Google Lens belum mendukung penyimpanan gambar OCR; hanya gambar deteksi yang akan disimpan.",
     "unknown": "tidak diketahui",
 
     "eta_step": "ETA Langkah",

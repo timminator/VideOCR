@@ -16,9 +16,14 @@ from _version import __version__
 # --- Configuration ---
 APP_VERSION = __version__
 
-SUPPORT_FILES_URLS: dict[str, str] = {
+PP_OCRV6_SUPPORT_FILES_URLS: dict[str, str] = {
     "Windows": "https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{version}/PaddleOCR.PP-OCRv6.support.files.VideOCR.7z",
     "Linux": "https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{version}/PaddleOCR.PP-OCRv6.support.files.VideOCR.tar.xz"
+}
+
+FONT_SUPPORT_FILES_URLS: dict[str, str] = {
+    "Windows": "https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{version}/PaddleOCR.font.support.files.VideOCR.7z",
+    "Linux": "https://github.com/timminator/PaddleOCR-Standalone/releases/download/v{version}/PaddleOCR.font.support.files.VideOCR.tar.xz"
 }
 
 PADDLE_URLS: dict[str, dict[str, str | list[str]]] = {
@@ -322,8 +327,11 @@ def package_target(build_target: str, args: argparse.Namespace, releases_dir: Pa
     print_header(f"Downloading Dependencies for {display_target_name} target")
 
     # Format URLs dynamically using the fetched versions
-    raw_support_url = SUPPORT_FILES_URLS[os_name]
-    support_archive_path = download_file(raw_support_url.format(version=paddle_version), temp_cli_dist)
+    raw_support_url = PP_OCRV6_SUPPORT_FILES_URLS[os_name]
+    pp_ocrv6_support_archive_path = download_file(raw_support_url.format(version=paddle_version), temp_cli_dist)
+
+    raw_font_url = FONT_SUPPORT_FILES_URLS[os_name]
+    font_support_archive_path = download_file(raw_font_url.format(version=paddle_version), temp_cli_dist)
 
     raw_paddle_urls = PADDLE_URLS[os_name][build_target]
 
@@ -338,12 +346,14 @@ def package_target(build_target: str, args: argparse.Namespace, releases_dir: Pa
     chrome_lens_archive_path = download_file(raw_chrome_lens_url.format(version=chrome_lens_version), temp_cli_dist)
 
     # Extract all archives
-    extract_archive(support_archive_path, temp_cli_dist)
+    extract_archive(pp_ocrv6_support_archive_path, temp_cli_dist)
+    extract_archive(font_support_archive_path, temp_cli_dist)
     extract_archive(paddle_archive_path, temp_cli_dist)
     extract_archive(chrome_lens_archive_path, temp_cli_dist)
 
     print("Cleaning up downloaded archives...")
-    os.remove(support_archive_path)
+    os.remove(pp_ocrv6_support_archive_path)
+    os.remove(font_support_archive_path)
     os.remove(chrome_lens_archive_path)
     if isinstance(paddle_url, list):
         for url in paddle_url:

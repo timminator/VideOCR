@@ -249,6 +249,13 @@ Input Video Quality       | Use lower quality           | Use higher quality  | 
 
   By default the smaller model are used for the OCR process. This parameter enables the usage of the server models for OCR. This can result in better text detection at the cost of more processing power. Should only ever be used in the GPU version.
 
+- `save_ocr_images`
+
+  If set to `True`, the images used for detection and recognition are saved to disk, annotated with the detected boxes/text. Useful for reviewing or debugging OCR results. Recognition images are currently only saved when using the `paddleocr` engine; not yet supported for `google_lens`.
+
+- `ocr_images_output_dir`
+
+  Directory where the images from `save_ocr_images` are saved. Defaults to `ocr_images` in the current working directory if not specified.
 
 ## Build and Compile Instructions
 

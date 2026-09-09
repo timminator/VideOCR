@@ -46,6 +46,17 @@ def valid_output_path(arg: str) -> str:
     return arg
 
 
+def valid_output_dir_path(arg: str) -> str:
+    if os.path.exists(arg) and not os.path.isdir(arg):
+        raise argparse.ArgumentTypeError(f"Path exists and is not a directory: '{arg}'")
+    parent_dir = os.path.dirname(os.path.abspath(arg)) or '.'
+    if not os.path.isdir(parent_dir):
+        raise argparse.ArgumentTypeError(f"Parent directory does not exist: '{parent_dir}'")
+    if not os.access(parent_dir, os.W_OK):
+        raise argparse.ArgumentTypeError(f"Parent directory is not writable: '{parent_dir}'")
+    return arg
+
+
 def restricted_int(min_val: int | None = None, max_val: int | None = None) -> Callable[[str], int]:
     def validator(arg: str) -> int:
         try:
@@ -131,6 +142,8 @@ def main() -> None:
     parser.add_argument('--subtitle_alignment', type=valid_alignment_name, default=None, help='(Zone 1) Subtitle alignment. Allowed: bottom-left, bottom-center, bottom-right, middle-left, middle-center, middle-right, top-left, top-center, top-right')
     parser.add_argument('--subtitle_alignment2', type=valid_alignment_name, default=None, help='(Zone 2) Subtitle alignment. See --subtitle_alignment for allowed values.')
     parser.add_argument('--allow_system_sleep', type=lambda x: x.lower() == 'true', default=False, help='Allow the system to sleep during processing (default: false)')
+    parser.add_argument('--save_ocr_images', type=lambda x: x.lower() == 'true', default=False, help='Save annotated detection and recognition images to disk. Recognition output is PaddleOCR only; not yet supported for Google Lens (default: false)')
+    parser.add_argument('--ocr_images_output_dir', type=valid_output_dir_path, default='ocr_images', help='Directory to save OCR images to when --save_ocr_images is enabled (default: ocr_images)')
 
     args = parser.parse_args()
 
@@ -202,7 +215,9 @@ def main() -> None:
                 min_subtitle_duration_sec=args.min_subtitle_duration,
                 ocr_image_max_width=args.ocr_image_max_width,
                 disable_stitching=args.disable_stitching,
-                subtitle_alignments=[args.subtitle_alignment, args.subtitle_alignment2]
+                subtitle_alignments=[args.subtitle_alignment, args.subtitle_alignment2],
+                save_ocr_images=args.save_ocr_images,
+                ocr_images_output_dir=args.ocr_images_output_dir
             )
     except ValueError as e:
         print(f"Error: {e}")

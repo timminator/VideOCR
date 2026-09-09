@@ -251,6 +251,35 @@ def resolve_model_dirs(lang: str, use_server_model: bool) -> tuple[str, str, str
     )
 
 
+def resolve_font_path(lang: str) -> str:
+    """Resolves the font file for the specified language."""
+    program_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
+    font_dir = os.path.join(program_dir, "PaddleOCR.font.support.files")
+
+    is_v6_supported = lang in ("ch", "chinese_cht", "en", "japan") or (lang in PADDLEOCR_LANGS["latin"] and lang != "pi")
+
+    if is_v6_supported:
+        font_name = "simfang.ttf"
+    elif lang in PADDLEOCR_LANGS["latin"]:
+        font_name = "latin.ttf"
+    elif lang in PADDLEOCR_LANGS["arabic"]:
+        font_name = "arabic.ttf"
+    elif lang in PADDLEOCR_LANGS["eslav"] or lang in PADDLEOCR_LANGS["cyrillic"]:
+        font_name = "cyrillic.ttf"
+    elif lang in PADDLEOCR_LANGS["devanagari"]:
+        font_name = "devanagari.ttf"
+    elif lang in ("korean", "th", "el"):
+        font_name = f"{lang}.ttf"
+    elif lang == "te":
+        font_name = "telugu.ttf"
+    elif lang == "ta":
+        font_name = "tamil.ttf"
+    elif lang == "ka":
+        font_name = "kannada.ttf"
+
+    return os.path.join(font_dir, font_name)
+
+
 def perform_hardware_check(paddleocr_path: str, use_gpu: bool) -> None:
     """Checks if the current system supports the hardware requirements."""
     error_prefix = "Unsupported Hardware Error:"
@@ -392,6 +421,13 @@ def create_clean_temp_dir() -> str:
     return tempfile.mkdtemp(prefix=temp_prefix)
 
 
+def make_clean_ocr_image_dir(path: str) -> None:
+    """(Re)creates an empty directory for OCR image output, clearing any existing content first."""
+    if os.path.isdir(path):
+        shutil.rmtree(path)
+    os.makedirs(path)
+
+
 def log_error(message: str, log_name: str = "error_log.txt") -> str:
     """Saves errors to a log file."""
     if sys.platform == "win32":
@@ -511,11 +547,13 @@ def unstitch_polygon(poly: list[list[float]], mapping: list[dict[str, Any]]) -> 
     return intersections
 
 
-def stream_cli_process(args: list[str], log_name: str) -> Iterator[str]:
+def stream_cli_process(args: list[str], log_name: str, extra_env: dict[str, str] | None = None) -> Iterator[str]:
     """Executes a CLI process, yields its stdout lines, and handles errors/logging."""
     cli_env = os.environ.copy()
     cli_env["PYTHONIOENCODING"] = "utf-8"
     cli_env["PYTHONUNBUFFERED"] = "1"
+    if extra_env:
+        cli_env.update(extra_env)
 
     process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", env=cli_env, bufsize=1)
 

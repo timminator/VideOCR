@@ -245,6 +245,14 @@ docker build --build-arg BUILD_TARGET=cpu -t videocr-cli-cpu:latest .
 
   默认使用轻量模型进行OCR。启用后将使用服务器模型，提升检测效果，但会消耗更多资源。建议仅在GPU版本中使用。
 
+- `save_ocr_images`
+
+  设为 `True` 时，将检测和识别所用的图像保存到磁盘，并标注检测到的框/文字。适用于查看或调试 OCR 结果。识别图像目前仅在使用 `paddleocr` 引擎时保存；`google_lens` 暂不支持。
+
+- `ocr_images_output_dir`
+
+  `save_ocr_images` 保存图像的目标目录。若未指定，默认为当前工作目录下的 `ocr_images`。
+
 ## 构建与编译说明
 
 - 要求：

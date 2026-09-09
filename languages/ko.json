@@ -86,6 +86,10 @@
     "tip_normalize_chinese": "활성화하면 처리 전에 번체 중국어 문자가\n간체 중국어로 변환됩니다. \"Chinese & English\"에서만 활성화됩니다.",
     "chk_server_model": "서버 모델 사용",
     "tip_server_model": "더 높은 OCR 기능을 가진 서버 모델을 활성화합니다.\n이 모드는 더 나은 결과를 제공할 수 있지만 더 많은 컴퓨팅 파워도 필요합니다.\n이 모드를 사용할 때는 GPU를 강력히 권장합니다.",
+    "chk_save_ocr_images": "OCR 이미지 저장 (감지/OCR)",
+    "tip_save_ocr_images": "감지 및 OCR에 사용된 이미지를 감지된 박스/텍스트와 함께\n디스크에 저장합니다. OCR 단계의 이미지는 PaddleOCR에서만\n저장되며, Google Lens에서는 아직 지원되지 않습니다.",
+    "lbl_ocr_images_dir": "OCR 이미지 출력 디렉토리:",
+    "tip_ocr_images_dir": "저장된 OCR 이미지가 배치될 폴더입니다.\n\"OCR 이미지 저장\"이 활성화되지 않으면 비활성화됩니다.",
     "lbl_videocr_settings": "VideOCR 설정:",
     "lbl_ui_lang": "UI 언어:",
     "tip_ui_lang": "애플리케이션의 표시 언어를 변경합니다.",
@@ -196,6 +200,7 @@
     "cli_starting_paddleocr": "PaddleOCR을 시작하는 중...",
     "cli_generating_subs": "자막을 생성하고 있습니다...",
     "log_reached_end": "종료 시간에 도달했습니다. 중지합니다.",
+    "cli_note_lens_no_rec_images": "참고: Google Lens는 아직 OCR 이미지 저장을 지원하지 않습니다. 감지 이미지만 저장됩니다.",
     "unknown": "알 수 없음",
 
     "eta_step": "ETA 단계",

@@ -59,7 +59,8 @@ class Video:
 
     def run_ocr(self, use_gpu: bool, ocr_engine: str, lang: str, use_angle_cls: bool, time_start: str, time_end: str, conf_threshold: int,
                 use_fullframe: bool, brightness_threshold: int | None, ssim_threshold: int, subtitle_position: str, frames_to_skip: int,
-                crop_zones: list[dict[str, int]], ocr_image_max_width: int, disable_stitching: bool, normalize_to_simplified_chinese: bool) -> None:
+                crop_zones: list[dict[str, int]], ocr_image_max_width: int, disable_stitching: bool, normalize_to_simplified_chinese: bool,
+                save_ocr_images: bool, ocr_images_output_dir: str) -> None:
         conf_threshold_ratio = conf_threshold / 100
         ssim_threshold_ratio = ssim_threshold / 100
         self.lang = lang
@@ -382,8 +383,9 @@ class Video:
                 return counter + 1
 
             # Consumer Logic
-            det_stitched_dir = os.path.join(temp_dir, "det_stitched")
-            os.makedirs(det_stitched_dir, exist_ok=True)
+            base_dir = ocr_images_output_dir if save_ocr_images else temp_dir
+            det_stitched_dir = os.path.join(base_dir, "detection_input")
+            utils.make_clean_ocr_image_dir(det_stitched_dir)
 
             det_stitch_map: dict[str, list[dict[str, Any]]] = {}
             det_counter = 0
@@ -536,6 +538,11 @@ class Video:
                 "--model_name", os.path.basename(self.det_model_dir)
             ]
 
+            if save_ocr_images:
+                det_save_dir = os.path.join(ocr_images_output_dir, "detection_output")
+                utils.make_clean_ocr_image_dir(det_save_dir)
+                args += ["--save_path", det_save_dir]
+
             print("Starting PaddleOCR...", flush=True)
 
             det_ocr_outputs: dict[str, list[Any]] = {}
@@ -594,8 +601,9 @@ class Video:
             frames_deleted_count = 0
             next_print_target = 15
 
-            rec_images_dir = os.path.join(temp_dir, "rec_images")
-            os.makedirs(rec_images_dir, exist_ok=True)
+            base_dir = ocr_images_output_dir if save_ocr_images else temp_dir
+            rec_images_dir = os.path.join(base_dir, "recognition_input")
+            utils.make_clean_ocr_image_dir(rec_images_dir)
 
             empty_frames_meta: set[tuple[int, int]] = set()
             surviving_frames_meta: set[tuple[int, int]] = set()
@@ -759,6 +767,9 @@ class Video:
             ocr_image_index = 0
 
             if ocr_engine == "google_lens":
+                if save_ocr_images:
+                    print("Note: Google Lens doesn't support saving recognition images yet; only detection images will be saved.", flush=True)
+
                 args = [
                     self.google_lens_path,
                     rec_images_dir,
@@ -830,10 +841,16 @@ class Video:
                     args += ["--textline_orientation_model_dir", self.cls_model_dir]
                     args += ["--textline_orientation_model_name", os.path.basename(self.cls_model_dir)]
 
+                if save_ocr_images:
+                    rec_save_dir = os.path.join(ocr_images_output_dir, "recognition_output")
+                    utils.make_clean_ocr_image_dir(rec_save_dir)
+                    args += ["--save_path", rec_save_dir]
+
                 print("Starting PaddleOCR...", flush=True)
 
                 current_image = None
-                for line in utils.stream_cli_process(args, "paddleocr_error.log"):
+                font_path_env = {"PADDLE_PDX_LOCAL_FONT_FILE_PATH": utils.resolve_font_path(self.lang)} if save_ocr_images else None
+                for line in utils.stream_cli_process(args, "paddleocr_error.log", font_path_env):
                     line = line.strip()
 
                     if "ppocr INFO: **********" in line:
