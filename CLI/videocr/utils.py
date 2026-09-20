@@ -445,11 +445,15 @@ def log_error(message: str, log_name: str = "error_log.txt") -> str:
     return log_path
 
 
+def grid_cols(item_w: int, max_width: int, padding: int, max_cols: int) -> int:
+    """Calculates the maximum number of frames that can fit in one row."""
+    return min(max_cols, max(1, (max_width + padding) // (item_w + padding)))
+
+
 def prepare_stitch_batch(batch: list[Any], counter: int, zone_idx: int, prefix: str, out_dir: str, target_map: dict[str, Any],
-                         max_width: int, grid_spacing: int, zero_pad_length: int) -> tuple[str, int, int, list[tuple[Any, int, int]]]:
+                         cols: int, grid_spacing: int, zero_pad_length: int) -> tuple[str, int, int, list[tuple[Any, int, int]]]:
     """Calculates grid dimensions and maps coordinates for a batch. Returns queue arguments."""
     h, w = batch[0]["img"].height, batch[0]["img"].width
-    cols = max(1, (max_width + grid_spacing) // (w + grid_spacing))
 
     actual_cols = min(len(batch), cols)
     actual_rows = (len(batch) + cols - 1) // cols
@@ -485,9 +489,8 @@ def prepare_stitch_batch(batch: list[Any], counter: int, zone_idx: int, prefix: 
     return filepath, canvas_w, canvas_h, draw_instructions
 
 
-def get_batch_limit(w: int, h: int, max_width: int, max_height: int, padding: int, max_cols: int, max_rows: int) -> int:
-    """Calculates the maximum number of frames that can fit in a stitched grid."""
-    cols = min(max_cols, max(1, (max_width + padding) // (w + padding)))
+def get_batch_limit(cols: int, h: int, max_height: int, padding: int, max_rows: int) -> int:
+    """Calculates the maximum number of frames that can fit in a stitched grid, for a given column count."""
     rows = min(max_rows, max(1, (max_height + padding) // (h + padding)))
 
     return cols * rows

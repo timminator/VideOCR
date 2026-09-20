@@ -383,14 +383,18 @@ class Video:
             FILENAME_ZERO_PADDING = 8
 
             batch_limits: dict[int, int] = {}
+            zone_cols: dict[int, int] = {}
             for z_idx, z in enumerate(self.validated_zones):
                 if disable_stitching:
                     batch_limits[z_idx] = 1
+                    zone_cols[z_idx] = 1
                 else:
-                    batch_limits[z_idx] = utils.get_batch_limit(z['w'], z['h'], MAX_STITCH_WIDTH, MAX_STITCH_HEIGHT, GRID_SPACING, MAX_STITCH_COLS, MAX_STITCH_ROWS)
+                    cols = utils.grid_cols(z['w'], MAX_STITCH_WIDTH, GRID_SPACING, MAX_STITCH_COLS)
+                    zone_cols[z_idx] = cols
+                    batch_limits[z_idx] = utils.get_batch_limit(cols, z['h'], MAX_STITCH_HEIGHT, GRID_SPACING, MAX_STITCH_ROWS)
 
             def flush_batch(batch: list[Any], counter: int, zone_idx: int, prefix: str, out_dir: str, target_map: dict[str, Any]) -> int:
-                queue_args = utils.prepare_stitch_batch(batch, counter, zone_idx, prefix, out_dir, target_map, MAX_STITCH_WIDTH, GRID_SPACING, FILENAME_ZERO_PADDING)
+                queue_args = utils.prepare_stitch_batch(batch, counter, zone_idx, prefix, out_dir, target_map, zone_cols[zone_idx], GRID_SPACING, FILENAME_ZERO_PADDING)
                 write_queue.put(queue_args)
                 return counter + 1
 
