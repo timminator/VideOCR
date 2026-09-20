@@ -32,6 +32,8 @@ class Video:
     duration_ms: int
     height: int
     width: int
+    coded_width: int
+    sample_aspect_ratio: float
     pred_frames_zone1: list[PredictedFrames]
     pred_frames_zone2: list[PredictedFrames]
     pred_subs: list[PredictedSubtitle]
@@ -54,6 +56,8 @@ class Video:
         props = get_video_properties(self.path)
         self.height = props['height']
         self.width = props['width']
+        self.coded_width = props['coded_width']
+        self.sample_aspect_ratio = props['sample_aspect_ratio']
         self.duration_ms = props['duration_ms']
         self.start_time_offset_ms = props['start_time_offset_ms']
 
@@ -144,9 +148,17 @@ class Video:
             target_w = max(2, int(crop_w * scale_ratio) & ~1)
             target_h = max(2, int(crop_h * scale_ratio) & ~1)
 
+            if self.sample_aspect_ratio and self.sample_aspect_ratio != 1:
+                crop_x_coded = int(crop_x / self.sample_aspect_ratio) & ~1
+                crop_w_coded = max(2, int(crop_w / self.sample_aspect_ratio) & ~1)
+                crop_w_coded = min(crop_w_coded, (self.coded_width - crop_x_coded) & ~1)
+            else:
+                crop_x_coded = crop_x
+                crop_w_coded = crop_w
+
             val_zone['w'] = target_w
             val_zone['h'] = target_h
-            val_zone['crop_str'] = f"{crop_w}:{crop_h}:{crop_x}:{crop_y}"
+            val_zone['crop_str'] = f"{crop_w_coded}:{crop_h}:{crop_x_coded}:{crop_y}"
             val_zone['scale_str'] = f"{target_w}:{target_h}:flags=area:threads=1"
 
         temp_dir = utils.create_clean_temp_dir()

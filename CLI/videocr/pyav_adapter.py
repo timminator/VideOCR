@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from fractions import Fraction
 from types import TracebackType
 from typing import TypedDict
 
@@ -10,6 +11,8 @@ import av
 class VideoProperties(TypedDict):
     height: int
     width: int
+    coded_width: int
+    sample_aspect_ratio: float
     duration_ms: int
     start_time_offset_ms: float
 
@@ -18,14 +21,20 @@ def get_video_properties(path: str) -> VideoProperties:
     properties: VideoProperties = {
         'height': 0,
         'width': 0,
+        'coded_width': 0,
+        'sample_aspect_ratio': 1.0,
         'duration_ms': 0,
         'start_time_offset_ms': 0.0,
     }
 
     with av.open(path) as container:
         stream = container.streams.video[0]
+        sar = stream.sample_aspect_ratio or Fraction(1, 1)
+
         properties['height'] = int(stream.height)
-        properties['width'] = int(stream.width)
+        properties['coded_width'] = int(stream.width)
+        properties['width'] = int(stream.width * sar)
+        properties['sample_aspect_ratio'] = float(sar)
 
         if container.duration is not None:
             properties['duration_ms'] = int(container.duration / 1000.0)

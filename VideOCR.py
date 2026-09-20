@@ -39,6 +39,7 @@ import time
 import tkinter.font as tkFont
 import urllib.request
 import webbrowser
+from fractions import Fraction
 from typing import IO, Any, cast
 
 import av
@@ -263,7 +264,7 @@ PADDLEOCR_LANGUAGES_LIST = [
     ('Angika', 'ang'), ('Arabic', 'ar'), ('Avar', 'ava'), ('Azerbaijani', 'az'),
     ('Baluchi', 'bal'), ('Bashkir', 'ba'), ('Basque', 'eu'), ('Belarusian', 'be'),
     ('Bhojpuri', 'bho'), ('Bihari', 'bh'), ('Bosnian', 'bs'), ('Bulgarian', 'bg'),
-    ('Buryat', 'bua'), ('Catalan', 'ca'), ('Chechen', 'che'), ('Chinese & English', 'ch'),
+    ('Buryat', 'bua'), ('Catalan', 'ca'), ('Chechen', 'che'), ('Chinese', 'ch'),
     ('Chinese Traditional', 'chinese_cht'), ('Chuvash', 'cv'), ('Croatian', 'hr'),
     ('Czech', 'cs'), ('Danish', 'da'), ('Dargwa', 'dar'), ('Dutch', 'nl'),
     ('English', 'en'), ('Estonian', 'et'), ('Finnish', 'fi'), ('French', 'fr'),
@@ -374,6 +375,7 @@ PADDLE_TO_ISO_MAP = {
     'ang': 'anp',
     'mah': 'mag',
     'mo': 'ro',
+    'ka': 'kn',
     # Prefer 2-Letter Codes
     'ava': 'av',
     'che': 'ce',
@@ -1502,6 +1504,10 @@ class VideoHandler:
         last = self.graph.add("scale", f"{self.current_new_w}:{self.current_new_h}:flags=bicubic")
         self.buffer_node.link_to(last)
 
+        setsar_node = self.graph.add("setsar", "1")
+        last.link_to(setsar_node)
+        last = setsar_node
+
         fmt_base_node = self.graph.add("format", "rgb24")
         last.link_to(fmt_base_node)
         last = fmt_base_node
@@ -1561,7 +1567,9 @@ class VideoHandler:
             self.stream = self.container.streams.video[0]
             self.stream.thread_type = 'FRAME'
             self.path = path
-            self.width = int(self.stream.width)
+
+            sar = self.stream.sample_aspect_ratio or Fraction(1, 1)
+            self.width = int(self.stream.width * sar)
             self.height = int(self.stream.height)
             self.newly_opened = True
 
@@ -1791,7 +1799,7 @@ def read_pipe(pipe: IO[str], output_list: list[str]) -> None:
 
 def scan_video_folder(folder_path: str) -> list[str]:
     """Scans a folder for common video files and returns a sorted list of full paths."""
-    video_extensions = {'.mp4', '.avi', '.mkv', '.mov', '.webm', '.flv', '.wmv', '.ts', '.m2ts'}
+    video_extensions = {'.mp4', '.avi', '.mkv', '.mov', '.webm', '.flv', '.wmv', '.ts', '.m2ts', '.rm', '.rmvb'}
     video_files: list[str] = []
     if not os.path.isdir(folder_path):
         return []
@@ -3338,7 +3346,7 @@ while True:
         video_file_types = LANG.get('video_file_types', "Video Files")
         all_file_types = LANG.get('all_file_types', "All Files")
         filename = sg.tk.filedialog.askopenfilename(
-            filetypes=((video_file_types, "*.mp4 *.avi *.mkv *.mov *.webm *.flv *.wmv *.ts *.m2ts"), (all_file_types, "*.*")),
+            filetypes=((video_file_types, "*.mp4 *.avi *.mkv *.mov *.webm *.flv *.wmv *.ts *.m2ts *.rm *.rmvb"), (all_file_types, "*.*")),
             parent=window.TKroot
         )
         if filename:
