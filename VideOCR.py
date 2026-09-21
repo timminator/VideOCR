@@ -1208,6 +1208,8 @@ def apply_gui_scaling_change(window: sg.Window, selected_display_value: str) -> 
 
 def reset_settings_to_default(window: sg.Window, keys: list[str]) -> bool:
     """Resets the given setting keys to their default values and updates the GUI/config accordingly."""
+    global pending_brightness_update, brightness_last_event_time
+
     defaults = get_default_settings()
 
     if '--subtitle_alignment' in keys or '--subtitle_alignment2' in keys:
@@ -1247,6 +1249,10 @@ def reset_settings_to_default(window: sg.Window, keys: list[str]) -> bool:
     update_alignment_controls(window, current_values)
     update_ocr_images_controls(window, current_values)
     save_settings(window, current_values)
+
+    if '--brightness_threshold' in keys:
+        brightness_last_event_time = time.time()
+        pending_brightness_update = True
 
     return pending_scaling_display is not None and apply_gui_scaling_change(window, pending_scaling_display)
 
@@ -2556,7 +2562,7 @@ tab1_content = [
      sg.Button("Add All to Queue", key="-BTN-BATCH-ADD-ALL-")],
     [sg.Text("Progress Info:", key='-LBL-PROGRESS-')],
     [
-        sg.Text("", key="-STATUS-LINE-", size=(None, 1), expand_x=True),
+        sg.Text("", key="-STATUS-LINE-", size=(1, 1), expand_x=True),
         sg.Text("", key="-ETA-LINE-", size=(25, 1), justification='right')
     ],
     [sg.ProgressBar(100, orientation='h', size=(1, 20), key="-PROGRESS-BAR-", expand_x=True)],
@@ -3386,11 +3392,15 @@ while True:
         folder = sg.tk.filedialog.askdirectory()
         if folder:
             window['--default_output_dir'].update(folder)
+            values['--default_output_dir'] = folder
+            save_settings(window, values)
 
     elif event == '-BTN-OCR_IMAGES_FOLDER_BROWSE-':
         folder = sg.tk.filedialog.askdirectory()
         if folder:
             window['--ocr_images_output_dir'].update(folder)
+            values['--ocr_images_output_dir'] = folder
+            save_settings(window, values)
 
     elif event == '-BTN-OCR-INFO-':
         custom_popup(window, LANG.get('engine_info', "OCR Engine Information"), LANG.get('engine_message', (
