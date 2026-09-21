@@ -1481,6 +1481,8 @@ class VideoHandler:
 
         self.newly_opened: bool = False
         self.last_pts: int | None = None
+        self.last_frame: av.VideoFrame | None = None
+        self.last_target_pts: int | None = None
 
         self.graph: av.filter.Graph | None = None
         self.buffer_node: Any = None
@@ -1600,36 +1602,51 @@ class VideoHandler:
             target_pts = int(target_ms / 1000.0 / tb)
             seek_threshold = int(1.5 / tb)
 
-            should_seek = True
+            if self.last_frame is not None and self.last_target_pts == target_pts:
+                frame: av.VideoFrame | None = self.last_frame
+                self.newly_opened = False
+            else:
+                should_seek = True
+                reuse_last_frame = False
 
-            if self.newly_opened and timestamp_ms == 0:
-                should_seek = False
-            elif self.last_pts is not None:
-                if self.last_pts <= target_pts <= (self.last_pts + seek_threshold):
+                if self.newly_opened and timestamp_ms == 0:
                     should_seek = False
+                elif self.last_pts is not None:
+                    if self.last_pts <= target_pts <= (self.last_pts + seek_threshold):
+                        should_seek = False
+                        if self.last_frame is not None:
+                            reuse_last_frame = True
 
-            self.newly_opened = False
+                self.newly_opened = False
 
-            if should_seek:
-                try:
-                    self.container.seek(target_pts, stream=self.stream)
-                    self.last_pts = None
-                except Exception as e:
-                    if target_pts <= 0 and getattr(e, 'errno', None) == 1:
-                        saved_path = self.path
-                        self.close()
-                        if saved_path:
-                            self.open(saved_path)
-                        self.newly_opened = False
-                    else:
-                        raise
+                if should_seek:
+                    try:
+                        self.container.seek(target_pts, stream=self.stream)
+                        self.last_pts = None
+                        self.last_frame = None
+                    except Exception as e:
+                        if target_pts <= 0 and getattr(e, 'errno', None) == 1:
+                            saved_path = self.path
+                            self.close()
+                            if saved_path:
+                                self.open(saved_path)
+                            self.newly_opened = False
+                        else:
+                            raise
 
-            frame: av.VideoFrame | None = None
-            for f in self.container.decode(self.stream):
-                if f.pts is not None and f.pts >= target_pts:
-                    frame = f
-                    self.last_pts = f.pts
-                    break
+                if reuse_last_frame:
+                    frame = self.last_frame
+                else:
+                    frame = None
+                    for f in self.container.decode(self.stream):
+                        if f.pts is not None and f.pts >= target_pts:
+                            frame = f
+                            self.last_pts = f.pts
+                            self.last_frame = f
+                            break
+
+            if frame is not None:
+                self.last_target_pts = target_pts
 
             if not frame:
                 return None, 0, 0, 0, 0
@@ -1658,6 +1675,8 @@ class VideoHandler:
         self.width = self.height = 0
         self.duration_ms = 0
         self.last_pts = None
+        self.last_frame = None
+        self.last_target_pts = None
         self.last_display_size = (0, 0)
         self.last_threshold = None
         self.current_new_w = self.current_new_h = 0
