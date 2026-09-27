@@ -96,18 +96,21 @@ def video_frame_to_frame(frame: av.VideoFrame) -> Frame:
     return Frame(data, frame.height, frame.width)
 
 
-def blit(canvas: bytearray, canvas_w: int, img: Frame, x: int, y: int) -> None:
+def blit(canvas: memoryview, canvas_w: int, img: Frame, x: int, y: int) -> None:
     """Copies an RGB frame into the canvas at (x, y) in place."""
     row_bytes = img.width * 3
     canvas_stride = canvas_w * 3
+    src_mv = memoryview(img.data)
+
     for row in range(img.height):
         dst_off = (y + row) * canvas_stride + x * 3
-        canvas[dst_off:dst_off + row_bytes] = img.row(row)
+        src_off = row * row_bytes
+        canvas[dst_off:dst_off + row_bytes] = src_mv[src_off:src_off + row_bytes]
 
 
-def encode_frame_to_jpeg(canvas: bytearray, canvas_w: int, canvas_h: int, quality: int) -> bytes:
-    """Encodes a flat bytearray to JPEG."""
-    mv = memoryview(canvas).cast('B', shape=(canvas_h, canvas_w, 3))
+def encode_frame_to_jpeg(canvas: memoryview, canvas_w: int, canvas_h: int, quality: int) -> bytes:
+    """Encodes a flat memoryview buffer to JPEG."""
+    mv = canvas.cast('B', shape=(canvas_h, canvas_w, 3))
     return simplejpeg.encode_jpeg(mv, quality=quality, colorspace='RGB')
 
 

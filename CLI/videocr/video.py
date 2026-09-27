@@ -172,6 +172,13 @@ class Video:
             drain_event = threading.Event()
             error_list: list[Exception] = []
 
+            MAX_STITCH_WIDTH = 1500
+            MAX_STITCH_HEIGHT = 1500
+            GRID_SPACING = 10
+            MAX_STITCH_COLS = 3
+            MAX_STITCH_ROWS = 10
+            FILENAME_ZERO_PADDING = 8
+
             def producer_thread() -> None:
                 try:
                     with Capture(self.path) as v:
@@ -336,6 +343,8 @@ class Video:
                     stop_event.set()
 
             def writer_thread() -> None:
+                max_canvas = bytearray(MAX_STITCH_WIDTH * MAX_STITCH_HEIGHT * 3)
+
                 try:
                     while not stop_event.is_set():
                         try:
@@ -346,11 +355,14 @@ class Video:
                             continue
 
                         frame_path, canvas_w, canvas_h, draw_instructions = item
-                        canvas = bytearray(canvas_h * canvas_w * 3)
-                        for img, x, y in draw_instructions:
-                            utils.blit(canvas, canvas_w, img, x, y)
 
-                        jpeg_bytes = utils.encode_frame_to_jpeg(canvas, canvas_w, canvas_h, quality=80)
+                        active_bytes = canvas_w * canvas_h * 3
+                        canvas_view = memoryview(max_canvas)[:active_bytes]
+
+                        for img, x, y in draw_instructions:
+                            utils.blit(canvas_view, canvas_w, img, x, y)
+
+                        jpeg_bytes = utils.encode_frame_to_jpeg(canvas_view, canvas_w, canvas_h, quality=80)
                         with open(frame_path, 'wb') as f:
                             f.write(jpeg_bytes)
 
@@ -374,13 +386,6 @@ class Video:
                 t = threading.Thread(target=writer_thread)
                 t.start()
                 writers.append(t)
-
-            MAX_STITCH_WIDTH = 1500
-            MAX_STITCH_HEIGHT = 1500
-            GRID_SPACING = 10
-            MAX_STITCH_COLS = 3
-            MAX_STITCH_ROWS = 10
-            FILENAME_ZERO_PADDING = 8
 
             batch_limits: dict[int, int] = {}
             zone_cols: dict[int, int] = {}
@@ -706,43 +711,43 @@ class Video:
                     if current_chunk_groups:
                         chunks.append((current_chunk_groups, current_chunk_grids))
 
-                    for chunk_groups, chunk_grids in chunks:
-                        loaded_grids: dict[str, Any] = {}
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        for chunk_groups, chunk_grids in chunks:
+                            loaded_grids: dict[str, Any] = {}
 
-                        with concurrent.futures.ThreadPoolExecutor() as executor:
                             for g_file, img_array in executor.map(utils.decode_jpeg_to_frame, chunk_grids):
                                 loaded_grids[g_file] = img_array
 
-                        group_args = [
-                            (union_rects, group_frames, loaded_grids, TIGHT_BOX_SSIM_THRESHOLD)
-                            for union_rects, group_frames in chunk_groups
-                        ]
+                            group_args = [
+                                (union_rects, group_frames, loaded_grids, TIGHT_BOX_SSIM_THRESHOLD)
+                                for union_rects, group_frames in chunk_groups
+                            ]
 
-                        for ssim_args in group_args:
-                            surviving_items, local_deleted = utils.process_ssim_group(*ssim_args)
-                            frames_deleted_count += local_deleted
+                            for ssim_args in group_args:
+                                surviving_items, local_deleted = utils.process_ssim_group(*ssim_args)
+                                frames_deleted_count += local_deleted
 
-                            for item in surviving_items:
-                                surviving_frames_meta.add((item["frame_idx"], z_idx))
+                                for item in surviving_items:
+                                    surviving_frames_meta.add((item["frame_idx"], z_idx))
 
-                                filename = f"rec_image_{rec_counter:0{FILENAME_ZERO_PADDING}d}_zone{z_idx}.jpg"
-                                filepath = os.path.join(rec_images_dir, filename)
-                                h, w = item["img"].height, item["img"].width
-                                write_queue.put((filepath, w, h, [(item["img"], 0, 0)]))
+                                    filename = f"rec_image_{rec_counter:0{FILENAME_ZERO_PADDING}d}_zone{z_idx}.jpg"
+                                    filepath = os.path.join(rec_images_dir, filename)
+                                    h, w = item["img"].height, item["img"].width
+                                    write_queue.put((filepath, w, h, [(item["img"], 0, 0)]))
 
-                                rec_image_map[filename] = {
-                                    "frame_idx": item["frame_idx"],
-                                    "zone_idx": z_idx
-                                }
-                                rec_counter += 1
+                                    rec_image_map[filename] = {
+                                        "frame_idx": item["frame_idx"],
+                                        "zone_idx": z_idx
+                                    }
+                                    rec_counter += 1
 
-                            frames_processed += len(ssim_args[1])
+                                frames_processed += len(ssim_args[1])
 
-                            if frames_processed >= next_print_target:
-                                print(f"\rAnalyzing frame {frames_processed} of {total_stitched_frames}", end="", flush=True)
-                                next_print_target = frames_processed + 15
+                                if frames_processed >= next_print_target:
+                                    print(f"\rAnalyzing frame {frames_processed} of {total_stitched_frames}", end="", flush=True)
+                                    next_print_target = frames_processed + 15
 
-                        loaded_grids.clear()
+                            loaded_grids.clear()
 
                 print(f"\rAnalyzing frame {frames_processed} of {total_stitched_frames}", end="", flush=True)
                 success = True
