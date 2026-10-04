@@ -246,6 +246,8 @@ def resolve_model_dirs(lang: str, use_server_model: bool) -> tuple[str, str, str
             rec_sub = f"{lang}_PP-OCRv5_mobile_rec"
         elif lang == "ka":
             rec_sub = "ka_PP-OCRv3_mobile_rec"
+        else:
+            raise ValueError(f"No PaddleOCR recognition model available for language '{lang}'.")
 
     return (
         os.path.join(det_path, det_sub),
@@ -279,6 +281,8 @@ def resolve_font_path(lang: str) -> str:
         font_name = "tamil.ttf"
     elif lang == "ka":
         font_name = "kannada.ttf"
+    else:
+        raise ValueError(f"No font available for language '{lang}'.")
 
     return os.path.join(font_dir, font_name)
 
@@ -663,19 +667,24 @@ def process_ssim_group(union_rects: list[list[float]], group_frames: list[tuple[
     current_similar_batch: list[dict[str, Any]] = []
     prev_crops: list[Any] = []
 
+    def pick_best(batch: list[dict[str, Any]]) -> dict[str, Any]:
+        best = max(batch, key=lambda x: x["det_score"])
+        m = best["m"]
+        img = loaded_grids[m["grid_file"]].crop_rect(m["x"], m["y"], m["x"] + m["w"], m["y"] + m["h"])
+        return {"img": img, "frame_idx": batch[0]["frame_idx"], "det_score": best["det_score"]}
+
     for i, (_, _, det_score, m) in enumerate(group_frames):
         grid_img = loaded_grids[m["grid_file"]]
-        img = grid_img.crop_rect(m["x"], m["y"], m["x"] + m["w"], m["y"] + m["h"])
-        h, w = img.height, img.width
+        w, h = m["w"], m["h"]
 
         current_crops: list[Any] = []
         for rect in union_rects:
             cx1, cy1 = max(0, int(rect[0])), max(0, int(rect[1]))
             cx2, cy2 = min(w, int(rect[2])), min(h, int(rect[3]))
-            current_crops.append(img.crop_rect(cx1, cy1, cx2, cy2))
+            current_crops.append(grid_img.crop_rect(m["x"] + cx1, m["y"] + cy1, m["x"] + cx2, m["y"] + cy2))
 
         item_dict = {
-            "img": img.copy(),
+            "m": m,
             "frame_idx": m["frame_idx"],
             "det_score": det_score
         }
@@ -698,17 +707,13 @@ def process_ssim_group(union_rects: list[list[float]], group_frames: list[tuple[
         if all_lines_match:
             current_similar_batch.append(item_dict)
         else:
-            best_item = max(current_similar_batch, key=lambda x: x["det_score"])
-            best_item["frame_idx"] = current_similar_batch[0]["frame_idx"]
-            local_surviving_items.append(best_item)
+            local_surviving_items.append(pick_best(current_similar_batch))
 
             current_similar_batch = [item_dict]
             prev_crops = current_crops
 
     if current_similar_batch:
-        best_item = max(current_similar_batch, key=lambda x: x["det_score"])
-        best_item["frame_idx"] = current_similar_batch[0]["frame_idx"]
-        local_surviving_items.append(best_item)
+        local_surviving_items.append(pick_best(current_similar_batch))
 
     local_deleted = len(group_frames) - len(local_surviving_items)
 

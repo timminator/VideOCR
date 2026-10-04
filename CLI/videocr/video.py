@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import concurrent.futures
+import copy
 import json
 import os
 import queue
@@ -179,6 +180,20 @@ class Video:
             MAX_STITCH_ROWS = 10
             FILENAME_ZERO_PADDING = 8
 
+            batch_limits: dict[int, int] = {}
+            zone_cols: dict[int, int] = {}
+            for z_idx, z in enumerate(self.validated_zones):
+                if disable_stitching:
+                    batch_limits[z_idx] = 1
+                    zone_cols[z_idx] = 1
+                else:
+                    cols = utils.grid_cols(z['w'], MAX_STITCH_WIDTH, GRID_SPACING, MAX_STITCH_COLS)
+                    zone_cols[z_idx] = cols
+                    batch_limits[z_idx] = utils.get_batch_limit(cols, z['h'], MAX_STITCH_HEIGHT, GRID_SPACING, MAX_STITCH_ROWS)
+
+            needs_stitching = any(limit > 1 for limit in batch_limits.values())
+            blank_canvas = memoryview(bytes(MAX_STITCH_WIDTH * MAX_STITCH_HEIGHT * 3 if needs_stitching else 0))
+
             def producer_thread() -> None:
                 try:
                     with Capture(self.path) as v:
@@ -197,8 +212,6 @@ class Video:
                             if not success:
                                 break
 
-                            curr_str = utils.get_srt_timestamp_from_ms(timestamp_ms - self.start_time_offset_ms).split(',')[0]
-
                             # Check Start Time
                             if is_seeking:
                                 if timestamp_ms < target_start_ms:
@@ -216,9 +229,9 @@ class Video:
 
                             should_process_frame = (current_index % modulo == 0)
                             if should_process_frame:
-                                raw_queue.put((current_index, timestamp_ms, raw_frame, curr_str))
+                                raw_queue.put((current_index, timestamp_ms, raw_frame))
                             else:
-                                raw_queue.put((current_index, timestamp_ms, None, curr_str))
+                                raw_queue.put((current_index, timestamp_ms, None))
 
                             current_index += 1
 
@@ -246,10 +259,10 @@ class Video:
                             raw_queue.put(None)
                             break
 
-                        current_index, timestamp_ms, raw_frame, curr_str = item
+                        current_index, timestamp_ms, raw_frame = item
 
                         if raw_frame is None:
-                            processed_queue.put((current_index, timestamp_ms, None, curr_str))
+                            processed_queue.put((current_index, timestamp_ms, None))
                             continue
 
                         images_to_process: list[dict[str, Any]] = []
@@ -336,14 +349,14 @@ class Video:
                                 'ssim_sample': sample
                             })
 
-                        processed_queue.put((current_index, timestamp_ms, images_to_process, curr_str))
+                        processed_queue.put((current_index, timestamp_ms, images_to_process))
 
                 except Exception as e:
                     error_list.append(e)
                     stop_event.set()
 
             def writer_thread() -> None:
-                max_canvas = bytearray(MAX_STITCH_WIDTH * MAX_STITCH_HEIGHT * 3)
+                max_canvas: bytearray | None = None
 
                 try:
                     while not stop_event.is_set():
@@ -356,11 +369,18 @@ class Video:
 
                         frame_path, canvas_w, canvas_h, draw_instructions = item
 
-                        active_bytes = canvas_w * canvas_h * 3
-                        canvas_view = memoryview(max_canvas)[:active_bytes]
+                        if len(draw_instructions) == 1:
+                            canvas_view = memoryview(draw_instructions[0][0].data)
+                        else:
+                            if max_canvas is None:
+                                max_canvas = bytearray(MAX_STITCH_WIDTH * MAX_STITCH_HEIGHT * 3)
 
-                        for img, x, y in draw_instructions:
-                            utils.blit(canvas_view, canvas_w, img, x, y)
+                            active_bytes = canvas_w * canvas_h * 3
+                            canvas_view = memoryview(max_canvas)[:active_bytes]
+                            canvas_view[:] = blank_canvas[:active_bytes]
+
+                            for img, x, y in draw_instructions:
+                                utils.blit(canvas_view, canvas_w, img, x, y)
 
                         jpeg_bytes = utils.encode_frame_to_jpeg(canvas_view, canvas_w, canvas_h, quality=80)
                         with open(frame_path, 'wb') as f:
@@ -386,17 +406,6 @@ class Video:
                 t = threading.Thread(target=writer_thread)
                 t.start()
                 writers.append(t)
-
-            batch_limits: dict[int, int] = {}
-            zone_cols: dict[int, int] = {}
-            for z_idx, z in enumerate(self.validated_zones):
-                if disable_stitching:
-                    batch_limits[z_idx] = 1
-                    zone_cols[z_idx] = 1
-                else:
-                    cols = utils.grid_cols(z['w'], MAX_STITCH_WIDTH, GRID_SPACING, MAX_STITCH_COLS)
-                    zone_cols[z_idx] = cols
-                    batch_limits[z_idx] = utils.get_batch_limit(cols, z['h'], MAX_STITCH_HEIGHT, GRID_SPACING, MAX_STITCH_ROWS)
 
             def flush_batch(batch: list[Any], counter: int, zone_idx: int, prefix: str, out_dir: str, target_map: dict[str, Any]) -> int:
                 queue_args = utils.prepare_stitch_batch(batch, counter, zone_idx, prefix, out_dir, target_map, zone_cols[zone_idx], GRID_SPACING, FILENAME_ZERO_PADDING)
@@ -428,7 +437,7 @@ class Video:
                         continue
 
                 if expected_index is not None:
-                    buffer: dict[int, tuple[float, Any, str]] = {}
+                    buffer: dict[int, tuple[float, Any]] = {}
                     while not stop_event.is_set():
                         if error_list:
                             break
@@ -440,15 +449,16 @@ class Video:
                                 break
                             continue
 
-                        current_index, timestamp_ms, images_to_process, curr_str = item
-                        buffer[current_index] = (timestamp_ms, images_to_process, curr_str)
+                        current_index, timestamp_ms, images_to_process = item
+                        buffer[current_index] = (timestamp_ms, images_to_process)
 
                         # Process buffer sequentially
                         while expected_index in buffer:
-                            timestamp_ms, images_to_process, curr_str = buffer.pop(expected_index)
+                            timestamp_ms, images_to_process = buffer.pop(expected_index)
                             self.frame_timestamps[expected_index] = timestamp_ms
 
-                            if current_index % 15 == 0:
+                            if expected_index % 15 == 0:
+                                curr_str = utils.get_srt_timestamp_from_ms(timestamp_ms - self.start_time_offset_ms).split(',')[0]
                                 print(f"\rStep 1/3: Processing video... Current: {curr_str} / {target_end_str}, Frame: {expected_index + 1}", end="", flush=True)
 
                             if images_to_process is not None:
@@ -973,7 +983,7 @@ class Video:
             if subtitle_alignments[0] != subtitle_alignments[1]:
                 self.pred_subs = sorted(subs_zone1 + subs_zone2, key=lambda s: s.index_start)
             else:
-                self.pred_subs = self._merge_dual_zone_subtitles(subs_zone1, subs_zone2)
+                self.pred_subs = self._merge_dual_zone_subtitles(subs_zone1, subs_zone2, min_subtitle_duration_sec)
         else:
             self.pred_subs = []
 
@@ -1036,29 +1046,45 @@ class Video:
 
         return cleaned_subs
 
-    def _merge_dual_zone_subtitles(self, subs1: list[PredictedSubtitle], subs2: list[PredictedSubtitle]) -> list[PredictedSubtitle]:
-        all_subs = sorted(subs1 + subs2, key=lambda s: s.index_start)
+    def _merge_dual_zone_subtitles(self, subs1: list[PredictedSubtitle], subs2: list[PredictedSubtitle], min_subtitle_duration_sec: float) -> list[PredictedSubtitle]:
+        zones = [sorted(subs1, key=lambda s: s.index_start), sorted(subs2, key=lambda s: s.index_start)]
+        all_subs = zones[0] + zones[1]
 
         if not all_subs:
             return []
 
-        merged_subs = [all_subs[0]]
-        for current_sub in all_subs[1:]:
-            last_sub = merged_subs[-1]
+        boundaries = sorted({s.index_start for s in all_subs} | {s.index_end + 1 for s in all_subs})
+        pointers = [0, 0]
+        merged_subs: list[PredictedSubtitle] = []
 
-            if current_sub.index_start <= last_sub.index_end:
-                last_zone_info = self.validated_zones[last_sub.zone_index]
-                current_zone_info = self.validated_zones[current_sub.zone_index]
+        for seg_start, seg_next in zip(boundaries, boundaries[1:]):
+            active: list[PredictedSubtitle] = []
 
-                if current_zone_info['midpoint_y'] < last_zone_info['midpoint_y']:
-                    last_sub.text = f"{current_sub.text}\n{last_sub.text}"
-                else:
-                    last_sub.text = f"{last_sub.text}\n{current_sub.text}"
+            for z, zone_subs in enumerate(zones):
+                p = pointers[z]
+                while p < len(zone_subs) and zone_subs[p].index_end < seg_start:
+                    p += 1
+                pointers[z] = p
 
-                last_sub.frames.extend(current_sub.frames)
-                last_sub.frames.sort(key=lambda f: f.start_index)
-            else:
-                merged_subs.append(current_sub)
+                if p < len(zone_subs) and zone_subs[p].index_start <= seg_start:
+                    active.append(zone_subs[p])
+
+            if not active:
+                continue
+
+            active.sort(key=lambda s: self.validated_zones[s.zone_index]['midpoint_y'])
+
+            segment = copy.copy(active[0])
+            segment_frame = copy.copy(active[0].frames[0])
+            segment_frame.start_index = seg_start
+            segment_frame.end_index = seg_next - 1
+            segment.frames = [segment_frame]
+            segment.text = '\n'.join(s.text for s in active)
+
+            if self._get_subtitle_duration_sec(segment) < min_subtitle_duration_sec:
+                continue
+
+            merged_subs.append(segment)
 
         return merged_subs
 

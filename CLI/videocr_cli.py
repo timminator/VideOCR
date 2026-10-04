@@ -117,16 +117,16 @@ def main() -> None:
     parser.add_argument('--time_end', type=valid_time_string, default='', help='End time (MM:SS or HH:MM:SS)')
     parser.add_argument('--conf_threshold', type=restricted_int(0, 100), default=75, help='Confidence threshold (PaddleOCR only, default: 75)')
     parser.add_argument('--sim_threshold', type=restricted_int(0, 100), default=80, help='Similarity threshold (default: 80)')
-    parser.add_argument('--max_merge_gap', type=restricted_float(min_val=0.0), default=0.09, help='Maximum time gap in seconds to merge similar subtitles (default: 0.09)')
+    parser.add_argument('--max_merge_gap', type=restricted_float(min_val=0.0), default=0.1, help='Maximum time gap in seconds to merge similar subtitles (default: 0.1)')
     parser.add_argument('--use_fullframe', type=lambda x: x.lower() == 'true', default=False, help='Use full frame for OCR (default: false)')
     parser.add_argument('--use_gpu', type=lambda x: x.lower() == 'true', default=False, help='Enable GPU usage (default: false)')
     parser.add_argument('--use_angle_cls', type=lambda x: x.lower() == 'true', default=False, help='Enable Classification (PaddleOCR only, default: false)')
     parser.add_argument('--use_server_model', type=lambda x: x.lower() == 'true', default=False, help='Enable usage of server model (default: false)')
     parser.add_argument('--brightness_threshold', type=restricted_int(0, 255), default=None, help='Brightness threshold')
     parser.add_argument('--ssim_threshold', type=restricted_int(0, 100), default=94, help='SSIM similarity threshold for initial frame filtering in Step 1 (default: 94)')
-    parser.add_argument('--subtitle_position', type=str, default='center', help='Subtitle position alignment (center (default), left, right, any)')
+    parser.add_argument('--subtitle_position', type=str, choices=['center', 'left', 'right', 'any'], default='center', help='Subtitle position alignment (default: center)')
     parser.add_argument('--frames_to_skip', type=restricted_int(min_val=0), default=1, help='Frames to skip (default: 1)')
-    parser.add_argument('--normalize_to_simplified_chinese', type=lambda x: x.lower() == 'true', default=True, help='Normalize Traditional Chinese characters to Simplified Chinese for ch (default: true)')
+    parser.add_argument('--normalize_to_simplified_chinese', type=lambda x: x.lower() == 'true', default=True, help='Normalize Traditional Chinese characters to Simplified Chinese (default: true)')
     parser.add_argument('--post_processing', type=lambda x: x.lower() == 'true', default=False, help='Enable post processing of subtitles (default: false)')
     parser.add_argument('--min_subtitle_duration', type=restricted_float(min_val=0.0), default=0.2, help='Minimum subtitle duration in seconds (default: 0.2)')
     parser.add_argument('--ocr_image_max_width', type=restricted_int(min_val=1), default=720, help='Maximum image width used for OCR (default: 720)')
@@ -148,8 +148,10 @@ def main() -> None:
     args = parser.parse_args()
 
     try:
-        if args.ocr_engine == 'paddleocr' and args.lang.lower() not in (set().union(*PADDLEOCR_LANGS.values())):
-            raise ValueError(f"Unsupported language code '{args.lang}' for PaddleOCR.")
+        if args.ocr_engine == 'paddleocr':
+            args.lang = args.lang.lower()
+            if args.lang not in (set().union(*PADDLEOCR_LANGS.values())):
+                raise ValueError(f"Unsupported language code '{args.lang}' for PaddleOCR.")
         if args.ocr_engine == 'google_lens' and args.lang not in GOOGLE_LENS_LANGS:
             raise ValueError(f"Unsupported language code '{args.lang}' for Google Lens.")
 

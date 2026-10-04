@@ -80,7 +80,7 @@ class PredictedFrames:
         else:
             self.text = '\n'.join(' '.join(word.text for word in line) for line in self.lines)
 
-        if normalize_to_simplified_chinese and lang in ("ch", "zh-CN") and self.text:
+        if normalize_to_simplified_chinese and lang in ("ch", "zh", "zh-Hans") and self.text:
             self.text = self._converter.convert(self.text)
 
 
@@ -114,7 +114,7 @@ class PredictedSubtitle:
     @property
     def index_end(self) -> int:
         if self.frames:
-            return self.frames[-1].end_index
+            return max(f.end_index for f in self.frames)
         return 0
 
     def is_similar_to(self, other: PredictedSubtitle) -> bool:
