@@ -8,6 +8,10 @@ from typing import TypedDict
 import av
 
 
+class VideoDecodeError(Exception):
+    """Raised when FFmpeg cannot decode the next video frame."""
+
+
 class VideoProperties(TypedDict):
     height: int
     width: int

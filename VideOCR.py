@@ -2032,6 +2032,7 @@ def run_videocr(args_dict: dict[str, Any], window: sg.Window) -> bool:
     UNSUPPORTED_HARDWARE_ERROR_PATTERN = re.compile(r"Unsupported Hardware Error: (.*)")
     WARNING_HARDWARE_PATTERN = re.compile(r"Hardware Check Warning: (.*)")
     PROCESS_ERROR_PATTERN = re.compile(r"Error: Process failed.")
+    VIDEO_DECODE_ERROR_PATTERN = re.compile(r"^Error: Video decoding failed while reading frame (\d+)(?: \(last successfully decoded timestamp: ([\d:]+)\))?\. FFmpeg reported: (.+)$")
     STEP1_PROGRESS_PATTERN = re.compile(r"Step (\d+)/\d+: Processing video\.\.\. Current: ([\d:]+) / ([\d:]+|Unknown), Frame: (\d+)")
     STEP_IMAGE_PROGRESS_PATTERN = re.compile(r"Step (\d+)/\d+: Performing (?:Text-Detection|OCR) on image (\d+) of (\d+)")
     REPACKING_PATTERN = re.compile(r"Analyzing frame (\d+) of (\d+)")
@@ -2050,6 +2051,7 @@ def run_videocr(args_dict: dict[str, Any], window: sg.Window) -> bool:
 
     expecting_log_path = False
     process_error_message = ""
+    video_decode_error_detected = False
 
     gui_queue.put(('-VIDEOCR_OUTPUT-', LANG.get('status_starting', "Starting subtitle extraction...\n")))
     gui_queue.put(('-PROGRESS-SMOOTH-', {'text': LANG.get('status_starting', "Starting subtitle extraction..."), 'percent': None}))
@@ -2098,6 +2100,19 @@ def run_videocr(args_dict: dict[str, Any], window: sg.Window) -> bool:
                 if PROCESS_ERROR_PATTERN.search(line):
                     process_error_message = line.strip()
                     expecting_log_path = True
+                    continue
+
+                video_decode_error_match = VIDEO_DECODE_ERROR_PATTERN.match(line)
+                if video_decode_error_match:
+                    video_decode_error_detected = True
+                    frame_number, timestamp, ffmpeg_error = video_decode_error_match.groups()
+                    if timestamp:
+                        timestamp_detail = LANG.get('error_video_decode_timestamp', ' (last successfully decoded timestamp: {})').format(timestamp)
+                    else:
+                        timestamp_detail = ""
+                    raw_msg = LANG.get('error_video_decode', 'Video decoding failed while reading frame {}{}. FFmpeg reported: {}')
+                    msg = raw_msg.format(frame_number, timestamp_detail, ffmpeg_error)
+                    gui_queue.put(('-VIDEOCR_OUTPUT-', f"\n{msg}\n"))
                     continue
 
                 fatal_error_match = UNSUPPORTED_HARDWARE_ERROR_PATTERN.search(line)
@@ -2200,7 +2215,7 @@ def run_videocr(args_dict: dict[str, Any], window: sg.Window) -> bool:
             full_stdout = "".join(stdout_lines)
             full_stderr = "".join(stderr_lines)
 
-            if ("Error: Process failed" not in full_stdout and "Unsupported Hardware Error:" not in full_stdout):
+            if (not video_decode_error_detected and "Error: Process failed" not in full_stdout and "Unsupported Hardware Error:" not in full_stdout):
                 log_message = (
                     f"The videocr-cli process crashed with exit code {exit_code}.\n\n"
                     f"--- COMMAND ---\n{' '.join(command)}\n\n"

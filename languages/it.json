@@ -214,6 +214,8 @@
     "unexpected_error_2": "Un rapporto dettagliato dell'errore è stato salvato in:",
     "error_cli_not_found": "\nErrore: videocr-cli non trovato. Controlla il percorso.\n",
     "error_generic_exception": "\nSi è verificato un errore: {}\n",
+    "error_video_decode": "La decodifica del video non è riuscita durante la lettura del frame {}{}. FFmpeg ha segnalato: {}",
+    "error_video_decode_timestamp": " (ultimo timestamp decodificato correttamente: {})",
     "error_set_path_title": "Impossibile impostare il percorso di output",
     "error_set_path_msg": "Impossibile generare automaticamente il percorso di output predefinito.\nImpostalo manualmente.\nErrore: {}",
     "error_invalid_video_title": "File video non valido o vuoto",

@@ -214,6 +214,8 @@
     "unexpected_error_2": "A detailed crash report has been saved to:",
     "error_cli_not_found": "\nError: videocr-cli not found. Please check the path.\n",
     "error_generic_exception": "\nAn error occurred: {}\n",
+    "error_video_decode": "Video decoding failed while reading frame {}{}. FFmpeg reported: {}",
+    "error_video_decode_timestamp": " (last successfully decoded timestamp: {})",
     "error_set_path_title": "Unable to Set Output Path",
     "error_set_path_msg": "Could not automatically generate default output path.\nPlease specify one manually.\nError: {}",
     "error_invalid_video_title": "Invalid or Empty Video File",

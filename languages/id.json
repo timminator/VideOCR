@@ -214,6 +214,8 @@
     "unexpected_error_2": "Laporan crash terperinci telah disimpan ke:",
     "error_cli_not_found": "\nError: videocr-cli tidak ditemukan. Silakan periksa path.\n",
     "error_generic_exception": "\nTerjadi error: {}\n",
+    "error_video_decode": "Dekode video gagal saat membaca frame {}{}. FFmpeg melaporkan: {}",
+    "error_video_decode_timestamp": " (timestamp terakhir yang berhasil didekode: {})",
     "error_set_path_title": "Tidak Dapat Mengatur Path Output",
     "error_set_path_msg": "Tidak dapat secara otomatis membuat path output default.\nSilakan tentukan secara manual.\nError: {}",
     "error_invalid_video_title": "File Video Tidak Valid atau Kosong",

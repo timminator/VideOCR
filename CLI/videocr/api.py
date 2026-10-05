@@ -47,7 +47,7 @@ def save_subtitles_to_file(
             normalize_to_simplified_chinese, save_ocr_images, ocr_images_output_dir
         )
     except Exception as e:
-        print(f"Error: {e}", flush=True)
+        print(f"\nError: {e}", flush=True)
         sys.exit(1)
     subtitles = v.get_subtitles(sim_threshold, max_merge_gap_sec, lang, post_processing, min_subtitle_duration_sec, subtitle_alignments)
 

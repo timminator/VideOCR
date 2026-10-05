@@ -214,6 +214,8 @@
     "unexpected_error_2": "تم حفظ تقرير مفصل عن الانهيار في:",
     "error_cli_not_found": "\nخطأ: videocr-cli غير موجود. يرجى فحص المسار.\n",
     "error_generic_exception": "\nحدث خطأ: {}\n",
+    "error_video_decode": "فشل فك ترميز الفيديو أثناء قراءة الإطار {}{}. أبلغ FFmpeg عن: {}",
+    "error_video_decode_timestamp": " (آخر طابع زمني تم فك ترميزه بنجاح: {})",
     "error_set_path_title": "غير قادر على تعيين مسار الإخراج",
     "error_set_path_msg": "لا يمكن إنشاء مسار إخراج افتراضي تلقائياً.\nيرجى تحديد واحد يدوياً.\nخطأ: {}",
     "error_invalid_video_title": "ملف فيديو غير صالح أو فارغ",

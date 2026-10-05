@@ -214,6 +214,8 @@
     "unexpected_error_2": "상세한 충돌 보고서가 저장되었습니다:",
     "error_cli_not_found": "\n오류: videocr-cli을 찾을 수 없습니다. 경로를 확인해주세요.\n",
     "error_generic_exception": "\n오류가 발생했습니다: {}\n",
+    "error_video_decode": "프레임 {}{}을(를) 읽는 동안 동영상 디코딩에 실패했습니다. FFmpeg 보고: {}",
+    "error_video_decode_timestamp": " (마지막으로 성공적으로 디코딩된 타임스탬프: {})",
     "error_set_path_title": "출력 경로를 설정할 수 없음",
     "error_set_path_msg": "기본 출력 경로를 자동으로 생성할 수 없습니다.\n수동으로 지정해주세요.\n오류: {}",
     "error_invalid_video_title": "유효하지 않거나 빈 비디오 파일",

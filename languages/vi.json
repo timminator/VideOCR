@@ -214,6 +214,8 @@
     "unexpected_error_2": "Báo cáo sự cố chi tiết đã được lưu vào:",
     "error_cli_not_found": "\nLỗi: videocr-cli không tìm thấy. Vui lòng kiểm tra đường dẫn.\n",
     "error_generic_exception": "\nĐã xảy ra lỗi: {}\n",
+    "error_video_decode": "Giải mã video không thành công khi đọc khung hình {}{}. FFmpeg báo cáo: {}",
+    "error_video_decode_timestamp": " (dấu thời gian được giải mã thành công gần đây nhất: {})",
     "error_set_path_title": "Không Thể Đặt Đường Dẫn Đầu Ra",
     "error_set_path_msg": "Không thể tự động tạo đường dẫn đầu ra mặc định.\nVui lòng chỉ định một cách thủ công.\nLỗi: {}",
     "error_invalid_video_title": "Tệp Video Không Hợp Lệ Hoặc Trống",

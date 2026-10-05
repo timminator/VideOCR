@@ -17,7 +17,7 @@ import wordninja_enhanced as wordninja
 
 from . import utils
 from .models import PredictedFrames, PredictedSubtitle
-from .pyav_adapter import Capture, get_video_properties
+from .pyav_adapter import Capture, VideoDecodeError, get_video_properties
 
 
 class Video:
@@ -205,12 +205,23 @@ class Video:
                         current_index = 0
                         modulo = frames_to_skip + 1
                         first_queued = False
+                        last_timestamp_ms: float | None = None
 
                         while not stop_event.is_set():
-                            success, raw_frame, timestamp_ms = v.read()
+                            try:
+                                success, raw_frame, timestamp_ms = v.read()
+                            except av.error.FFmpegError as e:
+                                if last_timestamp_ms is None:
+                                    location = f"while reading frame {current_index + 1}"
+                                else:
+                                    last_timestamp = utils.get_srt_timestamp_from_ms(last_timestamp_ms - self.start_time_offset_ms).split(',')[0]
+                                    location = (f"while reading frame {current_index + 1} (last successfully decoded timestamp: {last_timestamp})")
+                                raise VideoDecodeError(f"Video decoding failed {location}. FFmpeg reported: {e}") from e
 
                             if not success:
                                 break
+
+                            last_timestamp_ms = timestamp_ms
 
                             # Check Start Time
                             if is_seeking:

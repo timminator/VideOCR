@@ -214,6 +214,8 @@
     "unexpected_error_2": "Um relatório de erro detalhado foi salvo em:",
     "error_cli_not_found": "\nErro: videocr-cli não encontrado. Verifique o caminho.\n",
     "error_generic_exception": "\nOcorreu um erro: {}\n",
+    "error_video_decode": "Falha ao decodificar o vídeo ao ler o frame {}{}. FFmpeg informou: {}",
+    "error_video_decode_timestamp": " (último timestamp decodificado com sucesso: {})",
     "error_set_path_title": "Não foi possível definir o caminho de saída",
     "error_set_path_msg": "Não foi possível gerar automaticamente o caminho de saída padrão.\nDefina manualmente.\nErro: {}",
     "error_invalid_video_title": "Arquivo de vídeo inválido ou vazio",

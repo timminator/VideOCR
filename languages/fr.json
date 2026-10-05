@@ -214,6 +214,8 @@
     "unexpected_error_2": "Un rapport d'erreur détaillé a été enregistré dans :",
     "error_cli_not_found": "\nErreur : videocr-cli introuvable. Veuillez vérifier le chemin.\n",
     "error_generic_exception": "\nUne erreur est survenue : {}\n",
+    "error_video_decode": "Le décodage vidéo a échoué lors de la lecture de l’image {}{}. FFmpeg a signalé : {}",
+    "error_video_decode_timestamp": " (dernier horodatage décodé avec succès : {})",
     "error_set_path_title": "Impossible de définir le chemin de sortie",
     "error_set_path_msg": "Impossible de générer automatiquement le chemin de sortie par défaut.\nVeuillez le définir manuellement.\nErreur : {}",
     "error_invalid_video_title": "Fichier vidéo invalide ou vide",

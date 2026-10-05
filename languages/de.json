@@ -214,6 +214,8 @@
     "unexpected_error_2": "Ein detaillierter Absturzbericht wurde gespeichert unter:",
     "error_cli_not_found": "\nFehler: videocr-cli nicht gefunden. Bitte überprüfen Sie den Pfad.\n",
     "error_generic_exception": "\nEs ist ein Fehler aufgetreten: {}\n",
+    "error_video_decode": "Die Videodekodierung ist beim Lesen von Frame {}{} fehlgeschlagen. FFmpeg meldete: {}",
+    "error_video_decode_timestamp": " (zuletzt erfolgreich dekodierter Zeitstempel: {})",
     "error_set_path_title": "Ausgabepfad kann nicht festgelegt werden",
     "error_set_path_msg": "Standard-Ausgabepfad konnte nicht automatisch erstellt werden.\nBitte geben Sie einen Pfad manuell an.\nFehler: {}",
     "error_invalid_video_title": "Ungültige oder leere Videodatei",

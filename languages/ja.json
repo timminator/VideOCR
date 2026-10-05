@@ -214,6 +214,8 @@
     "unexpected_error_2": "詳細なクラッシュレポートが保存されました:",
     "error_cli_not_found": "\nエラー: videocr-cli が見つかりません。パスを確認してください。\n",
     "error_generic_exception": "\nエラーが発生しました: {}\n",
+    "error_video_decode": "フレーム {}{} の読み取り中に動画のデコードに失敗しました。FFmpeg の報告: {}",
+    "error_video_decode_timestamp": "（最後に正常にデコードされたタイムスタンプ: {}）",
     "error_set_path_title": "出力パスを設定できません",
     "error_set_path_msg": "デフォルトの出力パスを自動生成できませんでした。\n手動で指定してください。\nエラー: {}",
     "error_invalid_video_title": "無効または空のビデオファイル",

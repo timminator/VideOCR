@@ -214,6 +214,8 @@
     "unexpected_error_2": "Se ha guardado un informe detallado del fallo en:",
     "error_cli_not_found": "\nError: videocr-cli no encontrado. Por favor revisa la ruta.\n",
     "error_generic_exception": "\nOcurrió un error: {}\n",
+    "error_video_decode": "La decodificación del vídeo falló al leer el fotograma {}{}. FFmpeg informó: {}",
+    "error_video_decode_timestamp": " (última marca de tiempo decodificada correctamente: {})",
     "error_set_path_title": "No se puede establecer la ruta de salida",
     "error_set_path_msg": "No se pudo generar automáticamente la ruta de salida por defecto.\nEspecifícala manualmente.\nError: {}",
     "error_invalid_video_title": "Archivo de video inválido o vacío",
