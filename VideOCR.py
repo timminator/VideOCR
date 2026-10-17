@@ -256,6 +256,7 @@ LANGUAGE_CODE_TO_NATIVE_NAME = {
     'ko': '한국어',
     'ja': '日本語',
     'vi': 'Tiếng Việt',
+    'sl': 'Slovenščina',
 }
 
 # --- Language Data ---
