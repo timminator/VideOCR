@@ -3,6 +3,7 @@
     "tab_batch": "Čakalna vrsta",
     "tab_advanced": "Napredne nastavitve",
     "tab_about": "O programu",
+
     "lbl_source": "Vir:",
     "lbl_output_srt": "Izhodna datoteka SRT:",
     "lbl_ocr_engine": "Pogon OCR:",
@@ -32,6 +33,7 @@
     "lbl_log": "Dnevnik:",
     "video_file_types": "Videodatoteke",
     "all_file_types": "Vse datoteke",
+
     "lbl_ocr_settings": "Nastavitve OCR:",
     "lbl_time_start": "Začetni čas (npr. 0:00 ali 1:23:45):",
     "tip_time_start": "Določite čas začetka obdelave.",
@@ -110,6 +112,7 @@
     "tip_prevent_sleep": "Če je možnost označena, računalnik med obdelavo ne bo prešel v stanje pripravljenosti.",
     "chk_check_updates": "Preveri posodobitve ob zagonu",
     "tip_check_updates": "Ob zagonu programa samodejno preveri, ali je na voljo nova različica VideOCR.",
+
     "btn_reset_to_defaults": "Ponastavi na privzete vrednosti",
     "btn_info": "Informacije",
     "menu_reset_default": "Ponastavi na privzeto",
@@ -117,10 +120,12 @@
     "msg_reset_settings": "Vse nastavitve v tem razdelku bodo ponastavljene na privzete vrednosti.\nŽelite nadaljevati?",
     "reset_info": "Ponastavitev na privzete vrednosti",
     "reset_message": "»Ponastavi na privzete vrednosti« obnovi privzeto vrednost vseh nastavitev v tem razdelku.\n\nZ desnim klikom posamezne nastavitve zgoraj lahko ponastavite tudi samo to nastavitev.",
+
     "menu_copy_command": "Kopiraj ukaz",
     "tip_copy_command": "Z desnim klikom kopirate enakovredni ukaz za ukazno vrstico (CLI), ne da bi ga zagnali.",
     "error_no_video_for_copy": "\nZa sestavo ukaza najprej izberite video.\n",
     "msg_command_copied": "Ukaz je kopiran v odložišče.\n",
+
     "btn_browse": "Odpri datoteko ...",
     "btn_browse_folder": "Odpri mapo ...",
     "btn_save_as": "Shrani kot ...",
@@ -131,6 +136,7 @@
     "btn_add_all_to_queue": "Dodaj vse v čakalno vrsto",
     "btn_pause": "Začasno ustavi",
     "btn_resume": "Nadaljuj",
+
     "lbl_queue_title": "Čakalna vrsta",
     "col_video_file": "Videodatoteka",
     "col_output_file": "Izhodna datoteka",
@@ -141,15 +147,18 @@
     "btn_edit": "Uredi",
     "btn_remove": "Odstrani",
     "btn_clear_queue": "Počisti čakalno vrsto",
+
     "tip_batch_up": "Premakni izbrano opravilo višje v čakalni vrsti",
     "tip_batch_down": "Premakni izbrano opravilo nižje v čakalni vrsti",
     "tip_batch_reset": "Ponastavi preklicano opravilo",
     "tip_batch_edit": "Vrni opravilo v glavno okno za urejanje",
     "tip_batch_remove": "Odstrani izbrano opravilo iz čakalne vrste",
     "tip_batch_clear": "Počisti trenutno čakalno vrsto",
+
     "lbl_about_version": "Različica: {version}",
     "lbl_get_newest": "Najnovejšo različico prenesite tukaj:",
     "lbl_bug_report": "Ste našli napako ali imate predlog? Prijavite ga na:",
+
     "update_title": "Na voljo je posodobitev",
     "update_available_1": "Na voljo je nova različica VideOCR ({})!",
     "update_available_2": "Trenutno uporabljate različico {}.",
@@ -158,11 +167,14 @@
     "update_msg_uptodate": "Uporabljate najnovejšo različico VideOCR.",
     "update_title_error": "Napaka",
     "update_msg_error": "Preverjanje posodobitev ni uspelo.\nPreverite internetno povezavo.",
+
     "btn_yes": "Da",
     "btn_no": "Ne",
+
     "save_as_title": "Shrani kot",
     "save_as_filter_name": "Podnapisi SubRip",
     "save_as_all_files": "Vse datoteke",
+
     "status_starting": "Začetek izluščevanja podnapisov ...\n",
     "status_success": "Datoteka s podnapisi je bila uspešno ustvarjena!\n",
     "status_cancelling": "\nPreklicevanje obdelave ...\n",
@@ -174,10 +186,12 @@
     "batch_finished_count": "Paketna obdelava je končana: obdelanih datotek: {}.",
     "status_queue_cancelled": "Čakalna vrsta je preklicana",
     "status_queue_finished": "Čakalna vrsta je končana",
+
     "lbl_step": "Korak",
     "progress_step1_action": "Obdelava videa ...",
     "progress_step2_action": "Zaznavanje besedila na sliki {current} od {total} ({percent} %)",
     "progress_step3_action": "Prepoznavanje besedila (OCR) na sliki {current} od {total} ({percent} %)",
+
     "cli_info_pass": "Izvajanje samo zaznavanja besedila na {} filtriranih sličicah, združenih v {} slikovnih mrež ...",
     "cli_filtered": "Z zaznavanjem besedila in analizo SSIM z natančnimi mejami je bilo izločenih {} odvečnih sličic.",
     "cli_analyzing": "Analiza sličice {} od {}",
@@ -188,7 +202,9 @@
     "log_reached_end": "Dosežen je končni čas. Ustavljanje.",
     "cli_note_lens_no_rec_images": "Opomba: Google Lens še ne podpira shranjevanja slik prepoznavanja; shranjene bodo samo slike zaznavanja.",
     "unknown": "neznano",
+
     "eta_step": "Predvideni preostali čas koraka",
+
     "fatal_error_header": "--- KRITIČNA NAPAKA ---",
     "fatal_error_reason_1": "Vaš sistem ne izpolnjuje strojnih zahtev.",
     "fatal_error_reason_2": "Razlog:",
@@ -198,6 +214,8 @@
     "unexpected_error_2": "Podrobno poročilo o zrušitvi je shranjeno v:",
     "error_cli_not_found": "\nNapaka: videocr-cli ni bil najden. Preverite pot.\n",
     "error_generic_exception": "\nPrišlo je do napake: {}\n",
+    "error_video_decode": "Dekodiranje videa ni uspelo pri branju sličice {}{}. FFmpeg je sporočil: {}",
+    "error_video_decode_timestamp": " (zadnji uspešno dekodirani časovni žig: {})",
     "error_set_path_title": "Izhodne poti ni mogoče nastaviti",
     "error_set_path_msg": "Privzete izhodne poti ni bilo mogoče samodejno ustvariti.\nNavedite jo ročno.\nNapaka: {}",
     "error_invalid_video_title": "Neveljavna ali prazna videodatoteka",
@@ -207,6 +225,7 @@
     "error_no_process_to_cancel": "\nTrenutno ne poteka nobena obdelava, ki bi jo bilo mogoče preklicati.\n",
     "title_error": "Napaka",
     "error_video_not_found": "Videodatoteka ni bila najdena:\n{}",
+
     "val_err_header": "Napake pri preverjanju veljavnosti:\n",
     "val_err_start_time": "Neveljavna oblika začetnega časa. Uporabite MM:SS ali HH:MM:SS.",
     "val_err_end_time": "Neveljavna oblika končnega časa. Uporabite MM:SS ali HH:MM:SS.",
@@ -219,6 +238,7 @@
     "err_crop_y_out": "{}: Y ({}) je zunaj višine videa ({}).",
     "err_crop_w_out": "{} sega zunaj dovoljenih meja (X + Š > širina).",
     "err_crop_h_out": "{} sega zunaj dovoljenih meja (Y + V > višina).",
+
     "title_duplicate": "Podvojeno",
     "msg_duplicate_queue": "Opravilo za »{}« je že v čakalni vrsti.\n\nSpremenite izhodno pot ali odstranite opravilo iz čakalne vrste.",
     "msg_duplicate_queue_running": "Opravilo za »{}« je trenutno dejavno (stanje: {}).\n\nSpremenite izhodno pot ali počakajte, da se opravilo konča.",
@@ -226,6 +246,7 @@
     "popup_duplicate_msg": "Opravilo za to izhodno datoteko že obstaja (stanje: {}).\n\nGa želite posodobiti oziroma znova zagnati s trenutnimi nastavitvami?",
     "popup_cannot_edit_running": "Opravila, ki je trenutno {}, ni mogoče urejati.\nNajprej ustavite ali prekličite obdelavo.",
     "popup_cannot_remove_running": "Opravila, ki se trenutno izvaja ali je začasno ustavljeno, ni mogoče odstraniti.\nNajprej ustavite ali prekličite obdelavo.",
+
     "title_progress": "Napredek",
     "msg_scanning_init": "Priprava pregledovanja ...",
     "msg_scanning_progress": "Pregledovanje datoteke {} od {} ...",
@@ -234,6 +255,7 @@
     "title_batch_report": "Poročilo o paketni obdelavi",
     "msg_batch_report_summary": "Dodanih videov: {}.\n\nPreskočenih videov: {}.\n",
     "msg_and_others": "... in drugi.",
+
     "lbl_when_ready": "Po končani obdelavi:",
     "action_none": "Ne naredi ničesar",
     "action_sleep": "Stanje pripravljenosti",
@@ -246,6 +268,7 @@
     "lbl_action_countdown": "Sistem bo dejanje »{}« izvedel čez {} sekund.",
     "btn_proceed": "Izvedi zdaj",
     "log_action_cancelled": "Dejanje po zaključku je uporabnik preklical.",
+
     "status_pending": "Na čakanju",
     "status_processing": "V obdelavi",
     "status_completed": "Končano",
